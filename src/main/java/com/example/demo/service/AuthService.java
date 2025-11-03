@@ -1,14 +1,15 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.LoginRequest;
-import com.example.demo.dto.LoginResponse;
-import com.example.demo.dto.LogoutResponse;
+import com.example.demo.dto.*;
 import com.example.demo.entity.Role;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UserRoleRepository;
 import com.example.demo.util.JwtUtil;
+
+import com.example.demo.service.EmailService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,7 +29,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class AuthService {
 
-    @Autowired
+ @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -45,6 +47,62 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private EmailService emailService;
+//tao otp
+    private String generateOtp() {
+        SecureRandom random = new SecureRandom();
+        int otp = 100000 + random.nextInt(900000);
+        return String.valueOf(otp);
+    }
+
+// gửi otp
+public GenericResponse sendOtp(ForgotPasswordRequest request) {
+        if (!userRepository.existsByEmail(request.getEmail())) {
+            return new GenericResponse(false, "Email không tồn tại!");
+        }
+
+        String otp = generateOtp();
+        userRepository.updateOtpForEmail(request.getEmail(), otp);
+
+        emailService.sendOtpEmail(request.getEmail(), otp);
+
+        return new GenericResponse(true, "OTP đã được gửi đến email của bạn!");
+    }
+//xác thực otp
+public GenericResponse verifyOtp(OtpVerificationRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getOtpCode())) {
+            return new GenericResponse(false, "OTP không hợp lệ!");
+        }
+
+        // Cập nhật trạng thái xác thực
+        user.setOtpCode(null); // Xóa OTP sau khi xác thực
+        user.setIsVerified(true); // Đánh dấu đã xác thực OTP
+        user.setTwoFactorEnabled(false); // Kết thúc quá trình quên mật khẩu
+        userRepository.save(user);
+
+        return new GenericResponse(true, "OTP xác thực thành công!");
+    }
+    // đặt lại mật khẩu
+    public GenericResponse resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+
+        if (!user.getIsVerified()) {
+            return new GenericResponse(false, "Vui lòng xác thực OTP trước!");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setIsVerified(true); 
+        user.setTwoFactorEnabled(false); 
+        userRepository.save(user);
+
+        return new GenericResponse(true, "Mật khẩu đã được cập nhật thành công!");
+    }
+    
     public LoginResponse login(LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(

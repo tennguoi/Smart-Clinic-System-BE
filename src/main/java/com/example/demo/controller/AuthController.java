@@ -1,8 +1,6 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.LoginRequest;
-import com.example.demo.dto.LoginResponse;
-import com.example.demo.dto.LogoutResponse;
+import com.example.demo.dto.*;
 import com.example.demo.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +33,23 @@ public class AuthController {
             token = token.substring(7);
         }
         LogoutResponse response = authService.logout(token);
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<GenericResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        GenericResponse response = authService.sendOtp(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<GenericResponse> verifyOtp(@Valid @RequestBody OtpVerificationRequest request) {
+        GenericResponse response = authService.verifyOtp(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<GenericResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        GenericResponse response = authService.resetPassword(request);
         return ResponseEntity.ok(response);
     }
     @GetMapping("/403")

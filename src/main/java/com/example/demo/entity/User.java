@@ -61,6 +61,9 @@ public class User {
     @Builder.Default
     private Boolean twoFactorEnabled = false;
 
+    @Column(name = "otp_code")
+    private String otpCode;
+    
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
