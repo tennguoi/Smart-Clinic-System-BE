@@ -7,9 +7,7 @@ import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UserRoleRepository;
 import com.example.demo.util.JwtUtil;
-
 import com.example.demo.service.EmailService;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -29,7 +27,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class AuthService {
 
- @Autowired
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -49,15 +47,63 @@ public class AuthService {
 
     @Autowired
     private EmailService emailService;
-//tao otp
+
+    // Tạo OTP
     private String generateOtp() {
         SecureRandom random = new SecureRandom();
         int otp = 100000 + random.nextInt(900000);
         return String.valueOf(otp);
     }
 
-// gửi otp
-public GenericResponse sendOtp(ForgotPasswordRequest request) {
+    // Bật 2FA
+    public GenericResponse enable2FA(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+
+        if (user.getTwoFactorEnabled()) {
+            return new GenericResponse(false, "Xác thực hai yếu tố đã được bật!");
+        }
+
+        String otp = generateOtp();
+        user.setOtpCode(otp);
+        user.setTwoFactorEnabled(true);
+        userRepository.save(user);
+
+        emailService.sendOtpEmail(email, otp);
+
+        return new GenericResponse(true, "OTP đã được gửi đến email của bạn để bật 2FA!");
+    }
+
+    // Xác thực OTP khi đăng nhập với 2FA
+    public GenericResponse verify2FA(OtpVerificationRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+
+        if (!user.getTwoFactorEnabled()) {
+            return new GenericResponse(false, "Xác thực hai yếu tố chưa được bật!");
+        }
+
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getOtpCode())) {
+            return new GenericResponse(false, "OTP không hợp lệ!");
+        }
+
+        // Xóa OTP sau khi xác thực
+        user.setOtpCode(null);
+        userRepository.save(user);
+
+        // Tạo JWT token sau khi xác thực OTP
+        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
+        List<UserRole> userRoles = userRoleRepository.findByUser_UserId(user.getUserId());
+        List<String> roleNames = userRoles.stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toList());
+        String token = jwtUtil.generateToken(user.getEmail(), roleNames, user.getUserId());
+
+        return new GenericResponse(true, "Xác thực 2FA thành công!", token);
+    }
+
+    // Gửi OTP cho quên mật khẩu
+    public GenericResponse sendOtp(ForgotPasswordRequest request) {
         if (!userRepository.existsByEmail(request.getEmail())) {
             return new GenericResponse(false, "Email không tồn tại!");
         }
@@ -69,8 +115,9 @@ public GenericResponse sendOtp(ForgotPasswordRequest request) {
 
         return new GenericResponse(true, "OTP đã được gửi đến email của bạn!");
     }
-//xác thực otp
-public GenericResponse verifyOtp(OtpVerificationRequest request) {
+
+    // Xác thực OTP cho quên mật khẩu
+    public GenericResponse verifyOtp(OtpVerificationRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
 
@@ -78,15 +125,15 @@ public GenericResponse verifyOtp(OtpVerificationRequest request) {
             return new GenericResponse(false, "OTP không hợp lệ!");
         }
 
-        // Cập nhật trạng thái xác thực
-        user.setOtpCode(null); // Xóa OTP sau khi xác thực
-        user.setIsVerified(true); // Đánh dấu đã xác thực OTP
-        user.setTwoFactorEnabled(false); // Kết thúc quá trình quên mật khẩu
+        user.setOtpCode(null);
+        user.setIsVerified(true);
+        user.setTwoFactorEnabled(false);
         userRepository.save(user);
 
         return new GenericResponse(true, "OTP xác thực thành công!");
     }
-    // đặt lại mật khẩu
+
+    // Đặt lại mật khẩu
     public GenericResponse resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
@@ -96,13 +143,14 @@ public GenericResponse verifyOtp(OtpVerificationRequest request) {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        user.setIsVerified(true); 
-        user.setTwoFactorEnabled(false); 
+        user.setIsVerified(true);
+        user.setTwoFactorEnabled(false);
         userRepository.save(user);
 
         return new GenericResponse(true, "Mật khẩu đã được cập nhật thành công!");
     }
-    
+
+    // Đăng nhập
     public LoginResponse login(LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -112,10 +160,24 @@ public GenericResponse verifyOtp(OtpVerificationRequest request) {
                     )
             );
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
             User user = userRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            // Kiểm tra 2FA
+            if (user.getTwoFactorEnabled()) {
+                String otp = generateOtp();
+                user.setOtpCode(otp);
+                userRepository.save(user);
+                emailService.sendOtpEmail(user.getEmail(), otp);
+                return LoginResponse.builder()
+                        .userId(user.getUserId())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .message("2FA required. OTP sent to your email.")
+                        .build();
+            }
+
+            UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
             List<UserRole> userRoles = userRoleRepository.findByUser_UserId(user.getUserId());
             List<String> roleNames = userRoles.stream()
                     .map(ur -> ur.getRole().getName())
@@ -137,16 +199,14 @@ public GenericResponse verifyOtp(OtpVerificationRequest request) {
             throw new RuntimeException("Invalid email or password", e);
         }
     }
-    // đơn giản xoa token đi thôi
+
+    // Đăng xuất
     public LogoutResponse logout(String token) {
         try {
-            
             SecurityContextHolder.clearContext();
-            
             return new LogoutResponse("Logout successful", true);
         } catch (Exception e) {
             return new LogoutResponse("Logout failed: " + e.getMessage(), false);
         }
     }
 }
-

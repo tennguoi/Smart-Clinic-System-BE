@@ -19,9 +19,9 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
-        message.setSubject("Mã OTP Quên Mật Khẩu - Smart Clinic System");
+        message.setSubject("Mã OTP - Smart Clinic System");
         message.setText("Mã OTP của bạn là: " + otp + "\nVui lòng nhập mã này để tiếp tục. Không chia sẻ với ai!");
-        
+
         mailSender.send(message);
     }
 }

@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired
@@ -35,6 +34,7 @@ public class AuthController {
         LogoutResponse response = authService.logout(token);
         return ResponseEntity.ok(response);
     }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<GenericResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         GenericResponse response = authService.sendOtp(request);
@@ -52,15 +52,29 @@ public class AuthController {
         GenericResponse response = authService.resetPassword(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/enable-2fa")
+    public ResponseEntity<GenericResponse> enable2FA(@RequestBody ForgotPasswordRequest request) {
+        GenericResponse response = authService.enable2FA(request.getEmail());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<GenericResponse> verify2FA(@Valid @RequestBody OtpVerificationRequest request) {
+        GenericResponse response = authService.verify2FA(request);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/403")
     public ResponseEntity<String> forbidden() {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền truy cập vào tính năng này");
     }
+
     @GetMapping("/401")
     public ResponseEntity<String> unauthorized() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Bạn không có quyền truy cập vào tính năng này");
     }
-  
+
     @GetMapping("/500")
     public ResponseEntity<String> internalServerError() {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi server");
