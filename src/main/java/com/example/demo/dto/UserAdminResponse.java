@@ -14,5 +14,12 @@ public class UserAdminResponse {
     private UUID userId;
     private String email;
     private String fullName;
+    private String phone;
+    private String dob;
+    private String gender;
+    private String address;
+    private Integer experienceYears;
+    private String photoUrl;
+    private String bio;
     private List<String> roles;
 }

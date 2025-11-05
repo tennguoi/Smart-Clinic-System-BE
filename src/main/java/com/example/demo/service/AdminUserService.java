@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.CreateUserRequest;
+import com.example.demo.dto.UpdateUserRequest;
 import com.example.demo.dto.UpdateUserRolesRequest;
 import com.example.demo.dto.UserAdminResponse;
 import com.example.demo.entity.Role;
@@ -14,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -98,6 +100,70 @@ public class AdminUserService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roles(savedRoleNames)
+                .build();
+    }
+
+    public List<UserAdminResponse> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return users.stream().map(user -> {
+            List<String> roleNames = userRoleRepository.findByUser_UserId(user.getUserId())
+                    .stream()
+                    .map(ur -> ur.getRole().getName())
+                    .collect(Collectors.toList());
+            return buildUserAdminResponse(user, roleNames);
+        }).collect(Collectors.toList());
+    }
+
+    public UserAdminResponse getUserById(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+        List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
+                .stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toList());
+        return buildUserAdminResponse(user, roleNames);
+    }
+
+    public UserAdminResponse updateUser(UUID userId, UpdateUserRequest req) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+        user.setFullName(req.getFullName());
+        user.setPhone(req.getPhone());
+        user.setDob(req.getDob() != null ? LocalDate.parse(req.getDob()) : null);
+        user.setGender(parseGender(req.getGender()));
+        user.setAddress(req.getAddress());
+        user.setExperienceYears(req.getExperienceYears());
+        user.setPhotoUrl(req.getPhotoUrl());
+        user.setBio(req.getBio());
+        user = userRepository.save(user);
+
+        List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
+                .stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toList());
+        return buildUserAdminResponse(user, roleNames);
+    }
+
+    public void deleteUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+        userRoleRepository.deleteAll(userRoleRepository.findByUser_UserId(userId));
+        userRepository.delete(user);
+    }
+
+    private UserAdminResponse buildUserAdminResponse(User user, List<String> roleNames) {
+        return UserAdminResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .dob(user.getDob() != null ? user.getDob().toString() : null)
+                .gender(user.getGender() != null ? user.getGender().toString() : null)
+                .address(user.getAddress())
+                .experienceYears(user.getExperienceYears())
+                .photoUrl(user.getPhotoUrl())
+                .bio(user.getBio())
+                .roles(roleNames)
                 .build();
     }
 

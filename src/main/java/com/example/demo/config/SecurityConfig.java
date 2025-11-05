@@ -65,9 +65,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/doctor/**").hasAnyRole("bac_si", "ADMIN")
-                        .requestMatchers("/api/receptionist/**").hasAnyRole("tiep_tan", "ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("admin")
+                        .requestMatchers("/api/doctor/**").hasAnyRole("bac_si", "admin")
+                        .requestMatchers("/api/receptionist/**").hasAnyRole("tiep_tan", "admin")
                         .anyRequest().authenticated());
 
         http.authenticationProvider(authenticationProvider());
