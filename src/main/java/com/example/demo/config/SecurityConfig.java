@@ -37,17 +37,6 @@ public class SecurityConfig {
     private JwtRequestFilter jwtRequestFilter;
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // Cho phép frontend ReactJS
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Các phương thức HTTP
-        configuration.setAllowedHeaders(Arrays.asList("*")); // Cho phép tất cả headers
-        configuration.setAllowCredentials(true); // Cho phép gửi cookie/credentials nếu cần
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // Áp dụng cho tất cả các endpoint
-        return source;
-    }
-    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -65,7 +54,7 @@ public class SecurityConfig {
         return authConfig.getAuthenticationManager();
     }
 
-    
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
@@ -87,4 +76,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
