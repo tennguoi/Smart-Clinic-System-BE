@@ -115,19 +115,7 @@
 	<build>
 		<plugins>
 
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.9.11</version> <!-- hoặc phiên bản ổn định khác -->
-                        <configuration>
-                            <source>17</source> <!-- hoặc 11, tùy JDK bạn dùng -->
-                            <target>17</target>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
+            
 
             <plugin>
 				<groupId>org.springframework.boot</groupId>

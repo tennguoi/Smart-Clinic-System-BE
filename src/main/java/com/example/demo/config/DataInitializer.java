@@ -33,11 +33,11 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         // Clear existing data (optional - only for development)
-        // userRoleRepository.deleteAll();
-        // rolePermissionRepository.deleteAll();
-        // userRepository.deleteAll();
-        // roleRepository.deleteAll();
-        // permissionRepository.deleteAll();
+        userRoleRepository.deleteAll();
+        rolePermissionRepository.deleteAll();
+        userRepository.deleteAll();
+        roleRepository.deleteAll();
+        permissionRepository.deleteAll();
 
         // Create Roles
         Role adminRole = createRoleIfNotExists("admin", "Administrator role with full system access");
