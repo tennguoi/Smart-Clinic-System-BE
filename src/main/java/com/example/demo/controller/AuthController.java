@@ -53,6 +53,17 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/disable-2fa")
+    public ResponseEntity<GenericResponse> disable2FA(@RequestHeader(value = "Authorization", required = false) String token) {
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new GenericResponse(false, "Token is required."));
+        }
+        GenericResponse response = authService.disable2FA(token);
+        return ResponseEntity.ok(response);
+    }
     @PostMapping("/enable-2fa")
     public ResponseEntity<GenericResponse> enable2FA(@RequestBody ForgotPasswordRequest request) {
         GenericResponse response = authService.enable2FA(request.getEmail());

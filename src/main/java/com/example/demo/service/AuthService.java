@@ -74,6 +74,26 @@ public class AuthService {
         return new GenericResponse(true, "OTP đã được gửi đến email của bạn để bật 2FA!");
     }
 
+// tắt 2fa
+    public GenericResponse disable2FA(String token) {
+        try {
+            String email = jwtUtil.getEmailFromToken(token);
+            if (!jwtUtil.validateToken(token, email)) {
+                return new GenericResponse(false, "Invalid or expired token.");
+            }
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found."));
+            if (!user.getTwoFactorEnabled()) {
+                return new GenericResponse(false, "2FA is already disabled.");
+            }
+            user.setTwoFactorEnabled(false);
+            user.setOtpCode(null);
+            userRepository.save(user);
+            return new GenericResponse(true, "2FA disabled successfully.");
+        } catch (Exception e) {
+            return new GenericResponse(false, "Failed to disable 2FA: " + e.getMessage());
+        }
+    }
     // Xác thực OTP khi đăng nhập với 2FA
     public GenericResponse verify2FA(OtpVerificationRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
