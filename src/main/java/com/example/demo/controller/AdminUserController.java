@@ -4,10 +4,12 @@ import com.example.demo.dto.CreateUserRequest;
 import com.example.demo.dto.UpdateUserRolesRequest;
 import com.example.demo.dto.UserAdminResponse;
 import com.example.demo.service.AdminUserService;
+import com.example.demo.service.storage.FileStorageService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -19,8 +21,16 @@ public class AdminUserController {
     @Autowired
     private AdminUserService adminUserService;
 
-    @PostMapping("/create")
-    public ResponseEntity<UserAdminResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+    @Autowired
+    private FileStorageService fileStorageService;
+
+    @PostMapping(value = "/create", consumes = {"multipart/form-data"})
+    public ResponseEntity<UserAdminResponse> createUser(@RequestPart("user") @Valid CreateUserRequest request,
+                                                        @RequestPart(value = "file", required = false) MultipartFile file) {
+        if (file != null && !file.isEmpty()) {
+            String filename = fileStorageService.save(file);
+            request.setPhotoUrl(filename);
+        }
         return ResponseEntity.ok(adminUserService.createUser(request));
     }
 
