@@ -65,6 +65,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/reviews/**").permitAll()  // CHO PHÉP KHÔNG CẦN LOGIN
                         .requestMatchers("/api/admin/**").hasRole("admin")
                         .requestMatchers("/api/doctor/**").hasAnyRole("bac_si", "admin")
                         .requestMatchers("/api/receptionist/**").hasAnyRole("tiep_tan", "admin")
