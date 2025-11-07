@@ -70,6 +70,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/receptionist/**").hasAnyRole("tiep_tan", "admin")
                         .anyRequest().authenticated());
 
+
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
