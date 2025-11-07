@@ -1,6 +1,7 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,52 +22,57 @@ import java.util.UUID;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id")
+    @Column(name = "user_id", length = 36)
     private UUID userId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String password;
 
-    @Column(name = "full_name", nullable = false)
+    @Column(name = "full_name", nullable = false, length = 255)
     private String fullName;
 
+    @Column(nullable = false, length = 10)
+    @NotNull
     private String phone;
 
-    @Column(name = "dob")
+    @Column(name = "dob", nullable = false)
+    @NotNull
     private LocalDate dob;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @NotNull
     private Gender gender;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false)
+    @NotNull
     private String address;
 
     @Column(name = "experience_years")
     private Integer experienceYears;
 
-    @Column(name = "photo_url")
+    @Column(name = "photo_url", length = 255)
     private String photoUrl;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(nullable = false, length = 1000, columnDefinition = "VARCHAR(1000)")
+    @NotNull
     private String bio;
 
-    @Column(name = "is_verified", nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private Boolean isVerified = false;
+    private Boolean isActive = true;
 
-    @Column(name = "two_factor_enabled", nullable = false)
-    @Builder.Default
-    private Boolean twoFactorEnabled = false;
+    @Column(name = "two_factor_enabled")
+    private Boolean twoFactorEnabled;
 
-    @Column(name = "otp_code")
+    @Column(name = "otp_code", length = 6)
     private String otpCode;
-    
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "otp_expires_at")
+    private LocalDateTime otpExpiresAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<UserRole> userRoles = new ArrayList<>();

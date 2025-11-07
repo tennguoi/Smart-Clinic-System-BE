@@ -35,7 +35,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(!user.getIsVerified())
+                .disabled(!user.getIsActive())
                 .build();
     }
 
