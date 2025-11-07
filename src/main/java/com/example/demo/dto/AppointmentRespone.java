@@ -1,5 +1,20 @@
 package com.example.demo.dto;
 
 
-public class  AppointmentRespone {
-}
+
+import com.example.demo.entity.Appointment.Status;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public record AppointmentResponse(
+        UUID appointmentId,
+        String patientName,
+        String phone,
+        String email,
+        LocalDateTime appointmentTime,
+        Status status,
+        String appointmentCode,
+        String notes,
+        Boolean quickBook,
+        LocalDateTime createdAt
+) {}
