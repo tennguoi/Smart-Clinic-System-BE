@@ -16,5 +16,7 @@ public record AppointmentResponse(
         String appointmentCode,
         String notes,
         Boolean quickBook,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime confirmedAt,
+        String confirmedByName
 ) {}

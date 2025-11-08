@@ -1,5 +1,9 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.AppointmentRequest;
+import com.example.demo.dto.AppointmentResponse;
+import com.example.demo.entity.Appointment.Status;
+import com.example.demo.service.AppointmentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
