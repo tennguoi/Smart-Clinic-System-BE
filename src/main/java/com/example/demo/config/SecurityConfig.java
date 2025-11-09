@@ -1,3 +1,5 @@
+// File: src/main/java/com/example/demo/config/SecurityConfig.java
+
 package com.example.demo.config;
 
 import com.example.demo.service.UserDetailsServiceImpl;
@@ -33,6 +35,9 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
+    // Lưu ý: Tôi giả định bạn đã tạo JwtRequestFilter.java và JwtAuthenticationEntryPoint.java
+    // Nếu bạn chưa có, đây là những class bạn cần phải tạo.
+
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
 
@@ -54,15 +59,31 @@ public class SecurityConfig {
         return authConfig.getAuthenticationManager();
     }
 
+    // TÔI ĐÃ THÊM HỖ TRỢ CORS VÀO ĐÂY (Thiếu trong code gốc của bạn)
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("*")); // Cho phép mọi nguồn (hoặc chỉ định rõ)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource())) // KÍCH HOẠT CORS
+                .csrf(csrf -> csrf.disable())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // >> THÊM DÒNG NÀY ĐỂ CHO PHÉP TRUY CẬP CÔNG KHAI VÀO TẤT CẢ API ĐÁNH GIÁ <<
+                        .requestMatchers("/api/reviews/**").permitAll()
+
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("admin")
