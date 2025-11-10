@@ -40,6 +40,20 @@ public class AppointmentService {
                 .appointmentCode(generateUniqueCode())
                 .build();
         entity = repo.save(entity);
+
+        if (entity.getEmail() != null && !entity.getEmail().isBlank()) {
+            try {
+                emailService.sendAppointmentPendingNotification(
+                        entity.getEmail(),
+                        entity.getPatientName(),
+                        entity.getAppointmentCode(),
+                        entity.getAppointmentTime()
+                );
+            } catch (Exception e) {
+                System.err.println("Failed to send pending appointment email: " + e.getMessage());
+            }
+        }
+
         return toResponse(entity);
     }
 

@@ -6,6 +6,9 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Service
 public class EmailService {
 
@@ -45,6 +48,33 @@ public class EmailService {
             patientName, appointmentCode, appointmentTime, confirmedByName
         );
         
+        message.setText(emailContent);
+        mailSender.send(message);
+    }
+
+    public void sendAppointmentPendingNotification(String toEmail, String patientName, String appointmentCode,
+                                                   LocalDateTime appointmentTime) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("Yêu cầu đặt lịch đã được tiếp nhận - Smart Clinic System");
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
+
+        String emailContent = String.format(
+                "Kính gửi %s,\n\n" +
+                "Chúng tôi đã nhận được yêu cầu đặt lịch khám của bạn.\n\n" +
+                "Thông tin lịch khám:\n" +
+                "- Mã lịch khám: %s\n" +
+                "- Thời gian dự kiến: %s\n\n" +
+                "Nhân viên phòng khám sẽ sớm liên hệ với bạn để xác nhận lịch.\n" +
+                "Nếu bạn cần thay đổi thông tin, vui lòng phản hồi email này.\n\n" +
+                "Trân trọng,\n" +
+                "Smart Clinic System",
+                patientName, appointmentCode, formattedTime
+        );
+
         message.setText(emailContent);
         mailSender.send(message);
     }
