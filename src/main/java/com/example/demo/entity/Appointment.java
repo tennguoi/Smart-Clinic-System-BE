@@ -69,13 +69,12 @@ public class Appointment {
     @JoinColumn(name = "confirmed_by")
     private User confirmedBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+
 
 
     public enum Status {
-        PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+
+        Pending, Confirmed, Cancelled
     }
 }
 

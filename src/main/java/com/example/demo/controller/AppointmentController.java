@@ -20,20 +20,14 @@ public class AppointmentController {
         this.service = service;
     }
 
-    @PostMapping("/quick-book")
-    public ResponseEntity<AppointmentResponse> quickBook(@RequestBody AppointmentRequest req) {
-        return ResponseEntity.ok(service.quickBook(req));
-    }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public ResponseEntity<List<AppointmentResponse>> list(@RequestParam(name = "status", required = false) Status status) {
         Status s = status != null ? status : Status.PENDING;
         return ResponseEntity.ok(service.listByStatus(s));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public ResponseEntity<AppointmentResponse> updateStatus(@PathVariable UUID id, @RequestParam Status status) {
         return ResponseEntity.ok(service.updateStatus(id, status));
     }

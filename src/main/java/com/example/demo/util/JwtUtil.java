@@ -1,23 +1,25 @@
 package com.example.demo.util;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 // đáng lẽ nên để ở application.properties nhưng để dễ hiểu hơn thì để ở đây
 
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:sieubaomatsieuantoannhungcoloihaykhongthicothehihi}")
+    @Value("${jwt.secret:SmartClinicSystemSecretKeyForJWTTokenGeneration2024VerySecureKey}")
     private String secret;
 
     @Value("${jwt.expiration:86400000}") // 24 hours
