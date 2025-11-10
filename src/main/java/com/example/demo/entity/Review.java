@@ -1,8 +1,7 @@
 // File: src/main/java/com/example/demo/entity/Review.java
-
 package com.example.demo.entity;
 
-import jakarta.persistence.*; // Hoặc javax.persistence.* nếu bạn dùng Spring Boot cũ
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,10 +15,8 @@ public class Review {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long clinicId; // ID của phòng khám/bác sĩ được đánh giá
-
     @Min(1) @Max(5)
-    private Integer rating; // Điểm đánh giá từ 1 đến 5
+    private Integer rating;
 
     @Lob
     private String comment;
@@ -28,18 +25,14 @@ public class Review {
     private String reviewerEmail;
 
     @CreationTimestamp
-    private LocalDateTime createdAt; // Thời gian tạo
+    private LocalDateTime createdAt;
 
     // Constructors
-    public Review() {
-    }
+    public Review() {}
 
-    // Getters và Setters
+    // Getters & Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
-    public Long getClinicId() { return clinicId; }
-    public void setClinicId(Long clinicId) { this.clinicId = clinicId; }
 
     public Integer getRating() { return rating; }
     public void setRating(Integer rating) { this.rating = rating; }

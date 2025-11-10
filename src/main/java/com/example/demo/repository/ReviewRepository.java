@@ -11,8 +11,4 @@ import java.util.List;
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
-    /**
-     * Lấy tất cả đánh giá của một phòng khám, sắp xếp theo thời gian mới nhất.
-     */
-    List<Review> findByClinicIdOrderByCreatedAtDesc(Long clinicId);
 }

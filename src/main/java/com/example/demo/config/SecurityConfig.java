@@ -1,11 +1,6 @@
-// File: src/main/java/com/example/demo/config/SecurityConfig.java
-
 package com.example.demo.config;
 
 import com.example.demo.service.UserDetailsServiceImpl;
-
-import java.util.Arrays;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +19,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -34,9 +31,6 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-
-    // Lưu ý: Tôi giả định bạn đã tạo JwtRequestFilter.java và JwtAuthenticationEntryPoint.java
-    // Nếu bạn chưa có, đây là những class bạn cần phải tạo.
 
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
@@ -59,40 +53,44 @@ public class SecurityConfig {
         return authConfig.getAuthenticationManager();
     }
 
-    // TÔI ĐÃ THÊM HỖ TRỢ CORS VÀO ĐÂY (Thiếu trong code gốc của bạn)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*")); // Cho phép mọi nguồn (hoặc chỉ định rõ)
+        configuration.setAllowedOrigins(Arrays.asList("*")); // DEV: *, PROD: http://localhost:5173
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(false); // true nếu dùng cookie
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(cors -> cors.configurationSource(corsConfigurationSource())) // KÍCH HOẠT CORS
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // >> THÊM DÒNG NÀY ĐỂ CHO PHÉP TRUY CẬP CÔNG KHAI VÀO TẤT CẢ API ĐÁNH GIÁ <<
+                        // CÔNG KHAI - KHÔNG CẦN TOKEN
                         .requestMatchers("/api/reviews/**").permitAll()
-
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("admin")
-                        .requestMatchers("/api/doctor/**").hasAnyRole("bac_si", "admin")
-                        .requestMatchers("/api/receptionist/**").hasAnyRole("tiep_tan", "admin")
-                        .anyRequest().authenticated());
+
+                        // CẦN XÁC THỰC
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/doctor/**").hasAnyRole("BAC_SI", "ADMIN")
+                        .requestMatchers("/api/receptionist/**").hasAnyRole("TIEP_TAN", "ADMIN")
+
+                        .anyRequest().authenticated()
+                )
+                // CHỈ ÁP DỤNG JWT FILTER CHO CÁC ROUTE CẦN XÁC THỰC
+                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
