@@ -3,10 +3,10 @@ package com.example.demo.service;
 import com.example.demo.dto.ServiceResponse;
 import com.example.demo.repository.ServiceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ServiceService {
@@ -15,15 +15,16 @@ public class ServiceService {
     private ServiceRepository serviceRepository;
 
     /**
-     * Lấy tất cả dịch vụ đang hoạt động
-     * @return Danh sách ServiceResponse
+     * Lấy tất cả dịch vụ đang hoạt động với phân trang
+     * @param page Số trang (bắt đầu từ 0)
+     * @param size Số lượng items mỗi trang
+     * @return Page<ServiceResponse>
      */
-    public List<ServiceResponse> getAllServices() {
-        List<com.example.demo.entity.Service> services = serviceRepository.findByIsActiveTrue();
+    public Page<ServiceResponse> getAllServices(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<com.example.demo.entity.Service> services = serviceRepository.findByIsActiveTrue(pageable);
 
-        return services.stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+        return services.map(this::convertToResponse);
     }
 
     /**
@@ -33,11 +34,12 @@ public class ServiceService {
      */
     private ServiceResponse convertToResponse(com.example.demo.entity.Service service) {
         return new ServiceResponse(
-
+                service.getServiceId(),
                 service.getName(),
                 service.getDescription(),
                 service.getCategory(),
-                service.getPrice()
+                service.getPrice(),
+                service.getIsActive()
         );
     }
 }

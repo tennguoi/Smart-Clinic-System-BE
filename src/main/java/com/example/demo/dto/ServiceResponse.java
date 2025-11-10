@@ -13,9 +13,10 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class ServiceResponse {
 
-
+    private String serviceId;
     private String name;
     private String description;
     private ServiceCategory category;
     private BigDecimal price;
+    private Boolean isActive;
 }
