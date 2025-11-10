@@ -53,7 +53,7 @@ public class AppointmentService {
         appt.setStatus(status);
         
         // Nếu status là CONFIRMED, lưu thông tin người xác nhận và gửi email
-        if (status == Status.CONFIRMED && appt.getConfirmedBy() == null) {
+        if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             User confirmedBy = userRepo.findByEmail(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

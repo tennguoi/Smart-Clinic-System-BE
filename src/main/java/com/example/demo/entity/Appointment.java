@@ -30,7 +30,7 @@ public class Appointment {
     public void prePersist() {
         if (appointmentId == null) appointmentId = UUID.randomUUID();
         if (createdAt == null) createdAt = LocalDateTime.now();
-        if (status == null) status = Status.PENDING;
+        if (status == null) status = Status.Pending;
         if (quickBook == null) quickBook = true;
     }
 

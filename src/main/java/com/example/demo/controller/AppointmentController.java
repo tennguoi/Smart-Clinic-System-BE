@@ -23,7 +23,7 @@ public class AppointmentController {
 
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> list(@RequestParam(name = "status", required = false) Status status) {
-        Status s = status != null ? status : Status.PENDING;
+        Status s = status != null ? status : Status.Pending;
         return ResponseEntity.ok(service.listByStatus(s));
     }
 
