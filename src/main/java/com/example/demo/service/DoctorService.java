@@ -23,10 +23,7 @@ public class DoctorService {
     @Autowired
     private UserRoleRepository userRoleRepository;
 
-    /**
-     * Lấy danh sách tất cả bác sĩ đang hoạt động
-     * @return Danh sách bác sĩ
-     */
+
     public List<DoctorResponse> getAllDoctors() {
         // Lấy tất cả UserRole có role là "bac_si"
         List<UserRole> doctorUserRoles = userRoleRepository.findByRoleName("bac_si");
@@ -50,11 +47,7 @@ public class DoctorService {
         return doctors;
     }
 
-    /**
-     * Lấy thông tin chi tiết của một bác sĩ theo ID
-     * @param doctorId ID của bác sĩ
-     * @return Thông tin bác sĩ
-     */
+
     public DoctorResponse getDoctorById(UUID doctorId) {
         User doctor = userRepository.findById(doctorId)
                 .orElseThrow(() -> new RuntimeException("Bác sĩ không tồn tại"));
@@ -75,23 +68,15 @@ public class DoctorService {
         return buildDoctorResponse(doctor);
     }
 
-    /**
-     * Chuyển đổi User entity sang DoctorResponse DTO
-     * @param user User entity
-     * @return DoctorResponse DTO
-     */
+
     private DoctorResponse buildDoctorResponse(User user) {
         return DoctorResponse.builder()
-                .doctorId(user.getUserId())
+
                 .fullName(user.getFullName())
                 .photoUrl(user.getPhotoUrl())
                 .bio(user.getBio())
                 .experienceYears(user.getExperienceYears())
-                .gender(user.getGender() != null ? user.getGender().toString() : null)
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .address(user.getAddress())
-                .dob(user.getDob())
+
                 .build();
     }
 }

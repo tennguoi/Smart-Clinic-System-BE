@@ -17,11 +17,7 @@ public class DoctorController {
     @Autowired
     private DoctorService doctorService;
 
-    /**
-     * Lấy danh sách tất cả bác sĩ đang hoạt động
-     * Public endpoint - không cần authentication
-     * @return Danh sách bác sĩ
-     */
+
     @GetMapping
     public ResponseEntity<?> getAllDoctors() {
         try {
@@ -33,12 +29,7 @@ public class DoctorController {
         }
     }
 
-    /**
-     * Lấy thông tin chi tiết của một bác sĩ theo ID
-     * Public endpoint - không cần authentication
-     * @param doctorId ID của bác sĩ
-     * @return Thông tin bác sĩ
-     */
+
     @GetMapping("/{doctorId}")
     public ResponseEntity<?> getDoctorById(@PathVariable("doctorId") UUID doctorId) {
         try {
