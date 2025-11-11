@@ -1,0 +1,34 @@
+package com.example.demo.controller;
+
+import com.example.demo.dto.AppointmentRequest;
+import com.example.demo.dto.AppointmentResponse;
+import com.example.demo.entity.Appointment.Status;
+import com.example.demo.service.AppointmentService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/appointments")
+public class AppointmentController {
+    private final AppointmentService service;
+
+    public AppointmentController(AppointmentService service) {
+        this.service = service;
+    }
+
+
+    @GetMapping
+    public ResponseEntity<List<AppointmentResponse>> list(@RequestParam(name = "status", required = false) Status status) {
+        Status s = status != null ? status : Status.Pending;
+        return ResponseEntity.ok(service.listByStatus(s));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<AppointmentResponse> updateStatus(@PathVariable UUID id, @RequestParam Status status) {
+        return ResponseEntity.ok(service.updateStatus(id, status));
+    }
+}
