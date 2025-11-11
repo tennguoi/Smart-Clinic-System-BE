@@ -23,8 +23,14 @@ public class AdminUserController {
 
     // Tạo người dùng mới
     @PostMapping("/create")
-    public ResponseEntity<UserAdminResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-        return ResponseEntity.ok(adminUserService.createUser(request));
+    public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
+        try {
+            UserAdminResponse response = adminUserService.createUser(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(new com.example.demo.dto.GenericResponse(false, e.getMessage()));
+        }
     }
 
     // Cập nhật vai trò người dùng

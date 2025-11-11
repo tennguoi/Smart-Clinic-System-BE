@@ -1,6 +1,5 @@
 package com.example.demo.service;
 
-import com.example.demo.entity.Role;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRepository;
@@ -35,7 +34,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(!user.getIsVerified())
+                .disabled(!user.getIsActive())
                 .build();
     }
 
