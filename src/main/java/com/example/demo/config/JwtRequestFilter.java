@@ -54,6 +54,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         }
 
         final String requestTokenHeader = request.getHeader("Authorization");
+        logger.info("Authorization header: " + requestTokenHeader);
 
         String username = null;
         String jwtToken = null;
@@ -62,23 +63,28 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             jwtToken = requestTokenHeader.substring(7);
             try {
                 username = jwtUtil.getEmailFromToken(jwtToken);
+                logger.info("Username from token: " + username);
             } catch (Exception e) {
                 // Không log lỗi nếu không có token (bình thường với route bảo vệ)
                 // logger.warn("JWT Token invalid or expired");
             }
         } else {
-            // Không có token → cho route bảo vệ → sẽ bị chặn ở SecurityConfig
-            // logger.warn("JWT Token does not begin with Bearer String");
+            logger.warn("JWT Token does not begin with Bearer String");
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+            logger.info("User authorities: " + userDetails.getAuthorities());
 
             if (jwtUtil.validateToken(jwtToken, userDetails.getUsername())) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                logger.info("Token is valid");
+                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                usernamePasswordAuthenticationToken
+                        .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+            } else {
+                logger.warn("Token validation failed");
             }
         }
 
