@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
@@ -25,9 +26,32 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
+    // Danh sách các đường dẫn CÔNG KHAI - KHÔNG cần JWT
+    private static final String[] PUBLIC_PATHS = {
+            "/api/reviews/",
+            "/api/auth/",
+            "/api/public/",
+            "/h2-console/",
+            "/swagger-ui/",
+            "/v3/api-docs/"
+    };
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return Arrays.stream(PUBLIC_PATHS)
+                .anyMatch(path::startsWith);
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+
+        // BỎ QUA nếu là route công khai → không kiểm tra token
+        if (shouldNotFilter(request)) {
+            chain.doFilter(request, response);
+            return;
+        }
 
         final String requestTokenHeader = request.getHeader("Authorization");
         logger.info("Authorization header: " + requestTokenHeader);
@@ -41,7 +65,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 username = jwtUtil.getEmailFromToken(jwtToken);
                 logger.info("Username from token: " + username);
             } catch (Exception e) {
-                logger.error("Unable to get JWT Token", e);
+                // Không log lỗi nếu không có token (bình thường với route bảo vệ)
+                // logger.warn("JWT Token invalid or expired");
             }
         } else {
             logger.warn("JWT Token does not begin with Bearer String");
@@ -62,7 +87,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 logger.warn("Token validation failed");
             }
         }
+
         chain.doFilter(request, response);
     }
 }
-
