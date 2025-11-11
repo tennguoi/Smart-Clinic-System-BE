@@ -22,7 +22,7 @@ import java.util.UUID;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id", length = 36)
+    @Column(name = "user_id", length = 36) // Đã có length = 36
     private UUID userId;
 
     @Column(nullable = false, unique = true, length = 255)
@@ -51,14 +51,16 @@ public class User {
     @NotNull
     private String address;
 
+    // Sửa: Cho phép NULL (chỉ bắt buộc cho Bác sĩ)
     @Column(name = "experience_years")
     private Integer experienceYears;
 
+    // Sửa: Cho phép NULL (chỉ bắt buộc cho Bác sĩ)
     @Column(name = "photo_url", length = 255)
     private String photoUrl;
 
-    @Column(nullable = false, length = 1000, columnDefinition = "VARCHAR(1000)")
-    @NotNull
+    // Sửa: Bỏ nullable=false và @NotNull, columnDefinition TEXT phù hợp hơn
+    @Column(columnDefinition = "TEXT")
     private String bio;
 
     @Column(name = "is_active", nullable = false)
@@ -81,4 +83,3 @@ public class User {
         male, female, other
     }
 }
-
