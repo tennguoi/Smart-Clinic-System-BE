@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.GenericResponse;
 import com.example.demo.dto.ServiceResponse;
 import com.example.demo.service.ServiceService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/public/services")
-@CrossOrigin(origins = {"http://localhost:5173" })
+@CrossOrigin(origins = {"http://localhost:5173"})
 public class ServiceController {
 
     @Autowired
@@ -26,10 +27,26 @@ public class ServiceController {
             return ResponseEntity.ok(services);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new com.example.demo.dto.GenericResponse(
-                            false,
-                            "Lỗi khi lấy danh sách dịch vụ: " + e.getMessage()
-                    ));
+                    .body(new GenericResponse(false, "Lỗi khi lấy danh sách dịch vụ: " + e.getMessage()));
+        }
+    }
+
+    // 🔍 Tìm kiếm theo category có phân trang
+    @GetMapping("/search")
+    public ResponseEntity<?> getServicesByCategory(
+            @RequestParam String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+        try {
+            Page<ServiceResponse> services = serviceService.getServicesByCategory(category, page, size);
+            return ResponseEntity.ok(services);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new GenericResponse(false, "Category không hợp lệ: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse(false, "Lỗi khi tìm kiếm dịch vụ: " + e.getMessage()));
         }
     }
 }
