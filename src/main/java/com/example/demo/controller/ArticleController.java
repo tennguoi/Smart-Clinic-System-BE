@@ -9,18 +9,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/articles")
+@RequestMapping("/api/admin/articles")
 public class ArticleController {
 
     @Autowired
     private ArticleService articleService;
-
-    // Lấy danh sách bài viết (phân trang)
-    @GetMapping
-    public Page<Article> getAllArticles(@RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "10") int size) {
-        return articleService.getAllArticles(page, size);
-    }
 
     // Lấy chi tiết bài viết
     @GetMapping("/{id}")

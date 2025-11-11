@@ -9,7 +9,7 @@
 
  import java.time.LocalDate;
 
- @Component
+ // @Component
  public class DataInitializer implements CommandLineRunner {
 
      @Autowired
@@ -66,7 +66,6 @@
                      .role(adminRole)
                      .build();
              userRoleRepository.save(adminUserRole);
-             System.out.println("Created admin user: admin@clinic.com / admin123");
          }
 
          if (!userRepository.existsByEmail("phamdanngu937@gmail.com")) {
@@ -91,10 +90,9 @@
                      .role(doctorRole)
                      .build();
              userRoleRepository.save(doctorUserRole);
-             System.out.println("Created doctor user: doctor@clinic.com / doctor123");
          }
 
-         if (!userRepository.existsByEmail("receptionist@clinic.com")) {
+         if (!userRepository.existsByEmail("danpham261005@gmail.com")) {
              User receptionist = User.builder()
                      .email("danpham261005@gmail.com")
                      .password(passwordEncoder.encode("receptionist123"))
@@ -115,10 +113,9 @@
                      .role(receptionistRole)
                      .build();
              userRoleRepository.save(receptionistUserRole);
-             System.out.println("Created receptionist user: receptionist@clinic.com / receptionist123");
          }
 
-         System.out.println("Data initialization completed!");
+         System.out.println("Data initialization is disabled and Commented Out!");
      }
 
      private Role createRoleIfNotExists(String name, String description) {
