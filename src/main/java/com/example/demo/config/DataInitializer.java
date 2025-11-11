@@ -1,13 +1,20 @@
  package com.example.demo.config;
 
- import com.example.demo.entity.*;
- import com.example.demo.repository.*;
+ import java.time.LocalDate;
+
  import org.springframework.beans.factory.annotation.Autowired;
  import org.springframework.boot.CommandLineRunner;
  import org.springframework.security.crypto.password.PasswordEncoder;
  import org.springframework.stereotype.Component;
 
- import java.time.LocalDate;
+ import com.example.demo.entity.Role;
+ import com.example.demo.entity.User;
+import com.example.demo.entity.UserRole;
+import com.example.demo.repository.PermissionRepository;
+import com.example.demo.repository.RolePermissionRepository;
+import com.example.demo.repository.RoleRepository;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.UserRoleRepository;
 
  @Component
  public class DataInitializer implements CommandLineRunner {
@@ -69,9 +76,9 @@
              System.out.println("Created admin user: admin@clinic.com / admin123");
          }
 
-         if (!userRepository.existsByEmail("phamdanngu937@gmail.com")) {
+         if (!userRepository.existsByEmail("congminh152005@gmail.com")) {
              User doctor = User.builder()
-                     .email("phamdanngu937@gmail.com")
+                     .email("congminh152005@gmail.com")
                      .password(passwordEncoder.encode("doctor123"))
                      .fullName("Phạm Minh Đàn")
                      .phone("0987654321")
