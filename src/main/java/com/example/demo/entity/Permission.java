@@ -19,7 +19,7 @@ import java.util.UUID;
 public class Permission {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "permission_id")
+    @Column(name = "permission_id", length = 36) // Đã thêm length = 36
     private UUID permissionId;
 
     @Column(nullable = false, unique = true)
@@ -32,4 +32,3 @@ public class Permission {
     @Builder.Default
     private List<RolePermission> rolePermissions = new ArrayList<>();
 }
-

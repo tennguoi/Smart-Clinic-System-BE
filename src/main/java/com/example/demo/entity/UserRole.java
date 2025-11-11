@@ -17,7 +17,7 @@ import java.util.UUID;
 public class UserRole {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_role_id")
+    @Column(name = "user_role_id", length = 36) // Đã thêm length = 36
     private UUID userRoleId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -28,4 +28,3 @@ public class UserRole {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 }
-

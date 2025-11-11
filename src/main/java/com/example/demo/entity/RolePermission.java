@@ -17,6 +17,7 @@ import java.util.UUID;
 public class RolePermission {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36) // Đã thêm length = 36
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -27,4 +28,3 @@ public class RolePermission {
     @JoinColumn(name = "permission_id", nullable = false)
     private Permission permission;
 }
-
