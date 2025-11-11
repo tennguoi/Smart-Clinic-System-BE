@@ -13,8 +13,10 @@ import java.util.UUID;
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
     @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.user JOIN FETCH ur.role WHERE ur.user.userId = :userId")
     List<UserRole> findByUser_UserId(@Param("userId") UUID userId);
-    
+
     @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.user JOIN FETCH ur.role WHERE ur.role.name = :roleName")
     List<UserRole> findByRoleName(@Param("roleName") String roleName);
-}
 
+    @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role WHERE ur.user.email = :email")
+    List<UserRole> findByUserEmail(@Param("email") String email);
+}

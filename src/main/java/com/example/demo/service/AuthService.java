@@ -215,7 +215,7 @@ public class AuthService {
             );
             User user = userRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
-            // Kiểm tra 2FA
+
             if (user.getTwoFactorEnabled() != null && user.getTwoFactorEnabled()) {
                 String otp = generateOtp();
                 saveOtp(user, otp);
@@ -227,13 +227,16 @@ public class AuthService {
                         .message("2FA required. OTP sent to your email.")
                         .build();
             }
-            UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
-            List<UserRole> userRoles = userRoleRepository.findByUser_UserId(user.getUserId());
+
+            // TỐI ƯU: DÙNG EMAIL → 1 QUERY
+            List<UserRole> userRoles = userRoleRepository.findByUserEmail(loginRequest.getEmail());
             List<String> roleNames = userRoles.stream()
                     .map(ur -> ur.getRole().getName())
-                    .collect(Collectors.toList());
+                    .toList();
+
             String token = jwtUtil.generateToken(user.getEmail(), roleNames, user.getUserId());
             SecurityContextHolder.getContext().setAuthentication(authentication);
+
             return LoginResponse.builder()
                     .userId(user.getUserId())
                     .email(user.getEmail())
