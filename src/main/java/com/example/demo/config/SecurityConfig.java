@@ -82,6 +82,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
                         .anyRequest().authenticated());
 
+
         http.authenticationProvider(authenticationProvider());
 
         return http.build();
