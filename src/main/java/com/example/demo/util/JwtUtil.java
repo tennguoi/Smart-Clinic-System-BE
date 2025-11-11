@@ -98,4 +98,3 @@ public class JwtUtil {
         return (tokenEmail.equals(email) && !isTokenExpired(token));
     }
 }
-
