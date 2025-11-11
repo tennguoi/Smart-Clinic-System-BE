@@ -75,6 +75,7 @@ public class User {
     private LocalDateTime otpExpiresAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<UserRole> userRoles = new ArrayList<>();
 
     public enum Gender {

@@ -65,6 +65,7 @@ public class JwtUtil {
         return UUID.fromString(claims.get("userId", String.class));
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> getRolesFromToken(String token) {
         Claims claims = getAllClaimsFromToken(token);
         return claims.get("roles", List.class);

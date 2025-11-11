@@ -68,7 +68,11 @@ public class AppointmentService {
         
         // Nếu status là CONFIRMED, lưu thông tin người xác nhận và gửi email
         if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
-            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            var authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || authentication.getName() == null) {
+                throw new IllegalStateException("Authentication required to confirm appointment");
+            }
+            String username = authentication.getName();
             User confirmedBy = userRepo.findByEmail(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
             
@@ -95,6 +99,7 @@ public class AppointmentService {
             }
         }
         
+        appt = repo.save(appt);
         return toResponse(appt);
     }
 

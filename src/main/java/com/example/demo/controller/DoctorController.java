@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/public/doctors")
+@CrossOrigin(origins = {"http://localhost:5173","http://localhost:5174"})
 public class DoctorController {
 
     @Autowired
