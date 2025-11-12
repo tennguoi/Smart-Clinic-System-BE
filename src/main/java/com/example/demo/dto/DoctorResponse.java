@@ -11,7 +11,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DoctorPublicResponse {
+public class DoctorResponse {
     private UUID userId;
     private String fullName;
     private String email;
