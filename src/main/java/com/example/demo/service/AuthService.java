@@ -205,6 +205,7 @@ public class AuthService {
     }
 
     // Đăng nhập
+    // Đăng nhập - Method cập nhật trong AuthService.java
     public LoginResponse login(LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -216,19 +217,23 @@ public class AuthService {
             User user = userRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            // Kiểm tra nếu 2FA được bật
             if (user.getTwoFactorEnabled() != null && user.getTwoFactorEnabled()) {
                 String otp = generateOtp();
                 saveOtp(user, otp);
                 emailService.sendOtpEmail(user.getEmail(), otp);
+
+                // Trả về response với flag requires2FA = true
                 return LoginResponse.builder()
                         .userId(user.getUserId())
                         .email(user.getEmail())
                         .fullName(user.getFullName())
                         .message("2FA required. OTP sent to your email.")
+                        .requires2FA(true) // Flag để frontend biết cần verify
                         .build();
             }
 
-            // TỐI ƯU: DÙNG EMAIL → 1 QUERY
+            // Đăng nhập bình thường (không có 2FA)
             List<UserRole> userRoles = userRoleRepository.findByUserEmail(loginRequest.getEmail());
             List<String> roleNames = userRoles.stream()
                     .map(ur -> ur.getRole().getName())
@@ -244,12 +249,12 @@ public class AuthService {
                     .token(token)
                     .roles(roleNames)
                     .message("Login successful")
+                    .requires2FA(false) // Không cần verify
                     .build();
         } catch (BadCredentialsException e) {
             throw new RuntimeException("Invalid email or password", e);
         }
     }
-
     // Đăng xuất
     public LogoutResponse logout(String token) {
         try {

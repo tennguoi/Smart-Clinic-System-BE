@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class LoginResponse {
     private UUID userId;
     private String email;
@@ -19,5 +19,5 @@ public class LoginResponse {
     private String token;
     private List<String> roles;
     private String message;
+    private Boolean requires2FA; // Thêm field này để báo cần xác thực 2FA
 }
-
