@@ -37,8 +37,12 @@ public class AuthController {
             LoginResponse response = authService.login(loginRequest);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            // Sửa: Dùng builder pattern thay vì constructor
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new LoginResponse(null, null, null, null, null, e.getMessage()));
+                    .body(LoginResponse.builder()
+                            .message(e.getMessage())
+                            .requires2FA(false)
+                            .build());
         }
     }
 
