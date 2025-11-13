@@ -25,16 +25,17 @@ public class DoctorService {
         List<DoctorResponse> doctors = doctorUserRoles.stream()
                 .map(UserRole::getUser)
                 .filter(user -> {
-                    boolean isActive = user.getIsActive() != null && user.getIsActive();
-                    if (!isActive) {
-                        System.out.println("Filtered out inactive user: " + user.getEmail());
+                    // Sửa từ isActive thành isVerified theo cấu trúc bảng User
+                    boolean isVerified = user.getIsVerified() != null && user.getIsVerified();
+                    if (!isVerified) {
+                        System.out.println("Filtered out unverified user: " + user.getEmail());
                     }
-                    return isActive;
+                    return isVerified;
                 })
                 .map(this::buildDoctorListItemResponse)
                 .collect(Collectors.toList());
 
-        System.out.println("Returning " + doctors.size() + " active doctors");
+        System.out.println("Returning " + doctors.size() + " verified doctors");
         return doctors;
     }
 
