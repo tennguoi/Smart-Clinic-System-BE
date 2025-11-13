@@ -1,12 +1,12 @@
-package com.example.demo.controller;
+package com.example.demo.controller.publicapi;
 
-import com.example.demo.dto.DoctorPublicResponse;
-import com.example.demo.service.PublicDoctorService;
+import com.example.demo.dto.DoctorResponse;
+import com.example.demo.dto.GenericResponse;
+import com.example.demo.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -14,12 +14,23 @@ import java.util.List;
 @RequestMapping("/api/public/doctors")
 public class PublicDoctorController {
 
+    private final DoctorService doctorService;
+
     @Autowired
-    private PublicDoctorService publicDoctorService;
+    public PublicDoctorController(DoctorService doctorService) {
+        this.doctorService = doctorService;
+    }
 
     @GetMapping
-    public ResponseEntity<List<DoctorPublicResponse>> getAllDoctors() {
-        List<DoctorPublicResponse> doctors = publicDoctorService.getAllDoctors();
-        return ResponseEntity.ok(doctors);
+    public ResponseEntity<?> getAllDoctors() {
+        try {
+            List<DoctorResponse> doctors = doctorService.getAllDoctors();
+            return ResponseEntity.ok(doctors);
+        } catch (Exception e) {
+            String errorMessage = "Lỗi khi lấy danh sách bác sĩ: " + e.getMessage();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse(false, errorMessage));
+        }
     }
 }
+
