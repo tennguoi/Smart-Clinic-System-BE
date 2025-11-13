@@ -87,14 +87,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/webhook/**").permitAll()  // CHO PHÉP CHATBOT
-                        .requestMatchers("/api/reviews/**").permitAll()  // CHO PHÉP ĐÁNH GIÁ
-                        .requestMatchers("/api/public/articles/**").permitAll()
-                        .requestMatchers("/api/appointments/**").permitAll()
-                        .requestMatchers("/api/admin/articles/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("admin")
-                        .requestMatchers("/api/doctor/**").hasAnyRole("bac_si", "admin")
-                        .requestMatchers("/api/receptionist/**").hasAnyRole("tiep_tan", "admin")
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
+                        .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
+                        .requestMatchers("/webhook/**").permitAll() 
                         .anyRequest().authenticated());
 
 

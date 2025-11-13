@@ -1,9 +1,25 @@
 package com.example.demo.entity;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+
+
 @Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 @Table(name = "articles")
 public class Article {
     @Id
@@ -25,22 +41,4 @@ public class Article {
     @Column(name = "image", nullable = true)
     private String image;
 
-    // Getters & Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
-    public String getAuthor() { return author; }
-    public void setAuthor(String author) { this.author = author; }
-    public LocalDateTime getPublishedAt() { return publishedAt; }
-    public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
-    public String getSource() { return source; }
-    public void setSource(String source) { this.source = source; }
-    // Getter & Setter cho image
-    public String getImage() { return image; }
-    public void setImage(String image) { this.image = image; }
 }

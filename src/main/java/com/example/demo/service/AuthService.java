@@ -9,7 +9,6 @@ import com.example.demo.repository.UserRoleRepository;
 import com.example.demo.util.JwtUtil;
 import com.example.demo.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -53,9 +51,6 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
-    @Value("${app.otp.expiry:5}")
-    private int otpExpiryMinutes;
-
     // Tạo OTP
     private String generateOtp() {
         SecureRandom random = new SecureRandom();
@@ -63,42 +58,18 @@ public class AuthService {
         return String.valueOf(otp);
     }
 
-    // Lưu OTP vào User entity
-    private void saveOtp(User user, String otpCode) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusMinutes(otpExpiryMinutes);
-        
-        user.setOtpCode(otpCode);
-        user.setOtpExpiresAt(expiresAt);
-        userRepository.save(user);
-    }
-
-    // Kiểm tra OTP có hợp lệ không
-    private boolean isValidOtp(User user, String otpCode) {
-        if (user.getOtpCode() == null || user.getOtpExpiresAt() == null) {
-            return false;
-        }
-        LocalDateTime now = LocalDateTime.now();
-        return user.getOtpCode().equals(otpCode) && user.getOtpExpiresAt().isAfter(now);
-    }
-
-    // Xóa OTP sau khi sử dụng
-    private void clearOtp(User user) {
-        user.setOtpCode(null);
-        user.setOtpExpiresAt(null);
-        userRepository.save(user);
-    }
-
     // Bật 2FA
     public GenericResponse enable2FA(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
-        if (user.getTwoFactorEnabled() != null && user.getTwoFactorEnabled()) {
+        if (user.getTwoFactorEnabled()) {
             return new GenericResponse(false, "Xác thực hai yếu tố đã được bật!");
         }
         // Tạo và gửi OTP, NHƯNG CHƯA BẬT 2FA
         String otp = generateOtp();
-        saveOtp(user, otp);
+        user.setOtpCode(otp);
+        // KHÔNG SET twoFactorEnabled = true ở đây
+        userRepository.save(user);
 
         // Gửi email
         try {
@@ -120,11 +91,12 @@ public class AuthService {
             }
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found."));
-            if (user.getTwoFactorEnabled() == null || !user.getTwoFactorEnabled()) {
+            if (!user.getTwoFactorEnabled()) {
                 return new GenericResponse(false, "2FA is already disabled.");
             }
             user.setTwoFactorEnabled(false);
-            clearOtp(user);
+            user.setOtpCode(null);
+            userRepository.save(user);
             return new GenericResponse(true, "2FA disabled successfully.");
         } catch (Exception e) {
             return new GenericResponse(false, "Failed to disable 2FA: " + e.getMessage());
@@ -135,18 +107,15 @@ public class AuthService {
     public GenericResponse verify2FA(OtpVerificationRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
-        if (user.getTwoFactorEnabled() == null || !user.getTwoFactorEnabled()) {
+        if (!user.getTwoFactorEnabled()) {
             return new GenericResponse(false, "Xác thực hai yếu tố chưa được bật!");
         }
-        
-        // Kiểm tra OTP
-        if (!isValidOtp(user, request.getOtpCode())) {
-            return new GenericResponse(false, "OTP không hợp lệ hoặc đã hết hạn!");
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getOtpCode())) {
+            return new GenericResponse(false, "OTP không hợp lệ!");
         }
-        
         // Xóa OTP sau khi xác thực
-        clearOtp(user);
-        
+        user.setOtpCode(null);
+        userRepository.save(user);
         // Tạo JWT token sau khi xác thực OTP
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         List<UserRole> userRoles = userRoleRepository.findByUser_UserId(user.getUserId());
@@ -159,10 +128,11 @@ public class AuthService {
 
     // Gửi OTP cho quên mật khẩu
     public GenericResponse sendOtp(ForgotPasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+        if (!userRepository.existsByEmail(request.getEmail())) {
+            return new GenericResponse(false, "Email không tồn tại!");
+        }
         String otp = generateOtp();
-        saveOtp(user, otp);
+        userRepository.updateOtpForEmail(request.getEmail(), otp);
         emailService.sendOtpEmail(request.getEmail(), otp);
         return new GenericResponse(true, "OTP đã được gửi đến email của bạn!");
     }
@@ -171,19 +141,12 @@ public class AuthService {
     public GenericResponse verifyOtp(OtpVerificationRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
-        
-        // Kiểm tra OTP
-        if (!isValidOtp(user, request.getOtpCode())) {
-            return new GenericResponse(false, "OTP không hợp lệ hoặc đã hết hạn!");
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getOtpCode())) {
+            return new GenericResponse(false, "OTP không hợp lệ!");
         }
-        
-        // Xóa OTP sau khi xác thực
-        clearOtp(user);
-        
-        user.setIsActive(true);
-        if (user.getTwoFactorEnabled() == null) {
-            user.setTwoFactorEnabled(false);
-        }
+        user.setOtpCode(null);
+        user.setIsVerified(true);
+        user.setTwoFactorEnabled(false);
         userRepository.save(user);
         return new GenericResponse(true, "OTP xác thực thành công!");
     }
@@ -192,20 +155,17 @@ public class AuthService {
     public GenericResponse resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
-        if (!user.getIsActive()) {
+        if (!user.getIsVerified()) {
             return new GenericResponse(false, "Vui lòng xác thực OTP trước!");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        user.setIsActive(true);
-        if (user.getTwoFactorEnabled() == null) {
-            user.setTwoFactorEnabled(false);
-        }
+        user.setIsVerified(true);
+        user.setTwoFactorEnabled(false);
         userRepository.save(user);
         return new GenericResponse(true, "Mật khẩu đã được cập nhật thành công!");
     }
 
     // Đăng nhập
-    // Đăng nhập - Method cập nhật trong AuthService.java
     public LoginResponse login(LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -218,27 +178,28 @@ public class AuthService {
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             // Kiểm tra nếu 2FA được bật
-            if (user.getTwoFactorEnabled() != null && user.getTwoFactorEnabled()) {
+            if (user.getTwoFactorEnabled()) {
                 String otp = generateOtp();
-                saveOtp(user, otp);
+                user.setOtpCode(otp);
+                userRepository.save(user);
                 emailService.sendOtpEmail(user.getEmail(), otp);
 
-                // Trả về response với flag requires2FA = true
+                // Trả về response với requires2FA = true
                 return LoginResponse.builder()
                         .userId(user.getUserId())
                         .email(user.getEmail())
                         .fullName(user.getFullName())
                         .message("2FA required. OTP sent to your email.")
-                        .requires2FA(true) // Flag để frontend biết cần verify
+                        .requires2FA(true) // <-- QUAN TRỌNG: Flag để frontend biết cần verify
                         .build();
             }
 
             // Đăng nhập bình thường (không có 2FA)
-            List<UserRole> userRoles = userRoleRepository.findByUserEmail(loginRequest.getEmail());
+            UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
+            List<UserRole> userRoles = userRoleRepository.findByUser_UserId(user.getUserId());
             List<String> roleNames = userRoles.stream()
                     .map(ur -> ur.getRole().getName())
-                    .toList();
-
+                    .collect(Collectors.toList());
             String token = jwtUtil.generateToken(user.getEmail(), roleNames, user.getUserId());
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -249,12 +210,13 @@ public class AuthService {
                     .token(token)
                     .roles(roleNames)
                     .message("Login successful")
-                    .requires2FA(false) // Không cần verify
+                    .requires2FA(false) // Không cần verify 2FA
                     .build();
         } catch (BadCredentialsException e) {
             throw new RuntimeException("Invalid email or password", e);
         }
     }
+
     // Đăng xuất
     public LogoutResponse logout(String token) {
         try {
@@ -271,17 +233,17 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
 
         // Kiểm tra xem đã bật chưa
-        if (user.getTwoFactorEnabled() != null && user.getTwoFactorEnabled()) {
+        if (user.getTwoFactorEnabled()) {
             return new GenericResponse(false, "Xác thực hai yếu tố đã được bật!");
         }
 
         // Kiểm tra OTP
-        if (!isValidOtp(user, request.getOtpCode())) {
-            return new GenericResponse(false, "OTP không hợp lệ hoặc đã hết hạn!");
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getOtpCode())) {
+            return new GenericResponse(false, "OTP không hợp lệ!");
         }
 
-        // Xóa OTP và BẬT 2FA
-        clearOtp(user);
+        // XÓA OTP và BẬT 2FA
+        user.setOtpCode(null);
         user.setTwoFactorEnabled(true);
         userRepository.save(user);
 
@@ -321,55 +283,14 @@ public class AuthService {
             }
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại."));
-            
-            // Chỉ cập nhật các trường được cung cấp (không set null cho các trường NOT NULL)
-            if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
-                user.setFullName(request.getFullName().trim());
-            }
-            
-            if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
-                if (request.getPhone().trim().length() != 10) {
-                    return new GenericResponse(false, "Số điện thoại phải có đúng 10 số");
-                }
-                user.setPhone(request.getPhone().trim());
-            }
-            
-            if (request.getDob() != null && !request.getDob().trim().isEmpty()) {
-                try {
-                    user.setDob(LocalDate.parse(request.getDob()));
-                } catch (Exception e) {
-                    return new GenericResponse(false, "Định dạng ngày sinh không hợp lệ");
-                }
-            }
-            
-            if (request.getGender() != null && !request.getGender().trim().isEmpty()) {
-                try {
-                    User.Gender gender = User.Gender.valueOf(request.getGender().toLowerCase(Locale.ROOT));
-                    user.setGender(gender);
-                } catch (IllegalArgumentException e) {
-                    return new GenericResponse(false, "Giới tính không hợp lệ. Phải là: male, female hoặc other");
-                }
-            }
-            
-            if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
-                user.setAddress(request.getAddress().trim());
-            }
-            
-            if (request.getExperienceYears() != null) {
-                user.setExperienceYears(request.getExperienceYears());
-            }
-            
-            if (request.getPhotoUrl() != null) {
-                user.setPhotoUrl(request.getPhotoUrl().trim());
-            }
-            
-            if (request.getBio() != null && !request.getBio().trim().isEmpty()) {
-                if (request.getBio().trim().length() > 1000) {
-                    return new GenericResponse(false, "Giới thiệu không được vượt quá 1000 ký tự");
-                }
-                user.setBio(request.getBio().trim());
-            }
-            
+            user.setFullName(request.getFullName());
+            user.setPhone(request.getPhone());
+            user.setDob(request.getDob() != null ? LocalDate.parse(request.getDob()) : null);
+            user.setGender(request.getGender() != null ? User.Gender.valueOf(request.getGender().toLowerCase(Locale.ROOT)) : null);
+            user.setAddress(request.getAddress());
+            user.setExperienceYears(request.getExperienceYears());
+            user.setPhotoUrl(request.getPhotoUrl());
+            user.setBio(request.getBio());
             userRepository.save(user);
             return new GenericResponse(true, "Hồ sơ đã được cập nhật thành công.");
         } catch (Exception e) {

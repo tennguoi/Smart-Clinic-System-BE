@@ -1,26 +1,43 @@
 package com.example.demo.controller;
-import com.example.demo.entity.Article;
+
+import com.example.demo.dto.ArticleResponse;
 import com.example.demo.service.ArticleService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @RestController
 @RequestMapping("/api/public/articles")
 public class PublicArticleController {
-    @Autowired
-    private ArticleService articleService;
+    
+    private final ArticleService articleService;
 
-    // Lấy danh sách bài viết (phân trang)
+    public PublicArticleController(ArticleService articleService) {
+        this.articleService = articleService;
+    }
+
+    // Lấy tất cả bài viết
     @GetMapping
-    public Page<Article> getAllArticles(@RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "10") int size) {
-        return articleService.getAllArticles(page, size);
-    }
-    @GetMapping("/{id}")
-    public Article getArticleById(@PathVariable Long id) {
-        return articleService.getArticleById(id);
+    public ResponseEntity<List<ArticleResponse>> getAllArticles() {
+        return ResponseEntity.ok(articleService.getAllArticles());
     }
 
+    // Lấy bài viết theo ID
+    @GetMapping("/{id}")
+    public ResponseEntity<ArticleResponse> getArticleById(@PathVariable Long id) {
+        return ResponseEntity.ok(articleService.getArticleById(id));
+    }
+
+    // Lấy bài viết theo category
+    @GetMapping("/category/{category}")
+    public ResponseEntity<List<ArticleResponse>> getArticlesByCategory(@PathVariable String category) {
+        return ResponseEntity.ok(articleService.getArticlesByCategory(category));
+    }
+
+    // Tìm kiếm bài viết theo title
+    @GetMapping("/search")
+    public ResponseEntity<List<ArticleResponse>> searchArticles(@RequestParam String title) {
+        return ResponseEntity.ok(articleService.searchArticlesByTitle(title));
+    }
 }

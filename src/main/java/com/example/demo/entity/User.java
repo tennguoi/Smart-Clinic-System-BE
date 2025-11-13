@@ -1,7 +1,6 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,62 +21,54 @@ import java.util.UUID;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id", length = 36) // Đã có length = 36
+    @Column(name = "user_id")
     private UUID userId;
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false)
     private String password;
 
-    @Column(name = "full_name", nullable = false, length = 255)
+    @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    @Column(nullable = false, length = 10)
-    @NotNull
     private String phone;
 
-    @Column(name = "dob", nullable = false)
-    @NotNull
+    @Column(name = "dob")
     private LocalDate dob;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @NotNull
     private Gender gender;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    @NotNull
+    @Column(columnDefinition = "TEXT")
     private String address;
 
-    // Sửa: Cho phép NULL (chỉ bắt buộc cho Bác sĩ)
     @Column(name = "experience_years")
     private Integer experienceYears;
 
-    // Sửa: Cho phép NULL (chỉ bắt buộc cho Bác sĩ)
-    @Column(name = "photo_url", length = 255)
+    @Column(name = "photo_url")
     private String photoUrl;
 
-    // Sửa: Bỏ nullable=false và @NotNull, columnDefinition TEXT phù hợp hơn
     @Column(columnDefinition = "TEXT")
     private String bio;
 
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "is_verified", nullable = false)
     @Builder.Default
-    private Boolean isActive = true;
+    private Boolean isVerified = false;
 
-    @Column(name = "two_factor_enabled")
-    private Boolean twoFactorEnabled;
+    @Column(name = "two_factor_enabled", nullable = false)
+    @Builder.Default
+    private Boolean twoFactorEnabled = false;
 
-    @Column(name = "otp_code", length = 6)
+    @Column(name = "otp_code")
     private String otpCode;
 
-    @Column(name = "otp_expires_at")
-    private LocalDateTime otpExpiresAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
     private List<UserRole> userRoles = new ArrayList<>();
 
     public enum Gender {
