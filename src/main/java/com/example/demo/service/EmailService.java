@@ -78,4 +78,29 @@ public class EmailService {
         message.setText(emailContent);
         mailSender.send(message);
     }
+
+    public void sendAppointmentCancellation(String toEmail, String patientName, String appointmentCode,
+                                           String appointmentTime, String cancelledByName) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("Thông báo hủy lịch khám - Smart Clinic System");
+        
+        String emailContent = String.format(
+            "Kính gửi %s,\n\n" +
+            "Chúng tôi xin thông báo lịch khám của bạn đã được hủy.\n\n" +
+            "Thông tin lịch khám đã hủy:\n" +
+            "- Mã lịch khám: %s\n" +
+            "- Thời gian: %s\n" +
+            "- Được hủy bởi: %s\n\n" +
+            "Nếu bạn muốn đặt lịch khám mới, vui lòng liên hệ phòng khám hoặc đặt lịch trực tuyến.\n" +
+            "Chúng tôi rất xin lỗi vì sự bất tiện này.\n\n" +
+            "Trân trọng,\n" +
+            "Smart Clinic System",
+            patientName, appointmentCode, appointmentTime, cancelledByName
+        );
+        
+        message.setText(emailContent);
+        mailSender.send(message);
+    }
 }

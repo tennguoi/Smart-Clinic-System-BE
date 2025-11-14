@@ -73,8 +73,11 @@ public class Appointment {
 
 
     public enum Status {
-
-        Pending, Confirmed, Cancelled
+        Pending,      // Đang chờ duyệt
+        Confirmed,    // Đã xác nhận lịch hẹn
+        In_Progress,  // Đang khám
+        Completed,    // Hoàn thành
+        Cancelled     // Đã hủy
     }
 }
 

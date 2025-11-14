@@ -66,13 +66,13 @@ public class AppointmentService {
         Appointment appt = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
         appt.setStatus(status);
         
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User actionBy = userRepo.findByEmail(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
         // Nếu status là CONFIRMED, lưu thông tin người xác nhận và gửi email
         if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
-            String username = SecurityContextHolder.getContext().getAuthentication().getName();
-            User confirmedBy = userRepo.findByEmail(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            appt.setConfirmedBy(confirmedBy);
+            appt.setConfirmedBy(actionBy);
             appt.setConfirmedAt(LocalDateTime.now());
             
             // Gửi email xác nhận nếu có email
@@ -86,11 +86,32 @@ public class AppointmentService {
                         appt.getPatientName(),
                         appt.getAppointmentCode(),
                         formattedTime,
-                        confirmedBy.getFullName()
+                        actionBy.getFullName()
                     );
                 } catch (Exception e) {
                     // Log lỗi nhưng không throw để không ảnh hưởng đến việc xác nhận
                     System.err.println("Failed to send confirmation email: " + e.getMessage());
+                }
+            }
+        }
+        
+        // Nếu status là CANCELLED, gửi email thông báo hủy
+        if (status == Status.Cancelled && appt.getStatus() != Status.Cancelled) {
+            if (appt.getEmail() != null && !appt.getEmail().isEmpty()) {
+                try {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+                    String formattedTime = appt.getAppointmentTime().format(formatter);
+                    
+                    emailService.sendAppointmentCancellation(
+                        appt.getEmail(),
+                        appt.getPatientName(),
+                        appt.getAppointmentCode(),
+                        formattedTime,
+                        actionBy.getFullName()
+                    );
+                } catch (Exception e) {
+                    // Log lỗi nhưng không throw để không ảnh hưởng đến việc hủy
+                    System.err.println("Failed to send cancellation email: " + e.getMessage());
                 }
             }
         }
