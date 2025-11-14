@@ -176,19 +176,25 @@ public class AuthService {
             );
             User user = userRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
-            // Kiểm tra 2FA
+
+            // Kiểm tra nếu 2FA được bật
             if (user.getTwoFactorEnabled()) {
                 String otp = generateOtp();
                 user.setOtpCode(otp);
                 userRepository.save(user);
                 emailService.sendOtpEmail(user.getEmail(), otp);
+
+                // Trả về response với requires2FA = true
                 return LoginResponse.builder()
                         .userId(user.getUserId())
                         .email(user.getEmail())
                         .fullName(user.getFullName())
                         .message("2FA required. OTP sent to your email.")
+                        .requires2FA(true) // <-- QUAN TRỌNG: Flag để frontend biết cần verify
                         .build();
             }
+
+            // Đăng nhập bình thường (không có 2FA)
             UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
             List<UserRole> userRoles = userRoleRepository.findByUser_UserId(user.getUserId());
             List<String> roleNames = userRoles.stream()
@@ -196,6 +202,7 @@ public class AuthService {
                     .collect(Collectors.toList());
             String token = jwtUtil.generateToken(user.getEmail(), roleNames, user.getUserId());
             SecurityContextHolder.getContext().setAuthentication(authentication);
+
             return LoginResponse.builder()
                     .userId(user.getUserId())
                     .email(user.getEmail())
@@ -203,6 +210,7 @@ public class AuthService {
                     .token(token)
                     .roles(roleNames)
                     .message("Login successful")
+                    .requires2FA(false) // Không cần verify 2FA
                     .build();
         } catch (BadCredentialsException e) {
             throw new RuntimeException("Invalid email or password", e);
