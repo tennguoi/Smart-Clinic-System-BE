@@ -86,8 +86,8 @@
 //                     .gender(User.Gender.female)
 //                     .address("456 Đường XYZ, Quận 3, TP.HCM")
 //                     .experienceYears(5)
-//                     .photoUrl("https://example.com/photos/doctor.jpg")
-//                     .bio("Bác sĩ chuyên khoa nội tổng quát với 5 năm kinh nghiệm")
+//                     .photoUrl("https://tse3.mm.bing.net/th/id/OIP.HXWtzVpE_QndSbr-NaRPRAHaIp?cb=ucfimgc2&rs=1&pid=ImgDetMain&o=7&rm=3")
+//                     .bio("Bác sĩ chuyên khoa nội tổng quát ")
 //                     .isVerified(true)
 //                     .twoFactorEnabled(false)
 //                     .build();
@@ -139,4 +139,4 @@
 //                 });
 //     }
 // }
-
+//
