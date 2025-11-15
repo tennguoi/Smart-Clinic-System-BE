@@ -1,4 +1,4 @@
-package com.example.demo.controller.publicapi;
+package com.example.demo.controller;
 
 import com.example.demo.dto.DoctorResponse;
 import com.example.demo.dto.GenericResponse;
