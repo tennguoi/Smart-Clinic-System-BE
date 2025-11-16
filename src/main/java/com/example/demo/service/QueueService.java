@@ -39,25 +39,40 @@ public class QueueService {
     }
 
     // --- Thêm mới ---
+
+
+    public String generateNextQueueNumber() {
+        String prefix = "A";
+
+        Queue last = queueRepository.findTopByOrderByCreatedAtDesc();
+
+        if (last == null || last.getQueueNumber() == null) {
+            return prefix + "001";
+        }
+
+        String lastNum = last.getQueueNumber().substring(1);
+        int next = Integer.parseInt(lastNum) + 1;
+
+        return prefix + String.format("%03d", next);
+    }
+
     public QueuePatientResponse addQueuePatient(QueuePatientResponse dto) {
 
-        // 1. Tạo mới Patient (chỉ tạo các trường có trong DTO)
         Patient newPatient = Patient.builder()
                 .fullName(dto.getPatientName())
                 .phone(dto.getPhone())
                 .email(dto.getEmail())
-                .dob(dto.getDob()) // <- DTO trả về LocalDate rồi, dùng trực tiếp
-                .gender(mapGender(dto.getGender())) // mapping an toàn bên dưới
+                .dob(dto.getDob())
+                .gender(mapGender(dto.getGender()))
                 .address(dto.getAddress())
                 .build();
 
         Patient savedPatient = patientRepository.save(newPatient);
 
-        // 2. Tạo Queue và gán Patient vừa tạo
         Queue queue = Queue.builder()
-                .queueNumber(dto.getQueueNumber())
+                .queueNumber(generateNextQueueNumber()) // ✔ auto generate
                 .priority(dto.getPriority() != null ? Queue.Priority.valueOf(dto.getPriority()) : Queue.Priority.Normal)
-                .status(dto.getStatus() != null ? Queue.QueueStatus.valueOf(dto.getStatus()) : Queue.QueueStatus.Waiting)
+                .status(Queue.QueueStatus.Waiting) // ✔ FE chỉ cho chọn "Chờ khám"
                 .checkInTime(dto.getCheckInTime() != null
                         ? LocalDateTime.parse(dto.getCheckInTime())
                         : LocalDateTime.now())
