@@ -8,10 +8,12 @@ import com.example.demo.entity.Queue;
 import com.example.demo.entity.User;
 import com.example.demo.repository.ExaminationRoomRepository;
 import com.example.demo.repository.QueueRepository;
+import com.example.demo.repository.UserRepository;
 import com.example.demo.service.QueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,9 +28,24 @@ public class CurrentPatientController {
     private final ExaminationRoomRepository examinationRoomRepository;
     private final QueueRepository queueRepository;
     private final QueueService queueService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            return null;
+        }
+        String email = authentication.getName();
+        return userRepository.findByEmail(email).orElse(null);
+    }
 
     @GetMapping("/current-patient")
-    public ResponseEntity<CurrentPatientDTO> getCurrentPatient(@AuthenticationPrincipal User doctor) {
+    public ResponseEntity<CurrentPatientDTO> getCurrentPatient() {
+        User doctor = getCurrentUser();
+        if (doctor == null) {
+            return ResponseEntity.ok(null);
+        }
+        
         ExaminationRoom room = examinationRoomRepository
                 .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
                 .orElse(null);
@@ -66,7 +83,12 @@ public class CurrentPatientController {
     }
 
     @GetMapping("/queue/waiting")
-    public ResponseEntity<List<QueuePatientResponse>> getWaitingPatients(@AuthenticationPrincipal User doctor) {
+    public ResponseEntity<List<QueuePatientResponse>> getWaitingPatients() {
+        User doctor = getCurrentUser();
+        if (doctor == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        
         ExaminationRoom room = examinationRoomRepository
                 .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
                 .orElse(null);
@@ -85,7 +107,12 @@ public class CurrentPatientController {
     }
 
     @GetMapping("/queue/all")
-    public ResponseEntity<List<QueuePatientResponse>> getAllAssignedPatients(@AuthenticationPrincipal User doctor) {
+    public ResponseEntity<List<QueuePatientResponse>> getAllAssignedPatients() {
+        User doctor = getCurrentUser();
+        if (doctor == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        
         // Tìm phòng active của bác sĩ
         ExaminationRoom room = examinationRoomRepository
                 .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
