@@ -29,8 +29,20 @@ public class QueueService {
     }
 
     // --- Lấy danh sách đang chờ ---
+    // Trả về tất cả bệnh nhân đang chờ (bao gồm cả đã phân phòng và chưa phân phòng)
+    // Sắp xếp theo priority (Emergency → Urgent → Normal) và checkInTime
     public List<QueuePatientResponse> getWaitingPatients() {
-        List<Queue> queueList = queueRepository.findByStatusOrderByCheckInTimeAsc(Queue.QueueStatus.Waiting);
+        List<Queue> queueList = queueRepository.findWaitingQueuesOrderedByPriority();
+
+        return queueList.stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+    
+    // --- Lấy danh sách đang chờ và chưa được phân phòng ---
+    // Dùng cho lễ tân khi cần phân phòng
+    public List<QueuePatientResponse> getUnassignedWaitingPatients() {
+        List<Queue> queueList = queueRepository.findUnassignedWaitingQueuesOrderedByPriority();
 
         return queueList.stream()
                 .map(this::mapToDto)
@@ -210,8 +222,8 @@ public class QueueService {
         return QueuePatientResponse.builder()
                 .queueId(queue.getQueueId())
                 .queueNumber(queue.getQueueNumber())
-                .priority(queue.getPriority().name())
-                .status(queue.getStatus().name())
+                .priority(queue.getPriority() != null ? queue.getPriority().getLabel() : "Bình thường")
+                .status(queue.getStatus() != null ? queue.getStatus().getLabel() : null)
                 .checkInTime(queue.getCheckInTime() != null
                         ? queue.getCheckInTime().toString()
                         : null)
@@ -222,7 +234,7 @@ public class QueueService {
                 .phone(p != null ? p.getPhone() : null)
                 .email(p != null ? p.getEmail() : null)
                 .dob(p != null ? p.getDob() : null)
-                .gender(p != null ? p.getGender().name() : null)
+                .gender(p != null && p.getGender() != null ? p.getGender().getLabel() : null)
                 .address(p != null ? p.getAddress() : null)
 
                 .build();

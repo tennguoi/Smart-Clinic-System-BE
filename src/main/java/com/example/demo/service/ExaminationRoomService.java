@@ -1,20 +1,25 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.AssignRoomRequest;
 import com.example.demo.dto.DoctorSimpleResponse;
 import com.example.demo.dto.ExaminationRoomRequest;
 import com.example.demo.dto.ExaminationRoomResponse;
 import com.example.demo.entity.ExaminationRoom;
+import com.example.demo.entity.Queue;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.ExaminationRoomRepository;
+import com.example.demo.repository.QueueRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +36,9 @@ public class ExaminationRoomService {
     @Autowired
     private UserRoleRepository userRoleRepository;
 
+    @Autowired
+    private QueueRepository queueRepository;
+
     public List<ExaminationRoomResponse> getAllRooms() {
         return roomRepository.findAll().stream()
                 .map(this::toResponse)
@@ -41,6 +49,27 @@ public class ExaminationRoomService {
         return roomRepository.findByIsActiveTrue().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy danh sách phòng sẵn sàng để phân phòng
+     * Chỉ trả về phòng: có bác sĩ, đang active, và status = Available
+     */
+    public List<ExaminationRoomResponse> getAvailableRoomsForAssignment() {
+        return roomRepository.findByIsActiveTrue().stream()
+                .filter(room -> room.getDoctor() != null)
+                .filter(room -> room.getStatus() == ExaminationRoom.RoomStatus.Available)
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy phòng active của một bác sĩ cụ thể (nếu có)
+     * Dùng để đề xuất phòng mặc định khi phân phòng
+     */
+    public Optional<ExaminationRoomResponse> getRoomByDoctorId(UUID doctorId) {
+        return roomRepository.findByDoctorIdAndIsActiveTrue(doctorId)
+                .map(this::toResponse);
     }
 
     public List<ExaminationRoomResponse> getRoomsByStatus(String status) {
@@ -63,7 +92,6 @@ public class ExaminationRoomService {
     }
 
     public ExaminationRoomResponse createRoom(ExaminationRoomRequest request) {
-        // Kiểm tra tên phòng đã tồn tại chưa
         if (roomRepository.findByRoomName(request.getRoomName()).isPresent()) {
             throw new RuntimeException("Tên phòng khám đã tồn tại: " + request.getRoomName());
         }
@@ -75,15 +103,12 @@ public class ExaminationRoomService {
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .build();
 
-        // Gán bác sĩ nếu có
         if (request.getDoctorId() != null) {
             User doctor = userRepository.findById(request.getDoctorId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy bác sĩ với ID: " + request.getDoctorId()));
             
-            // Kiểm tra bác sĩ đã có phòng active chưa (ràng buộc: 1 bác sĩ chỉ ở 1 phòng)
             List<ExaminationRoom> existingRooms = roomRepository.findActiveRoomsByDoctorId(doctor.getUserId());
             if (!existingRooms.isEmpty()) {
-                // Tự động gỡ bác sĩ khỏi phòng cũ
                 for (ExaminationRoom oldRoom : existingRooms) {
                     oldRoom.setDoctor(null);
                     roomRepository.save(oldRoom);
@@ -101,7 +126,6 @@ public class ExaminationRoomService {
         ExaminationRoom room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám với ID: " + roomId));
 
-        // Kiểm tra tên phòng trùng (nếu đổi tên)
         if (!room.getRoomName().equals(request.getRoomName())) {
             if (roomRepository.findByRoomName(request.getRoomName()).isPresent()) {
                 throw new RuntimeException("Tên phòng khám đã tồn tại: " + request.getRoomName());
@@ -115,17 +139,13 @@ public class ExaminationRoomService {
             room.setIsActive(request.getIsActive());
         }
 
-        // Cập nhật bác sĩ
         if (request.getDoctorId() != null) {
             User doctor = userRepository.findById(request.getDoctorId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy bác sĩ với ID: " + request.getDoctorId()));
             
-            // Kiểm tra bác sĩ đã có phòng active khác chưa (trừ phòng hiện tại)
-            // Ràng buộc: 1 bác sĩ chỉ ở 1 phòng
             List<ExaminationRoom> existingRooms = roomRepository.findActiveRoomsByDoctorIdExcludingRoom(
                     doctor.getUserId(), roomId);
             if (!existingRooms.isEmpty()) {
-                // Tự động gỡ bác sĩ khỏi phòng cũ
                 for (ExaminationRoom oldRoom : existingRooms) {
                     oldRoom.setDoctor(null);
                     roomRepository.save(oldRoom);
@@ -134,7 +154,6 @@ public class ExaminationRoomService {
             
             room.setDoctor(doctor);
         } else {
-            // Gỡ bác sĩ khỏi phòng
             room.setDoctor(null);
         }
 
@@ -149,29 +168,21 @@ public class ExaminationRoomService {
         roomRepository.deleteById(roomId);
     }
 
-    /**
-     * Lấy danh sách bác sĩ (role = "bac_si") chưa có phòng active để lễ tân chọn khi tạo phòng mới
-     * Ràng buộc: 1 bác sĩ chỉ ở 1 phòng, nên bác sĩ đã có phòng active sẽ không hiển thị
-     */
     public List<DoctorSimpleResponse> getAllDoctors() {
-        // Lấy tất cả bác sĩ đã verified
         List<UserRole> doctorUserRoles = userRoleRepository.findByRoleName("bac_si");
         List<User> allDoctors = doctorUserRoles.stream()
                 .map(UserRole::getUser)
                 .filter(user -> user.getIsVerified() != null && user.getIsVerified())
                 .collect(Collectors.toList());
         
-        // Lấy danh sách ID của bác sĩ đã có phòng active (tối ưu: chỉ query phòng active)
         List<ExaminationRoom> activeRoomsWithDoctors = roomRepository.findByIsActiveTrue().stream()
                 .filter(room -> room.getDoctor() != null)
                 .collect(Collectors.toList());
         
-        // Tạo set các doctorId đã có phòng active
         java.util.Set<UUID> doctorsWithRooms = activeRoomsWithDoctors.stream()
                 .map(room -> room.getDoctor().getUserId())
                 .collect(Collectors.toSet());
         
-        // Filter: chỉ lấy bác sĩ chưa có phòng active
         return allDoctors.stream()
                 .filter(doctor -> !doctorsWithRooms.contains(doctor.getUserId()))
                 .map(user -> DoctorSimpleResponse.builder()
@@ -183,25 +194,16 @@ public class ExaminationRoomService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Lấy danh sách bác sĩ để chọn khi cập nhật phòng
-     * Bao gồm: bác sĩ chưa có phòng active + bác sĩ hiện tại của phòng đang được cập nhật
-     * @param currentRoomId ID của phòng đang được cập nhật (null nếu là tạo mới)
-     */
     public List<DoctorSimpleResponse> getAvailableDoctorsForUpdate(UUID currentRoomId) {
-        // Lấy danh sách bác sĩ chưa có phòng active
         List<DoctorSimpleResponse> availableDoctors = getAllDoctors();
         
-        // Nếu đang cập nhật phòng, thêm bác sĩ hiện tại của phòng đó vào danh sách
         if (currentRoomId != null) {
             ExaminationRoom currentRoom = roomRepository.findById(currentRoomId).orElse(null);
             if (currentRoom != null && currentRoom.getDoctor() != null) {
                 User currentDoctor = currentRoom.getDoctor();
-                // Kiểm tra xem bác sĩ hiện tại đã có trong danh sách chưa
                 boolean alreadyInList = availableDoctors.stream()
                         .anyMatch(d -> d.getDoctorId().equals(currentDoctor.getUserId()));
                 
-                // Nếu chưa có, thêm vào
                 if (!alreadyInList) {
                     DoctorSimpleResponse currentDoctorResponse = DoctorSimpleResponse.builder()
                             .doctorId(currentDoctor.getUserId())
@@ -217,19 +219,12 @@ public class ExaminationRoomService {
         return availableDoctors;
     }
 
-    /**
-     * Lấy danh sách phòng theo bác sĩ (bao gồm cả phòng inactive để xem lịch sử)
-     */
     public List<ExaminationRoomResponse> getRoomsByDoctor(UUID doctorId) {
         return roomRepository.findByDoctorUserId(doctorId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Thống kê: Mỗi bác sĩ đang phụ trách bao nhiêu phòng active
-     * Lưu ý: Với ràng buộc 1 bác sĩ chỉ ở 1 phòng, mỗi bác sĩ sẽ có tối đa 1 phòng active
-     */
     public Map<String, Long> getRoomCountByDoctor() {
         List<ExaminationRoom> allRooms = roomRepository.findAll();
         return allRooms.stream()
@@ -238,6 +233,42 @@ public class ExaminationRoomService {
                         room -> room.getDoctor().getFullName(),
                         Collectors.counting()
                 ));
+    }
+
+    @Transactional
+    public ExaminationRoomResponse assignPatientToRoom(AssignRoomRequest request) {
+        ExaminationRoom room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám với ID: " + request.getRoomId()));
+
+        if (!room.getIsActive()) {
+            throw new RuntimeException("Phòng khám đang không hoạt động");
+        }
+
+        if (room.getDoctor() == null) {
+            throw new RuntimeException("Phòng khám chưa được gán bác sĩ, vui lòng gán bác sĩ trước khi phân bệnh nhân");
+        }
+
+        if (room.getStatus() == ExaminationRoom.RoomStatus.Occupied) {
+            throw new RuntimeException("Phòng khám đang bận, vui lòng chọn phòng khác");
+        }
+
+        Queue queue = queueRepository.findById(request.getQueueId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân trong hàng đợi với ID: " + request.getQueueId()));
+
+        if (queue.getStatus() != Queue.QueueStatus.Waiting) {
+            throw new RuntimeException("Bệnh nhân không ở trạng thái chờ khám (status: " + queue.getStatus() + ")");
+        }
+
+        queue.setAssignedRoom(room);
+        queue.setStatus(Queue.QueueStatus.InProgress);
+        queue.setStartTime(LocalDateTime.now());
+        queueRepository.save(queue);
+
+        room.setCurrentQueueId(queue.getQueueId());
+        room.setStatus(ExaminationRoom.RoomStatus.Occupied);
+        ExaminationRoom savedRoom = roomRepository.save(room);
+
+        return toResponse(savedRoom);
     }
 
     private ExaminationRoomResponse toResponse(ExaminationRoom room) {

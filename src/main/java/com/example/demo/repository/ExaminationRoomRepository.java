@@ -16,6 +16,12 @@ public interface ExaminationRoomRepository extends JpaRepository<ExaminationRoom
             User doctor,
             ExaminationRoom.RoomStatus status
     );
+    
+    // Tìm phòng active của bác sĩ (dùng userId để so sánh chính xác, eager fetch doctor)
+    @Query("SELECT r FROM ExaminationRoom r LEFT JOIN FETCH r.doctor WHERE r.doctor.userId = :doctorId AND r.isActive = true")
+    Optional<ExaminationRoom> findByDoctorIdAndIsActiveTrue(UUID doctorId);
+    
+    Optional<ExaminationRoom> findByDoctorAndIsActiveTrue(User doctor);
     List<ExaminationRoom> findByIsActiveTrue();
 
     List<ExaminationRoom> findByStatus(ExaminationRoom.RoomStatus status);

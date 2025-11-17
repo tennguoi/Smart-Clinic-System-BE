@@ -30,9 +30,18 @@ public class ReceptionistQueueController {
                 .orElse(ResponseEntity.notFound().build());
     }
     // --- Danh sách chờ ---
+    // Trả về tất cả bệnh nhân đang chờ (bao gồm cả đã phân phòng và chưa phân phòng)
     @GetMapping("/waiting")
     public ResponseEntity<?> getWaitingPatients() {
         List<QueuePatientResponse> list = queueService.getWaitingPatients();
+        return ResponseEntity.ok(list);
+    }
+    
+    // --- Danh sách chờ chưa được phân phòng ---
+    // Dùng khi lễ tân cần phân phòng (chỉ hiển thị bệnh nhân chưa được phân vào phòng)
+    @GetMapping("/waiting/unassigned")
+    public ResponseEntity<?> getUnassignedWaitingPatients() {
+        List<QueuePatientResponse> list = queueService.getUnassignedWaitingPatients();
         return ResponseEntity.ok(list);
     }
 

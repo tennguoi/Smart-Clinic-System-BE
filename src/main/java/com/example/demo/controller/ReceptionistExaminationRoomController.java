@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.AssignRoomRequest;
 import com.example.demo.dto.DoctorSimpleResponse;
 import com.example.demo.dto.ExaminationRoomRequest;
 import com.example.demo.dto.ExaminationRoomResponse;
@@ -79,39 +80,60 @@ public class ReceptionistExaminationRoomController {
         }
     }
 
-    /**
-     * Lấy danh sách bác sĩ chưa có phòng active để chọn khi tạo phòng mới
-     */
     @GetMapping("/doctors")
     public ResponseEntity<List<DoctorSimpleResponse>> getAllDoctors() {
         return ResponseEntity.ok(roomService.getAllDoctors());
     }
 
-    /**
-     * Lấy danh sách bác sĩ để chọn khi cập nhật phòng
-     * Bao gồm: bác sĩ chưa có phòng + bác sĩ hiện tại của phòng đang được cập nhật
-     * @param roomId ID của phòng đang được cập nhật (optional, nếu null thì giống getAllDoctors)
-     */
     @GetMapping("/doctors/for-update")
     public ResponseEntity<List<DoctorSimpleResponse>> getDoctorsForUpdate(
             @RequestParam(required = false) UUID roomId) {
         return ResponseEntity.ok(roomService.getAvailableDoctorsForUpdate(roomId));
     }
 
-    /**
-     * Lấy danh sách phòng theo bác sĩ
-     */
     @GetMapping("/by-doctor/{doctorId}")
     public ResponseEntity<List<ExaminationRoomResponse>> getRoomsByDoctor(@PathVariable UUID doctorId) {
         return ResponseEntity.ok(roomService.getRoomsByDoctor(doctorId));
     }
 
-    /**
-     * Thống kê: Mỗi bác sĩ đang phụ trách bao nhiêu phòng
-     */
     @GetMapping("/statistics/room-count-by-doctor")
     public ResponseEntity<Map<String, Long>> getRoomCountByDoctor() {
         return ResponseEntity.ok(roomService.getRoomCountByDoctor());
+    }
+
+    /**
+     * Lấy danh sách phòng sẵn sàng để phân phòng
+     * Chỉ trả về phòng có bác sĩ và status = Available
+     */
+    @GetMapping("/available-for-assignment")
+    public ResponseEntity<List<ExaminationRoomResponse>> getAvailableRoomsForAssignment() {
+        return ResponseEntity.ok(roomService.getAvailableRoomsForAssignment());
+    }
+
+    /**
+     * Lấy phòng của một bác sĩ cụ thể (nếu có)
+     * Dùng để đề xuất phòng mặc định
+     */
+    @GetMapping("/by-doctor-id/{doctorId}")
+    public ResponseEntity<ExaminationRoomResponse> getRoomByDoctorId(@PathVariable UUID doctorId) {
+        return roomService.getRoomByDoctorId(doctorId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/assign")
+    public ResponseEntity<?> assignPatientToRoom(
+            @RequestBody AssignRoomRequest request) {
+        try {
+            ExaminationRoomResponse response = roomService.assignPatientToRoom(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            // Trả về error message cụ thể để frontend hiển thị
+            return ResponseEntity.badRequest()
+                    .body(new java.util.HashMap<String, String>() {{
+                        put("error", e.getMessage());
+                    }});
+        }
     }
 }
 

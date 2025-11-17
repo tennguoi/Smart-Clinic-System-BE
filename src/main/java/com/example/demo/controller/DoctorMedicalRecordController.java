@@ -1,13 +1,12 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.AddPrescriptionRequest;
 import com.example.demo.dto.MedicalRecordRequest;
 import com.example.demo.dto.MedicalRecordResponse;
+import com.example.demo.dto.MedicalRecordDetailResponse;
+import com.example.demo.dto.UpdateMedicalRecordRequest;
 import com.example.demo.service.MedicalRecordService;
-import com.example.demo.dto.AddPrescriptionRequest; // <<< THÊM DÒNG NÀY
-import com.example.demo.dto.MedicalRecordRequest;
-import com.example.demo.dto.MedicalRecordResponse;
-import com.example.demo.service.MedicalRecordService;
-import org.springframework.http.HttpStatus; // <<< THÊM DÒNG NÀY
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/doctor/medical-records") // URL gốc
+@RequestMapping("/api/doctor/medical-records")
 public class DoctorMedicalRecordController {
     private final MedicalRecordService medicalRecordService;
 
@@ -23,10 +22,6 @@ public class DoctorMedicalRecordController {
         this.medicalRecordService = medicalRecordService;
     }
 
-    /**
-     * API CŨ (của đồng đội): Tạo hồ sơ bệnh án
-     * POST /api/doctor/medical-records
-     */
     @PostMapping
     public ResponseEntity<MedicalRecordResponse> create(
             @RequestHeader("Authorization") String authorization,
@@ -34,43 +29,61 @@ public class DoctorMedicalRecordController {
         return ResponseEntity.ok(medicalRecordService.create(authorization, request));
     }
 
-    //
-    // --- PHẦN CODE MỚI CỦA BẠN (Thêm vào) ---
-    //
-    /**
-     * API MỚI (của bạn): Thêm toa thuốc (Prescription) vào hồ sơ đã có
-     * POST /api/doctor/medical-records/prescription
-     */
-    @PostMapping("/prescription") // <<< THÊM API MỚI
-    public ResponseEntity<?> addPrescription(
-            @RequestBody AddPrescriptionRequest request) { // <<< Dùng DTO mới của bạn
-
-        // Gọi hàm mới 'addPrescriptionToRecord' trong Service
-        medicalRecordService.addPrescriptionToRecord(request);
-
-        // Trả về mã 201 Created (vì đã tạo mới đơn thuốc)
-        return new ResponseEntity<>(HttpStatus.CREATED);
+    @PostMapping("/prescription")
+    public ResponseEntity<?> addPrescription(@RequestBody AddPrescriptionRequest request) {
+        try {
+            medicalRecordService.addPrescriptionToRecord(request);
+            return new ResponseEntity<>(HttpStatus.CREATED);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Có lỗi xảy ra khi thêm đơn thuốc: " + e.getMessage());
+        }
     }
-    //
-    // --- HẾT PHẦN CODE MỚI ---
-    //
 
-    /**
-     * API CŨ: Lấy hồ sơ theo ID bệnh nhân
-     * GET /api/doctor/medical-records/patient/{patientId}
-     */
     @GetMapping("/patient/{patientId}")
     public ResponseEntity<List<MedicalRecordResponse>> listByPatient(@PathVariable UUID patientId) {
         return ResponseEntity.ok(medicalRecordService.listByPatient(patientId));
     }
 
-    /**
-     * API CŨ: Lấy hồ sơ của bác sĩ (đang đăng nhập)
-     * GET /api/doctor/medical-records/mine
-     */
     @GetMapping("/mine")
     public ResponseEntity<List<MedicalRecordResponse>> listMine(
             @RequestHeader("Authorization") String authorization) {
         return ResponseEntity.ok(medicalRecordService.listMyCreated(authorization));
+    }
+
+    @GetMapping("/{recordId}")
+    public ResponseEntity<MedicalRecordDetailResponse> getRecordDetail(@PathVariable UUID recordId) {
+        try {
+            MedicalRecordDetailResponse response = medicalRecordService.getRecordDetail(recordId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{recordId}")
+    public ResponseEntity<MedicalRecordDetailResponse> updateRecord(
+            @PathVariable UUID recordId,
+            @RequestBody UpdateMedicalRecordRequest request) {
+        try {
+            MedicalRecordDetailResponse response = medicalRecordService.updateRecord(recordId, request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/{recordId}")
+    public ResponseEntity<?> deleteRecord(@PathVariable UUID recordId) {
+        try {
+            medicalRecordService.deleteRecord(recordId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
