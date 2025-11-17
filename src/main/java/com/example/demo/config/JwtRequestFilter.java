@@ -29,6 +29,17 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
+        // BỎ QUA JWT CHECK CHO CÁC ENDPOINT PUBLIC
+        String path = request.getServletPath();
+        if (path.startsWith("/api/auth/") ||
+                path.startsWith("/api/public/") ||
+                path.startsWith("/api/chatbot/") ||
+                path.startsWith("/webhook/") ||
+                "OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         final String requestTokenHeader = request.getHeader("Authorization");
         logger.info("Authorization header: " + requestTokenHeader);
 

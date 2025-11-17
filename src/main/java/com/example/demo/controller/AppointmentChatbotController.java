@@ -17,14 +17,13 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/appointments/")
+@RequestMapping("/api/chatbot/")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AppointmentChatbotController {
 
     private final AppointmentChatbotService service;
 
-    @PostMapping("/chatbot")
+    @PostMapping("/appointment")
     public ResponseEntity<AppointmentChatbotResponse> createAppointment(
             @Valid @RequestBody AppointmentChatbotRequest request) {
         try {

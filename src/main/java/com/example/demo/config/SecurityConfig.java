@@ -53,7 +53,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
+        http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> {})   // <---- THÊM DÒNG NÀY
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session
@@ -62,11 +64,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/chatbot/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
                         .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
                         .requestMatchers("/webhook/**").permitAll()
-                        .anyRequest().authenticated());
+                        .anyRequest().authenticated()
+                );
 
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
