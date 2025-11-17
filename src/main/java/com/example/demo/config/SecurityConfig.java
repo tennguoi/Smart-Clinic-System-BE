@@ -64,6 +64,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
+                        .requestMatchers("/api/medical-records/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
+                        .requestMatchers("/api/medical-records/*/export/pdf").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN", "ROLE_TIEP_TAN")
+                        .requestMatchers("/api/medical-records/patient/*/export/pdf").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN", "ROLE_TIEP_TAN")
                         .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
                         .requestMatchers("/webhook/**").permitAll() 
                         .anyRequest().authenticated());

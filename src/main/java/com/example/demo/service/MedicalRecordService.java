@@ -162,6 +162,36 @@ public class MedicalRecordService {
                 .collect(Collectors.toList());
     }
 
+    public byte[] exportMedicalRecordToPDF(UUID recordId) {
+        MedicalRecord medicalRecord = medicalRecordRepository.findById(recordId)
+                .orElseThrow(() -> new IllegalArgumentException("Medical record not found"));
+        
+        try {
+            return com.example.demo.util.PdfGenerator.generateMedicalRecordPDF(medicalRecord);
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating PDF: " + e.getMessage(), e);
+        }
+    }
+
+    public byte[] exportPatientHistoryToPDF(UUID patientId) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+        
+        List<MedicalRecord> records = medicalRecordRepository.findByPatientOrderByExaminationDateDesc(patient);
+        
+        try {
+            // For now, generate PDF for the most recent record
+            // Could be enhanced to generate a combined PDF with all records
+            if (!records.isEmpty()) {
+                return com.example.demo.util.PdfGenerator.generateMedicalRecordPDF(records.get(0));
+            } else {
+                throw new IllegalArgumentException("No medical records found for patient");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating PDF: " + e.getMessage(), e);
+        }
+    }
+
     private MedicalRecordResponse toResponse(MedicalRecord medicalRecord) {
         return new MedicalRecordResponse(
                 medicalRecord.getRecordId(),

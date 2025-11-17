@@ -30,8 +30,21 @@ public class AppointmentService {
     }
     @Transactional
     public AppointmentResponse quickBook(AppointmentRequest req) {
+        // Validation: Ngày khám chỉ được đặt trong 3 ngày
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime maxDate = now.plusDays(3);
+        
+        if (req.appointmentTime().isBefore(now)) {
+            throw new IllegalArgumentException("Ngày khám không được trong quá khứ");
+        }
+        
+        if (req.appointmentTime().isAfter(maxDate)) {
+            throw new IllegalArgumentException("Ngày khám chỉ được đặt trong vòng 3 ngày tới");
+        }
+        
         Appointment entity = Appointment.builder()
                 .patientName(req.patientName())
+                .age(req.age())
                 .phone(req.phone())
                 .email(req.email())
                 .appointmentTime(req.appointmentTime())
@@ -128,6 +141,7 @@ public class AppointmentService {
         return new AppointmentResponse(
                 a.getAppointmentId(),
                 a.getPatientName(),
+                a.getAge(),
                 a.getPhone(),
                 a.getEmail(),
                 a.getAppointmentTime(),

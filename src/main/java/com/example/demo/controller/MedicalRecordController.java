@@ -110,4 +110,36 @@ public class MedicalRecordController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @GetMapping("/{id}/export/pdf")
+    public ResponseEntity<byte[]> exportMedicalRecordToPDF(@PathVariable UUID id) {
+        try {
+            byte[] pdfContent = medicalRecordService.exportMedicalRecordToPDF(id);
+            
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/pdf")
+                    .header("Content-Disposition", "attachment; filename=\"medical_record_" + id + ".pdf\"")
+                    .body(pdfContent);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/patient/{patientId}/export/pdf")
+    public ResponseEntity<byte[]> exportPatientHistoryToPDF(@PathVariable UUID patientId) {
+        try {
+            byte[] pdfContent = medicalRecordService.exportPatientHistoryToPDF(patientId);
+            
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/pdf")
+                    .header("Content-Disposition", "attachment; filename=\"patient_history_" + patientId + ".pdf\"")
+                    .body(pdfContent);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

@@ -103,4 +103,30 @@ public class EmailService {
         message.setText(emailContent);
         mailSender.send(message);
     }
+
+    public void sendAppointmentReminder(String toEmail, String patientName, String appointmentCode,
+                                       LocalDateTime appointmentTime) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("Nhắc nhở lịch khám ngày mai - Smart Clinic System");
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
+        
+        String emailContent = String.format(
+            "Kính gửi %s,\n\n" +
+            "Nhắc nhở: Bạn có lịch khám vào ngày mai!\n\n" +
+            "Thông tin lịch khám:\n" +
+            "- Mã lịch khám: %s\n" +
+            "- Thời gian: %s\n\n" +
+            "Vui lòng đến đúng giờ. Nếu có thay đổi, vui lòng liên hệ phòng khám sớm nhất có thể.\n\n" +
+            "Trân trọng,\n" +
+            "Smart Clinic System",
+            patientName, appointmentCode, formattedTime
+        );
+        
+        message.setText(emailContent);
+        mailSender.send(message);
+    }
 }
