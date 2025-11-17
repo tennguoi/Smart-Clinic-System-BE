@@ -6,7 +6,6 @@ import com.example.demo.entity.Queue;
 import com.example.demo.repository.PatientRepository;
 import com.example.demo.repository.QueueRepository;
 import org.springframework.stereotype.Service;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -57,25 +56,55 @@ public class QueueService {
     }
 
     public QueuePatientResponse addQueuePatient(QueuePatientResponse dto) {
+        // Validation: Kiểm tra các field bắt buộc
+        if (dto.getPatientName() == null || dto.getPatientName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Tên bệnh nhân không được để trống");
+        }
+        if (dto.getPhone() == null || dto.getPhone().trim().isEmpty()) {
+            throw new IllegalArgumentException("Số điện thoại không được để trống");
+        }
+        if (dto.getDob() == null) {
+            throw new IllegalArgumentException("Ngày sinh không được để trống");
+        }
 
         Patient newPatient = Patient.builder()
-                .fullName(dto.getPatientName())
-                .phone(dto.getPhone())
-                .email(dto.getEmail())
+                .fullName(dto.getPatientName().trim())
+                .phone(dto.getPhone().trim())
+                .email(dto.getEmail() != null ? dto.getEmail().trim() : null)
                 .dob(dto.getDob())
                 .gender(mapGender(dto.getGender()))
-                .address(dto.getAddress())
+                .address(dto.getAddress() != null ? dto.getAddress().trim() : null)
                 .build();
 
         Patient savedPatient = patientRepository.save(newPatient);
 
+        // Xử lý priority an toàn
+        Queue.Priority priority = Queue.Priority.Normal;
+        if (dto.getPriority() != null && !dto.getPriority().trim().isEmpty()) {
+            try {
+                priority = Queue.Priority.valueOf(dto.getPriority().trim());
+            } catch (IllegalArgumentException e) {
+                // Nếu priority không hợp lệ, dùng mặc định
+                priority = Queue.Priority.Normal;
+            }
+        }
+
+        // Xử lý checkInTime an toàn
+        LocalDateTime checkInTime = LocalDateTime.now();
+        if (dto.getCheckInTime() != null && !dto.getCheckInTime().trim().isEmpty()) {
+            try {
+                checkInTime = LocalDateTime.parse(dto.getCheckInTime());
+            } catch (Exception e) {
+                // Nếu format không đúng, dùng thời gian hiện tại
+                checkInTime = LocalDateTime.now();
+            }
+        }
+
         Queue queue = Queue.builder()
                 .queueNumber(generateNextQueueNumber()) // ✔ auto generate
-                .priority(dto.getPriority() != null ? Queue.Priority.valueOf(dto.getPriority()) : Queue.Priority.Normal)
+                .priority(priority)
                 .status(Queue.QueueStatus.Waiting) // ✔ FE chỉ cho chọn "Chờ khám"
-                .checkInTime(dto.getCheckInTime() != null
-                        ? LocalDateTime.parse(dto.getCheckInTime())
-                        : LocalDateTime.now())
+                .checkInTime(checkInTime)
                 .patient(savedPatient)
                 .build();
 

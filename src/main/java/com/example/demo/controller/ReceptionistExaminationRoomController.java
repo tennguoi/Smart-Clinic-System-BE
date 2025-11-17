@@ -80,11 +80,22 @@ public class ReceptionistExaminationRoomController {
     }
 
     /**
-     * Lấy danh sách tất cả bác sĩ để chọn khi tạo/cập nhật phòng
+     * Lấy danh sách bác sĩ chưa có phòng active để chọn khi tạo phòng mới
      */
     @GetMapping("/doctors")
     public ResponseEntity<List<DoctorSimpleResponse>> getAllDoctors() {
         return ResponseEntity.ok(roomService.getAllDoctors());
+    }
+
+    /**
+     * Lấy danh sách bác sĩ để chọn khi cập nhật phòng
+     * Bao gồm: bác sĩ chưa có phòng + bác sĩ hiện tại của phòng đang được cập nhật
+     * @param roomId ID của phòng đang được cập nhật (optional, nếu null thì giống getAllDoctors)
+     */
+    @GetMapping("/doctors/for-update")
+    public ResponseEntity<List<DoctorSimpleResponse>> getDoctorsForUpdate(
+            @RequestParam(required = false) UUID roomId) {
+        return ResponseEntity.ok(roomService.getAvailableDoctorsForUpdate(roomId));
     }
 
     /**

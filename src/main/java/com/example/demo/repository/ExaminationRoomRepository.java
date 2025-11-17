@@ -18,6 +18,18 @@ public interface ExaminationRoomRepository extends JpaRepository<ExaminationRoom
 
     List<ExaminationRoom> findByDoctorUserId(UUID doctorId);
 
+    /**
+     * Tìm phòng active của một bác sĩ (để đảm bảo 1 bác sĩ chỉ ở 1 phòng)
+     */
+    @Query("SELECT r FROM ExaminationRoom r WHERE r.doctor.userId = :doctorId AND r.isActive = true")
+    List<ExaminationRoom> findActiveRoomsByDoctorId(UUID doctorId);
+
+    /**
+     * Tìm phòng active của một bác sĩ, loại trừ một phòng cụ thể (dùng khi cập nhật)
+     */
+    @Query("SELECT r FROM ExaminationRoom r WHERE r.doctor.userId = :doctorId AND r.isActive = true AND r.roomId != :excludeRoomId")
+    List<ExaminationRoom> findActiveRoomsByDoctorIdExcludingRoom(UUID doctorId, UUID excludeRoomId);
+
     @Query("SELECT r FROM ExaminationRoom r WHERE r.isActive = true AND " +
            "(LOWER(r.roomName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     List<ExaminationRoom> searchActiveRooms(String keyword);

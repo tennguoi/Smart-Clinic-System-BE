@@ -66,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
                         .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
                         .requestMatchers("/api/reception/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
+                        .requestMatchers("/api/receptionist/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
                         .requestMatchers("/webhook/**").permitAll()
                         .anyRequest().authenticated());
 

@@ -33,6 +33,9 @@ public class MedicalRecord {
     @JoinColumn(name = "patient_id")
     private User patient;
 
+    @Column(name = "patient_name", length = 255)
+    private String patientName;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "doctor_id", nullable = false)
     private User doctor;

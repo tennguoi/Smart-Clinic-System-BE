@@ -39,7 +39,19 @@ public class ReceptionistQueueController {
     // --- Thêm mới ---
     @PostMapping("/add")
     public ResponseEntity<?> addQueue(@RequestBody QueuePatientResponse dto) {
-        return ResponseEntity.ok(queueService.addQueuePatient(dto));
+        try {
+            QueuePatientResponse result = queueService.addQueuePatient(dto);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            // Xử lý lỗi validation (enum, date format, etc.)
+            return ResponseEntity.badRequest()
+                    .body(new GenericResponse(false, "Dữ liệu không hợp lệ: " + e.getMessage()));
+        } catch (Exception e) {
+            // Xử lý các lỗi khác (database, constraint, etc.)
+            String errorMessage = "Lỗi khi thêm bệnh nhân vào hàng đợi: " + e.getMessage();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse(false, errorMessage));
+        }
     }
 
     // --- Xoá ---

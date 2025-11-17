@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class MedicalRecordService {
+
     private final MedicalRecordRepository medicalRecordRepository;
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
@@ -32,21 +33,31 @@ public class MedicalRecordService {
     public MedicalRecordResponse create(String bearerToken, MedicalRecordRequest request) {
         String token = extractToken(bearerToken);
         UUID doctorId = jwtUtil.getUserIdFromToken(token);
+
         User doctor = userRepository.findById(doctorId)
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
 
         User patient = null;
+        String patientName = null;
+
         if (request.getPatientId() != null) {
+            // Nếu có patientId, lấy từ database
             patient = userRepository.findById(request.getPatientId())
                     .orElseThrow(() -> new RuntimeException("Patient not found"));
+            patientName = patient.getFullName(); // Ưu tiên tên từ User
+        } else if (request.getPatientName() != null && !request.getPatientName().trim().isEmpty()) {
+            // Nếu không có patientId nhưng có patientName từ request, dùng tên đó
+            patientName = request.getPatientName().trim();
         }
 
         MedicalRecord record = MedicalRecord.builder()
                 .doctor(doctor)
                 .patient(patient)
+                .patientName(patientName) // THÊM DÒNG NÀY - Lưu patientName
                 .diagnosis(request.getDiagnosis())
                 .treatmentNotes(request.getTreatmentNotes())
                 .build();
+
         record = medicalRecordRepository.save(record);
         return toResponse(record);
     }
@@ -63,6 +74,7 @@ public class MedicalRecordService {
     public List<MedicalRecordResponse> listMyCreated(String bearerToken) {
         String token = extractToken(bearerToken);
         UUID doctorId = jwtUtil.getUserIdFromToken(token);
+
         return medicalRecordRepository.findByDoctor_UserId(doctorId)
                 .stream()
                 .map(this::toResponse)
@@ -70,10 +82,16 @@ public class MedicalRecordService {
     }
 
     private MedicalRecordResponse toResponse(MedicalRecord r) {
+        // Ưu tiên patientName từ entity, nếu không có thì lấy từ patient.getFullName()
+        String finalPatientName = r.getPatientName();
+        if (finalPatientName == null && r.getPatient() != null) {
+            finalPatientName = r.getPatient().getFullName();
+        }
+
         return MedicalRecordResponse.builder()
                 .recordId(r.getRecordId())
                 .patientId(r.getPatient() != null ? r.getPatient().getUserId() : null)
-                .patientName(r.getPatient() != null ? r.getPatient().getFullName() : null)
+                .patientName(finalPatientName) // SỬA DÒNG NÀY
                 .doctorId(r.getDoctor() != null ? r.getDoctor().getUserId() : null)
                 .doctorName(r.getDoctor() != null ? r.getDoctor().getFullName() : null)
                 .diagnosis(r.getDiagnosis())
