@@ -1,7 +1,11 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
 @Entity
@@ -13,33 +17,30 @@ import java.util.UUID;
 public class ExaminationRoom {
 
     @Id
-    @GeneratedValue
-    @Column(name = "room_id", columnDefinition = "CHAR(36)")
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "room_id", nullable = false, updatable = false)
     private UUID roomId;
 
     @Column(name = "room_name", nullable = false, length = 100)
     private String roomName;
 
-    // Bác sĩ phụ trách phòng
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "doctor_id", columnDefinition = "CHAR(36)")
+    @JoinColumn(name = "doctor_id")
     private User doctor;
 
-    // Bệnh nhân / hàng đợi đang khám (nullable)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "current_queue_id", columnDefinition = "CHAR(36)")
-    private Queue currentQueue;
+    @Column(name = "current_queue_id")
+    private UUID currentQueueId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private RoomStatus status; // Available / Occupied
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private RoomStatus status = RoomStatus.Available;
 
-    @Column(name = "is_active")
-    private Boolean isActive = true; // default true
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
 
-    // Enum trạng thái phòng khám
     public enum RoomStatus {
-        Available,
-        Occupied
+        Available, Occupied
     }
 }
