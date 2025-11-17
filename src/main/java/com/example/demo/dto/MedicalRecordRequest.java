@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.util.UUID;
 
+
 @Data
 public class MedicalRecordRequest {
     private UUID patientId; // optional
