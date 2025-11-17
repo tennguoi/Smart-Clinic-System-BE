@@ -10,3 +10,5 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
     List<MedicalRecord> findByDoctor_UserId(UUID doctorId);
     List<MedicalRecord> findByPatient_UserId(UUID patientId);
 }
+
+

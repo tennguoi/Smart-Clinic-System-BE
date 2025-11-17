@@ -41,7 +41,17 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private Collection<? extends GrantedAuthority> getAuthorities(User user) {
         return user.getUserRoles().stream()
                 .map(UserRole::getRole)
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().toUpperCase()))
+                .map(role -> {
+                    String name = role.getName();
+                    String normalized = name == null ? "" : name.trim();
+                    // Avoid double prefixing; ensure Spring-style "ROLE_*"
+                    if (!normalized.toUpperCase().startsWith("ROLE_")) {
+                        normalized = "ROLE_" + normalized.toUpperCase();
+                    } else {
+                        normalized = normalized.toUpperCase();
+                    }
+                    return new SimpleGrantedAuthority(normalized);
+                })
                 .collect(Collectors.toList());
     }
 }

@@ -76,7 +76,7 @@
 //             System.out.println("Created admin user: admin@clinic.com / admin123");
 //         }
 //
-//         if (!userRepository.existsByEmail("congminh152005@gmail.com")) {
+//         if (!userRepository.existsByEmail("d")) {
 //             User doctor = User.builder()
 //                     .email("congminh152005@gmail.com")
 //                     .password(passwordEncoder.encode("doctor123"))
