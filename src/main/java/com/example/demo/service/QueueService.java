@@ -116,7 +116,6 @@ public class QueueService {
     }
 
     // --- Sửa toàn bộ thông tin ---
-// --- Sửa toàn bộ thông tin ---
     public QueuePatientResponse updateQueuePatient(UUID queueId, QueuePatientResponse dto) {
 
         Queue queue = queueRepository.findById(queueId)
@@ -163,6 +162,7 @@ public class QueueService {
         return mapToDto(queue);
     }
 
+
     // --- Tìm kiếm ---
     public List<QueuePatientResponse> searchQueue(String phone, String status) {
         List<Queue> list = queueRepository.findAll();
@@ -175,25 +175,29 @@ public class QueueService {
     }
 
     // --- Helper map entity -> DTO ---
-    private QueuePatientResponse mapToDto(Queue queue) {
-        Patient patient = queue.getPatient();
+    public QueuePatientResponse mapToDto(Queue queue) {
+        Patient p = queue.getPatient();
 
         return QueuePatientResponse.builder()
                 .queueId(queue.getQueueId())
                 .queueNumber(queue.getQueueNumber())
                 .priority(queue.getPriority().name())
                 .status(queue.getStatus().name())
-                .checkInTime(queue.getCheckInTime() != null ? queue.getCheckInTime().toString() : null)
+                .checkInTime(queue.getCheckInTime() != null
+                        ? queue.getCheckInTime().toString()
+                        : null)
 
-                // Patient fields
-                .patientId(patient != null ? patient.getPatientId() : null)
-                .patientName(patient != null ? patient.getFullName() : null)
-                .phone(patient != null ? patient.getPhone() : null)
-                .email(patient != null ? patient.getEmail() : null)
-                .dob(patient != null ? patient.getDob() : null)
-                .gender(patient != null && patient.getGender() != null ? patient.getGender().name() : null)
-                .address(patient != null ? patient.getAddress() : null)
+                // patient info
+                .patientId(p != null ? p.getPatientId() : null)
+                .patientName(p != null ? p.getFullName() : null)
+                .phone(p != null ? p.getPhone() : null)
+                .email(p != null ? p.getEmail() : null)
+                .dob(p != null ? p.getDob() : null)
+                .gender(p != null ? p.getGender().name() : null)
+                .address(p != null ? p.getAddress() : null)
 
                 .build();
     }
+
 }
+//.
