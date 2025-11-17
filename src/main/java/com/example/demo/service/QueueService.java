@@ -116,33 +116,45 @@ public class QueueService {
     }
 
     // --- Sửa toàn bộ thông tin ---
+// --- Sửa toàn bộ thông tin ---
     public QueuePatientResponse updateQueuePatient(UUID queueId, QueuePatientResponse dto) {
 
         Queue queue = queueRepository.findById(queueId)
                 .orElseThrow(() -> new RuntimeException("Hàng đợi không tồn tại"));
 
         // --- Update queue info ---
-        queue.setQueueNumber(dto.getQueueNumber());
-        queue.setPriority(Queue.Priority.valueOf(dto.getPriority()));
-        queue.setStatus(Queue.QueueStatus.valueOf(dto.getStatus()));
-        queue.setCheckInTime(dto.getCheckInTime() != null
-                ? LocalDateTime.parse(dto.getCheckInTime())
-                : queue.getCheckInTime());
+        // ❌ KHÔNG SET queueNumber - giữ nguyên giá trị cũ
+        // queue.setQueueNumber(dto.getQueueNumber()); // XÓA DÒNG NÀY!
+
+        // ✅ Chỉ update các field cần thiết
+        if (dto.getPriority() != null) {
+            queue.setPriority(Queue.Priority.valueOf(dto.getPriority()));
+        }
+
+        if (dto.getStatus() != null) {
+            queue.setStatus(Queue.QueueStatus.valueOf(dto.getStatus()));
+        }
+
+        if (dto.getCheckInTime() != null) {
+            queue.setCheckInTime(LocalDateTime.parse(dto.getCheckInTime()));
+        }
 
         // --- Update patient info ---
         Patient patient = queue.getPatient();
         if (patient != null) {
-
             if (dto.getPatientName() != null) patient.setFullName(dto.getPatientName());
             if (dto.getPhone() != null) patient.setPhone(dto.getPhone());
             if (dto.getEmail() != null) patient.setEmail(dto.getEmail());
             if (dto.getAddress() != null) patient.setAddress(dto.getAddress());
-
             if (dto.getDob() != null) patient.setDob(dto.getDob());
 
             // Gender phải convert String -> Enum
             if (dto.getGender() != null) {
-                patient.setGender(Patient.Gender.valueOf(dto.getGender()));
+                try {
+                    patient.setGender(Patient.Gender.valueOf(dto.getGender().toLowerCase()));
+                } catch (IllegalArgumentException e) {
+                    patient.setGender(Patient.Gender.other);
+                }
             }
         }
 
@@ -150,7 +162,6 @@ public class QueueService {
 
         return mapToDto(queue);
     }
-
 
     // --- Tìm kiếm ---
     public List<QueuePatientResponse> searchQueue(String phone, String status) {
