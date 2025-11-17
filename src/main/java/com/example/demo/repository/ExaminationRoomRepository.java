@@ -23,5 +23,6 @@ public interface ExaminationRoomRepository extends JpaRepository<ExaminationRoom
     List<ExaminationRoom> searchActiveRooms(String keyword);
 
     Optional<ExaminationRoom> findByRoomName(String roomName);
+    List<ExaminationRoom> findByIsActiveTrueOrderByRoomNameAsc();
 }
 
