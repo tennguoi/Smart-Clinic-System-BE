@@ -68,13 +68,18 @@ public class QueueService {
     }
 
     public QueuePatientResponse addQueuePatient(QueuePatientResponse dto) {
-        // Validation: Kiểm tra các field bắt buộc
         if (dto.getPatientName() == null || dto.getPatientName().trim().isEmpty()) {
             throw new IllegalArgumentException("Tên bệnh nhân không được để trống");
         }
         if (dto.getPhone() == null || dto.getPhone().trim().isEmpty()) {
             throw new IllegalArgumentException("Số điện thoại không được để trống");
         }
+
+        // --- Kiểm tra trùng số điện thoại ---
+        if (isPhoneExists(dto.getPhone())) {
+            throw new IllegalArgumentException("Số điện thoại đã tồn tại, không thể thêm bệnh nhân trùng");
+        }
+
         if (dto.getDob() == null) {
             throw new IllegalArgumentException("Ngày sinh không được để trống");
         }
@@ -90,38 +95,34 @@ public class QueueService {
 
         Patient savedPatient = patientRepository.save(newPatient);
 
-        // Xử lý priority an toàn
+        // Xử lý priority
         Queue.Priority priority = Queue.Priority.Normal;
         if (dto.getPriority() != null && !dto.getPriority().trim().isEmpty()) {
             try {
                 priority = Queue.Priority.valueOf(dto.getPriority().trim());
             } catch (IllegalArgumentException e) {
-                // Nếu priority không hợp lệ, dùng mặc định
                 priority = Queue.Priority.Normal;
             }
         }
 
-        // Xử lý checkInTime an toàn
         LocalDateTime checkInTime = LocalDateTime.now();
         if (dto.getCheckInTime() != null && !dto.getCheckInTime().trim().isEmpty()) {
             try {
                 checkInTime = LocalDateTime.parse(dto.getCheckInTime());
             } catch (Exception e) {
-                // Nếu format không đúng, dùng thời gian hiện tại
                 checkInTime = LocalDateTime.now();
             }
         }
 
         Queue queue = Queue.builder()
-                .queueNumber(generateNextQueueNumber()) // ✔ auto generate
+                .queueNumber(generateNextQueueNumber())
                 .priority(priority)
-                .status(Queue.QueueStatus.Waiting) // ✔ FE chỉ cho chọn "Chờ khám"
+                .status(Queue.QueueStatus.Waiting)
                 .checkInTime(checkInTime)
                 .patient(savedPatient)
                 .build();
 
         Queue savedQueue = queueRepository.save(queue);
-
         return mapToDto(savedQueue);
     }
 
@@ -214,7 +215,9 @@ public class QueueService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
-
+    private boolean isPhoneExists(String phone) {
+        return patientRepository.findByPhone(phone.trim()).isPresent();
+    }
     // --- Helper map entity -> DTO ---
     public QueuePatientResponse mapToDto(Queue queue) {
         Patient p = queue.getPatient();
