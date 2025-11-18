@@ -30,9 +30,14 @@ public class AppointmentService {
         this.emailService = emailService;
     }
 
-    // Phương thức đặt lịch nhanh (giữ nguyên code cũ của bạn)
+    // Phương thức đặt lịch nhanh (Khách đặt)
     @Transactional
     public AppointmentResponse quickBook(AppointmentRequest req) {
+        // Kiểm tra thời gian: Không được đặt quá khứ
+        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
+        }
+
         Appointment entity = Appointment.builder()
                 .patientName(req.patientName())
                 .phone(req.phone())
@@ -60,35 +65,38 @@ public class AppointmentService {
         return toResponse(entity);
     }
 
-    // [MỚI] Phương thức tạo lịch hẹn từ form quản lý (Lễ tân)
+    // Phương thức tạo lịch hẹn từ form quản lý (Lễ tân)
     @Transactional
     public AppointmentResponse create(AppointmentRequest req) {
+        // Kiểm tra thời gian: Không được đặt quá khứ
+        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
+        }
+
         Appointment entity = Appointment.builder()
                 .patientName(req.patientName())
                 .phone(req.phone())
                 .email(req.email())
                 .appointmentTime(req.appointmentTime())
                 .notes(req.notes())
-                .quickBook(false) // Đánh dấu đây không phải đặt nhanh
+                .quickBook(false)
                 .appointmentCode(generateUniqueCode())
                 .build();
-        // Status mặc định là Pending do @PrePersist trong Entity
 
         entity = repo.save(entity);
         return toResponse(entity);
     }
 
-    // Phương thức cũ (giữ nguyên để tương thích ngược nếu cần)
+    // Phương thức cũ (giữ nguyên)
     public List<AppointmentResponse> listByStatus(Status status) {
         return repo.findByStatus(status).stream().map(this::toResponse).toList();
     }
 
-    // [MỚI & CẬP NHẬT] Lọc danh sách theo Trạng thái, SĐT và Tên bệnh nhân
+    // [CẬP NHẬT QUAN TRỌNG] Lọc danh sách & SẮP XẾP MỚI NHẤT LÊN ĐẦU
     public List<AppointmentResponse> listBy(Status status, String phone, String patientName) {
-        // 1. Lấy danh sách gốc theo trạng thái từ DB
         List<Appointment> results = repo.findByStatus(status);
 
-        // 2. Lọc theo SĐT (nếu có) - Tìm tương đối (chứa chuỗi số)
+        // 1. Lọc theo SĐT
         if (phone != null && !phone.isBlank()) {
             String searchPhone = phone.trim();
             results = results.stream()
@@ -96,7 +104,7 @@ public class AppointmentService {
                     .collect(Collectors.toList());
         }
 
-        // 3. Lọc theo Tên bệnh nhân (nếu có) - Tìm tương đối, không phân biệt hoa thường
+        // 2. Lọc theo Tên
         if (patientName != null && !patientName.isBlank()) {
             String searchName = patientName.trim().toLowerCase();
             results = results.stream()
@@ -104,17 +112,20 @@ public class AppointmentService {
                     .collect(Collectors.toList());
         }
 
-        // Chuyển đổi sang DTO và trả về
-        return results.stream().map(this::toResponse).toList();
+        // 3. [MỚI] Sắp xếp và trả về (Newest First)
+        return results.stream()
+                // Logic sắp xếp: So sánh ngày tạo, cái nào lớn hơn (mới hơn) thì đứng trước
+                .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
+                .map(this::toResponse)
+                .toList();
     }
 
-    // Phương thức cập nhật trạng thái (Xác nhận/Hủy)
+    // Phương thức cập nhật trạng thái
     @Transactional
     public AppointmentResponse updateStatus(UUID id, Status status) {
         Appointment appt = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
         appt.setStatus(status);
 
-        // Nếu xác nhận (Confirmed), lưu người xác nhận và gửi mail
         if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
             var authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || authentication.getName() == null) {
@@ -146,6 +157,28 @@ public class AppointmentService {
         }
 
         appt = repo.save(appt);
+        return toResponse(appt);
+    }
+
+    // Chức năng sửa thông tin lịch hẹn
+    @Transactional
+    public AppointmentResponse updateInfo(UUID id, AppointmentRequest req) {
+        // Kiểm tra thời gian: Không được dời lịch về quá khứ
+        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Thời gian hẹn mới không được ở quá khứ.");
+        }
+
+        Appointment appt = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found with id: " + id));
+
+        appt.setPatientName(req.patientName());
+        appt.setPhone(req.phone());
+        appt.setEmail(req.email());
+        appt.setAppointmentTime(req.appointmentTime());
+        appt.setNotes(req.notes());
+
+        appt = repo.save(appt);
+
         return toResponse(appt);
     }
 
