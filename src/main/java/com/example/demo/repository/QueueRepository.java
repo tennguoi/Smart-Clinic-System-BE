@@ -78,5 +78,6 @@ public interface QueueRepository extends JpaRepository<Queue, UUID> {
             "LEFT JOIN FETCH q.assignedRoom " +
             "WHERE q.queueId = :queueId")
     Optional<Queue> findByIdWithPatientAndRoom(UUID queueId);
+    List<Queue> findByStatus(QueueStatus status);
 
 }

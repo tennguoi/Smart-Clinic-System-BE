@@ -88,4 +88,8 @@ public class ReceptionistQueueController {
                                          @RequestParam(required = false) String status) {
         return ResponseEntity.ok(queueService.searchQueue(phone, status));
     }
+    @GetMapping("/completed")
+    public ResponseEntity<?> getCompletedQueues() {
+        return  ResponseEntity.ok(queueService.getCompletedQueues());
+    }
 }
