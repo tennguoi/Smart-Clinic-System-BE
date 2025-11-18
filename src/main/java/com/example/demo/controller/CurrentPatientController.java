@@ -14,11 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -37,6 +36,14 @@ public class CurrentPatientController {
         }
         String email = authentication.getName();
         return userRepository.findByEmail(email).orElse(null);
+    }
+    @PatchMapping("/{queueId}/status")
+    public ResponseEntity<?> updateStatus(@PathVariable UUID queueId, @RequestParam String status) {
+        return ResponseEntity.ok(queueService.updateQueueStatus(queueId, status));
+    }
+    @GetMapping("/completed")
+    public ResponseEntity<?> getCompletedQueues() {
+        return  ResponseEntity.ok(queueService.getCompletedQueues());
     }
 
     @GetMapping("/current-patient")
@@ -132,4 +139,5 @@ public class CurrentPatientController {
 
         return ResponseEntity.ok(response);
     }
+
 }

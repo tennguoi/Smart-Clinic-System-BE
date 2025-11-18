@@ -215,6 +215,12 @@ public class QueueService {
                 .collect(Collectors.toList());
     }
 
+    public List<Queue> getCompletedQueues() {
+        return queueRepository.findByStatus(Queue.QueueStatus.Completed); // hoặc QueueStatus.Completed
+    }
+
+
+
     // --- Helper map entity -> DTO ---
     public QueuePatientResponse mapToDto(Queue queue) {
         Patient p = queue.getPatient();
