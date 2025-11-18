@@ -6,8 +6,12 @@ import com.example.demo.dto.MedicalRecordResponse;
 import com.example.demo.dto.MedicalRecordDetailResponse;
 import com.example.demo.dto.UpdateMedicalRecordRequest;
 import com.example.demo.service.MedicalRecordService;
+import com.example.demo.service.PdfExportService;
+import com.example.demo.entity.MedicalRecord;
+import com.example.demo.repository.MedicalRecordRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,9 +21,15 @@ import java.util.UUID;
 @RequestMapping("/api/doctor/medical-records")
 public class DoctorMedicalRecordController {
     private final MedicalRecordService medicalRecordService;
+    private final PdfExportService pdfExportService;
+    private final MedicalRecordRepository medicalRecordRepository;
 
-    public DoctorMedicalRecordController(MedicalRecordService medicalRecordService) {
+    public DoctorMedicalRecordController(MedicalRecordService medicalRecordService,
+                                        PdfExportService pdfExportService,
+                                        MedicalRecordRepository medicalRecordRepository) {
         this.medicalRecordService = medicalRecordService;
+        this.pdfExportService = pdfExportService;
+        this.medicalRecordRepository = medicalRecordRepository;
     }
 
     @PostMapping
@@ -84,6 +94,26 @@ public class DoctorMedicalRecordController {
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{recordId}/export-pdf")
+    public ResponseEntity<?> exportRecordAsPdf(@PathVariable UUID recordId) {
+        try {
+            MedicalRecord record = medicalRecordRepository.findById(recordId)
+                    .orElseThrow(() -> new RuntimeException("Hồ sơ không tồn tại"));
+            
+            byte[] pdfContent = pdfExportService.generateMedicalRecordPdf(record);
+            
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header("Content-Disposition", "attachment; filename=\"HoSoBenhAn_" + recordId + ".pdf\"")
+                    .body(pdfContent);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi xuất PDF: " + e.getMessage());
         }
     }
 }
