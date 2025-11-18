@@ -3,9 +3,18 @@ package com.example.demo.service;
 import com.example.demo.dto.QueuePatientResponse;
 import com.example.demo.entity.Patient;
 import com.example.demo.entity.Queue;
+import com.example.demo.entity.MedicalRecord;
+import com.example.demo.entity.User;
+import com.example.demo.entity.ExaminationRoom;
 import com.example.demo.repository.PatientRepository;
 import com.example.demo.repository.QueueRepository;
+import com.example.demo.repository.MedicalRecordRepository;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.ExaminationRoomRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,10 +26,18 @@ public class QueueService {
 
     private final QueueRepository queueRepository;
     private final PatientRepository patientRepository;
+    private final MedicalRecordRepository medicalRecordRepository;
+    private final UserRepository userRepository;
+    private final ExaminationRoomRepository examinationRoomRepository;
 
-    public QueueService(QueueRepository queueRepository, PatientRepository patientRepository) {
+    public QueueService(QueueRepository queueRepository, PatientRepository patientRepository,
+                        MedicalRecordRepository medicalRecordRepository, UserRepository userRepository,
+                        ExaminationRoomRepository examinationRoomRepository) {
         this.queueRepository = queueRepository;
         this.patientRepository = patientRepository;
+        this.medicalRecordRepository = medicalRecordRepository;
+        this.userRepository = userRepository;
+        this.examinationRoomRepository = examinationRoomRepository;
     }
     // --- Lấy chi tiết một hàng đợi theo ID ---
     public Optional<QueuePatientResponse> getQueueById(UUID queueId) {
@@ -153,7 +170,61 @@ public class QueueService {
         queue.setStatus(Queue.QueueStatus.valueOf(status));
         queueRepository.save(queue);
 
+        // Tự động tạo MedicalRecord khi hoàn thành khám
+        if ("Completed".equals(status)) {
+            createMedicalRecordFromQueue(queue);
+            // Clear currentQueueId từ ExaminationRoom để bác sĩ không còn bệnh nhân hiện tại
+            clearCurrentQueueFromRoom(queue);
+        }
+
         return mapToDto(queue);
+    }
+
+    // Helper: Clear currentQueueId từ phòng khám
+    private void clearCurrentQueueFromRoom(Queue queue) {
+        try {
+            if (queue.getAssignedRoom() != null) {
+                ExaminationRoom room = examinationRoomRepository.findById(queue.getAssignedRoom().getRoomId())
+                        .orElse(null);
+                if (room != null && queue.getQueueId().equals(room.getCurrentQueueId())) {
+                    room.setCurrentQueueId(null);
+                    examinationRoomRepository.save(room);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error clearing current queue from room: " + e.getMessage());
+        }
+    }
+
+    // Helper: Tạo MedicalRecord từ Queue khi hoàn thành
+    private void createMedicalRecordFromQueue(Queue queue) {
+        try {
+            // Lấy doctor hiện tại từ SecurityContext
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || authentication.getName() == null) {
+                return;
+            }
+            String email = authentication.getName();
+            User doctor = userRepository.findByEmail(email).orElse(null);
+            
+            if (doctor == null) {
+                return;
+            }
+
+            // Tạo MedicalRecord mới
+            MedicalRecord record = MedicalRecord.builder()
+                    .doctor(doctor)
+                    .patient(null) // Patient là User entity, Queue.patient là Patient entity
+                    .patientName(queue.getPatient() != null ? queue.getPatient().getFullName() : null)
+                    .diagnosis(null) // Sẽ được điền sau bởi bác sĩ
+                    .treatmentNotes(null) // Sẽ được điền sau bởi bác sĩ
+                    .build();
+            
+            medicalRecordRepository.save(record);
+        } catch (Exception e) {
+            // Log lỗi nhưng không throw exception để không làm fail việc hoàn thành khám
+            System.err.println("Error creating medical record: " + e.getMessage());
+        }
     }
 
     // --- Sửa toàn bộ thông tin ---

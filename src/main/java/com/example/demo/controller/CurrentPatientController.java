@@ -37,7 +37,7 @@ public class CurrentPatientController {
         String email = authentication.getName();
         return userRepository.findByEmail(email).orElse(null);
     }
-    @PatchMapping("/{queueId}/status")
+    @PatchMapping("/queue/{queueId}/status")
     public ResponseEntity<?> updateStatus(@PathVariable UUID queueId, @RequestParam String status) {
         return ResponseEntity.ok(queueService.updateQueueStatus(queueId, status));
     }
@@ -76,6 +76,7 @@ public class CurrentPatientController {
         }
 
         CurrentPatientDTO dto = CurrentPatientDTO.builder()
+                .queueId(queue.getQueueId())
                 .queueNumber(queue.getQueueNumber())
                 .fullName(patient.getFullName())
                 .phone(patient.getPhone())
