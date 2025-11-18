@@ -1,7 +1,9 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.CurrentPatientDTO;
 import com.example.demo.dto.QueuePatientResponse;
+import com.example.demo.dto.RoomResponse;
 import com.example.demo.entity.ExaminationRoom;
 import com.example.demo.entity.Patient;
 import com.example.demo.entity.Queue;
@@ -10,10 +12,12 @@ import com.example.demo.repository.ExaminationRoomRepository;
 import com.example.demo.repository.QueueRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.QueueService;
+import com.example.demo.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,6 +32,7 @@ public class CurrentPatientController {
     private final QueueRepository queueRepository;
     private final QueueService queueService;
     private final UserRepository userRepository;
+    private final RoomService roomService;
 
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -36,6 +41,22 @@ public class CurrentPatientController {
         }
         String email = authentication.getName();
         return userRepository.findByEmail(email).orElse(null);
+    }
+    @PostMapping("/complete-examination")
+    @Transactional
+    public ResponseEntity<ApiResponse> completeCurrentExamination() {
+        User doctor = getCurrentUser();
+        if (doctor == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Không xác định được bác sĩ"));
+        }
+
+        ExaminationRoom room = examinationRoomRepository
+                .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám của bác sĩ"));
+
+        ApiResponse<RoomResponse> result = roomService.completeExamination(room.getRoomId());
+
+        return ResponseEntity.ok(result);
     }
     @PatchMapping("/queue/{queueId}/status")
     public ResponseEntity<?> updateStatus(@PathVariable UUID queueId, @RequestParam String status) {
