@@ -4,9 +4,9 @@ import com.example.demo.dto.AppointmentRequest;
 import com.example.demo.dto.AppointmentResponse;
 import com.example.demo.entity.Appointment.Status;
 import com.example.demo.service.AppointmentService;
-import org.springframework.http.HttpStatus; // Thêm import này
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize; // Giữ lại nếu bạn có dùng
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,28 +21,27 @@ public class AppointmentController {
         this.service = service;
     }
 
-    // --- PHƯƠNG THỨC MỚI ĐƯỢC THÊM VÀO ---
-    // Xử lý việc tạo lịch hẹn mới từ form (POST /api/appointments)
+    // [MỚI] API Tạo lịch hẹn mới (cho form Lễ tân)
     @PostMapping
     public ResponseEntity<AppointmentResponse> create(@RequestBody AppointmentRequest request) {
-        // Gọi service.create() mà chúng ta đã thêm vào
+        // Gọi service.create() để tạo lịch hẹn với quickBook = false
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
-    // --- HẾT PHẦN THÊM MỚI ---
 
-
-    // --- PHƯƠNG THỨC NÀY ĐƯỢC CẬP NHẬT ---
+    // [CẬP NHẬT] API Lấy danh sách & Tìm kiếm
+    // Hỗ trợ lọc theo: Trạng thái, Số điện thoại, Tên bệnh nhân
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> list(
             @RequestParam(name = "status", required = false) Status status,
-            @RequestParam(name = "phone", required = false) String phone // Thêm tham số phone
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "patientName", required = false) String patientName // Thêm tham số này
     ) {
         Status s = status != null ? status : Status.Pending;
-        // Thay đổi lời gọi từ listByStatus sang listBy
-        return ResponseEntity.ok(service.listBy(s, phone));
+        // Gọi phương thức listBy mới trong Service
+        return ResponseEntity.ok(service.listBy(s, phone, patientName));
     }
-    // --- HẾT PHẦN CẬP NHẬT ---
 
+    // API Cập nhật trạng thái (Xác nhận/Hủy)
     @PatchMapping("/{id}/status")
     public ResponseEntity<AppointmentResponse> updateStatus(@PathVariable UUID id, @RequestParam Status status) {
         return ResponseEntity.ok(service.updateStatus(id, status));
