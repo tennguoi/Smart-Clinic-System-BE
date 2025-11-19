@@ -33,7 +33,8 @@ public class Service {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
-
+    @Column(name = "photo_url")
+    private String photoUrl;
     public enum ServiceCategory {
         Consultation("Khám bệnh"),
         Test("Thăm dò"),

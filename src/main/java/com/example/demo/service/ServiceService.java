@@ -27,7 +27,7 @@ public class ServiceService {
 
     public Page<ServiceResponse> getActiveServicesByCategory(String category, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        com.example.demo.entity.Service.ServiceCategory serviceCategory = 
+        com.example.demo.entity.Service.ServiceCategory serviceCategory =
                 com.example.demo.entity.Service.ServiceCategory.valueOf(category);
         return serviceRepository.findByCategoryAndIsActiveTrue(serviceCategory, pageable)
                 .map(this::toResponse);
@@ -49,7 +49,8 @@ public class ServiceService {
         service.setCategory(com.example.demo.entity.Service.ServiceCategory.valueOf(request.category()));
         service.setPrice(request.price());
         service.setIsActive(request.isActive() != null ? request.isActive() : true);
-        
+        service.setPhotoUrl(request.photoUrl());  // ✅ THÊM DÒNG NÀY
+
         com.example.demo.entity.Service saved = serviceRepository.save(service);
         return toResponse(saved);
     }
@@ -58,7 +59,7 @@ public class ServiceService {
     public ServiceResponse updateService(String id, ServiceRequest request) {
         com.example.demo.entity.Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Service not found with id: " + id));
-        
+
         service.setName(request.name());
         service.setDescription(request.description());
         service.setCategory(com.example.demo.entity.Service.ServiceCategory.valueOf(request.category()));
@@ -66,7 +67,8 @@ public class ServiceService {
         if (request.isActive() != null) {
             service.setIsActive(request.isActive());
         }
-        
+        service.setPhotoUrl(request.photoUrl());  // ✅ THÊM DÒNG NÀY
+
         com.example.demo.entity.Service updated = serviceRepository.save(service);
         return toResponse(updated);
     }
@@ -92,7 +94,8 @@ public class ServiceService {
                 service.getDescription(),
                 service.getCategory().name(),
                 service.getPrice(),
-                service.getIsActive()
+                service.getIsActive(),
+                service.getPhotoUrl()  // ✅ THÊM FIELD NÀY
         );
     }
 }
