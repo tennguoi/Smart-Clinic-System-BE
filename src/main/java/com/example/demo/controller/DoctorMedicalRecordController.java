@@ -1,21 +1,30 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.AddPrescriptionRequest;
-import com.example.demo.dto.MedicalRecordRequest;
-import com.example.demo.dto.MedicalRecordResponse;
-import com.example.demo.dto.MedicalRecordDetailResponse;
-import com.example.demo.dto.UpdateMedicalRecordRequest;
-import com.example.demo.service.MedicalRecordService;
-import com.example.demo.service.PdfExportService;
-import com.example.demo.entity.MedicalRecord;
-import com.example.demo.repository.MedicalRecordRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.demo.dto.AddPrescriptionRequest;
+import com.example.demo.dto.MedicalRecordDetailResponse;
+import com.example.demo.dto.MedicalRecordRequest;
+import com.example.demo.dto.MedicalRecordResponse;
+import com.example.demo.dto.UpdateMedicalRecordRequest;
+import com.example.demo.entity.MedicalRecord;
+import com.example.demo.repository.MedicalRecordRepository;
+import com.example.demo.service.MedicalRecordService;
+import com.example.demo.service.PdfExportService;
 
 @RestController
 @RequestMapping("/api/doctor/medical-records")

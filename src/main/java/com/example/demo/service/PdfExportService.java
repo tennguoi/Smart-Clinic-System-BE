@@ -1,21 +1,26 @@
 package com.example.demo.service;
 
-import com.example.demo.entity.MedicalRecord;
-import com.example.demo.entity.Prescription;
-import com.example.demo.repository.PrescriptionRepository;
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.element.Cell;
-import com.itextpdf.layout.properties.TextAlignment;
-import com.itextpdf.layout.properties.UnitValue;
-import org.springframework.stereotype.Service;
-
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.example.demo.entity.MedicalRecord;
+import com.example.demo.entity.Prescription;
+import com.example.demo.repository.PrescriptionRepository;
+import com.itextpdf.io.font.PdfEncodings;
+import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.UnitValue;
 
 @Service
 public class PdfExportService {
@@ -32,6 +37,33 @@ public class PdfExportService {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdfDoc = new PdfDocument(writer);
             Document document = new Document(pdfDoc);
+
+            // Try to load an embedded font that supports Vietnamese (UTF-8).
+            // Place a TTF file under `src/main/resources/fonts/` (e.g. NotoSans-Regular.ttf or DejaVuSans.ttf).
+            try {
+                PdfFont font = null;
+                try (java.io.InputStream is = getClass().getResourceAsStream("/static/NotoSans-Regular.ttf")) {
+                    if (is != null) {
+                        byte[] fontBytes = is.readAllBytes();
+                        font = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                    }
+                }
+                if (font == null) {
+                    // fallback: try DejaVuSans or system font, otherwise use Helvetica
+                    try (java.io.InputStream is2 = getClass().getResourceAsStream("/fonts/DejaVuSans.ttf")) {
+                        if (is2 != null) {
+                            byte[] fontBytes2 = is2.readAllBytes();
+                            font = PdfFontFactory.createFont(fontBytes2, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                        }
+                    }
+                }
+                if (font == null) {
+                    font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+                }
+                document.setFont(font);
+            } catch (Exception fe) {
+                // If font loading fails, continue with default font (may not render Vietnamese correctly).
+            }
             
             // Tiêu đề
             Paragraph title = new Paragraph("HỒ SƠ BỆNH ÁN")
