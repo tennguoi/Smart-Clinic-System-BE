@@ -98,6 +98,7 @@ public class CurrentPatientController {
 
         CurrentPatientDTO dto = CurrentPatientDTO.builder()
                 .queueId(queue.getQueueId())
+                .patientId(patient.getPatientId())
                 .queueNumber(queue.getQueueNumber())
                 .fullName(patient.getFullName())
                 .phone(patient.getPhone())

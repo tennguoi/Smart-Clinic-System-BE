@@ -170,10 +170,9 @@ public class QueueService {
         queue.setStatus(Queue.QueueStatus.valueOf(status));
         queueRepository.save(queue);
 
-        // Tự động tạo MedicalRecord khi hoàn thành khám
+        // Khi hoàn thành khám, chỉ clear currentQueueId từ ExaminationRoom
+        // MedicalRecord đã được lưu trước đó bởi frontend
         if ("Completed".equals(status)) {
-            createMedicalRecordFromQueue(queue);
-            // Clear currentQueueId từ ExaminationRoom để bác sĩ không còn bệnh nhân hiện tại
             clearCurrentQueueFromRoom(queue);
         }
 

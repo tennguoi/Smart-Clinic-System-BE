@@ -11,6 +11,7 @@ import java.util.UUID;
 @Builder
 public class CurrentPatientDTO {
     private UUID queueId;
+    private UUID patientId;
     private String queueNumber;
     private String fullName;
     private String phone;

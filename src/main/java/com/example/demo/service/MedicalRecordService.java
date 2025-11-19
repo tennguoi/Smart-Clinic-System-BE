@@ -47,17 +47,15 @@ public class MedicalRecordService {
         User patient = null;
         String patientName = null;
 
-        if (request.getPatientId() != null) {
-            patient = userRepository.findById(request.getPatientId())
-                    .orElseThrow(() -> new RuntimeException("Patient not found"));
-            patientName = patient.getFullName();
-        } else if (request.getPatientName() != null && !request.getPatientName().trim().isEmpty()) {
+        // Lưu ý: patientId từ frontend là Patient UUID (từ Patient entity), không phải User UUID
+        // Nên ta chỉ lưu patientName, không cần tìm trong User table
+        if (request.getPatientName() != null && !request.getPatientName().trim().isEmpty()) {
             patientName = request.getPatientName().trim();
         }
 
         MedicalRecord record = MedicalRecord.builder()
                 .doctor(doctor)
-                .patient(patient)
+                .patient(patient)  // Để null vì patientId từ frontend là Patient UUID, không phải User UUID
                 .patientName(patientName)
                 .diagnosis(request.getDiagnosis())
                 .treatmentNotes(request.getTreatmentNotes())
