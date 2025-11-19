@@ -49,15 +49,6 @@ public class PdfExportService {
                     }
                 }
                 if (font == null) {
-                    // fallback: try DejaVuSans or system font, otherwise use Helvetica
-                    try (java.io.InputStream is2 = getClass().getResourceAsStream("/fonts/DejaVuSans.ttf")) {
-                        if (is2 != null) {
-                            byte[] fontBytes2 = is2.readAllBytes();
-                            font = PdfFontFactory.createFont(fontBytes2, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-                        }
-                    }
-                }
-                if (font == null) {
                     font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
                 }
                 document.setFont(font);
@@ -161,8 +152,8 @@ public class PdfExportService {
                 
                 // Ngày kê đơn
                 Paragraph issuedDate = new Paragraph("Ngày kê đơn: " + 
-                        (rx.getIssuedAt() != null ? 
-                        rx.getIssuedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "N/A"))
+                    (rx.getIssuedAt() != null ? 
+                    rx.getIssuedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "N/A"))
                         .setFontSize(10);
                 document.add(issuedDate);
             }
@@ -182,6 +173,104 @@ public class PdfExportService {
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi tạo PDF: " + e.getMessage(), e);
         }
+    }
+
+    public byte[] generatePrescriptionPdf(Prescription rx) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+
+            // reuse the same font-loading logic
+            try {
+                PdfFont font = null;
+                try (java.io.InputStream is = getClass().getResourceAsStream("/fonts/NotoSans-Regular.ttf")) {
+                    if (is != null) {
+                        byte[] fontBytes = is.readAllBytes();
+                        font = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                    }
+                }
+                if (font == null) {
+                    try (java.io.InputStream is2 = getClass().getResourceAsStream("/fonts/DejaVuSans.ttf")) {
+                        if (is2 != null) {
+                            byte[] fontBytes2 = is2.readAllBytes();
+                            font = PdfFontFactory.createFont(fontBytes2, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                        }
+                    }
+                }
+                if (font == null) {
+                    font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+                }
+                document.setFont(font);
+            } catch (Exception fe) {
+                // ignore font failure
+            }
+
+            Paragraph title = new Paragraph("ĐƠN THUỐC CHỈ ĐỊNH")
+                    .setFontSize(16)
+                    .setBold()
+                    .setTextAlignment(TextAlignment.CENTER);
+            document.add(title);
+
+            document.add(new Paragraph("\n"));
+
+            Table info = new Table(UnitValue.createPercentArray(new float[]{1, 2}));
+            info.setWidth(UnitValue.createPercentValue(100));
+            Cell c1 = new Cell();
+            c1.add(new Paragraph("Bệnh nhân:").setBold());
+            info.addCell(c1);
+            Cell c2 = new Cell();
+            String patientName = rx.getMedicalRecord() != null && rx.getMedicalRecord().getPatient() != null
+                    ? rx.getMedicalRecord().getPatient().getFullName() : "N/A";
+            c2.add(new Paragraph(patientName));
+            info.addCell(c2);
+
+            Cell c3 = new Cell();
+            c3.add(new Paragraph("Bác sĩ:").setBold());
+            info.addCell(c3);
+            Cell c4 = new Cell();
+            String doctorName = rx.getMedicalRecord() != null && rx.getMedicalRecord().getDoctor() != null
+                    ? rx.getMedicalRecord().getDoctor().getFullName() : "N/A";
+            c4.add(new Paragraph(doctorName));
+            info.addCell(c4);
+
+            Cell c5 = new Cell();
+            c5.add(new Paragraph("Ngày kê đơn:").setBold());
+            info.addCell(c5);
+            Cell c6 = new Cell();
+            c6.add(new Paragraph(rx.getIssuedAt() != null ? rx.getIssuedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "N/A"));
+            info.addCell(c6);
+
+            document.add(info);
+            document.add(new Paragraph("\n"));
+
+            Paragraph drugsHeader = new Paragraph("Danh sách thuốc").setBold().setFontSize(12);
+            document.add(drugsHeader);
+            Table drugsTable = new Table(1);
+            drugsTable.setWidth(UnitValue.createPercentValue(100));
+            Cell drugsCell = new Cell();
+            drugsCell.add(new Paragraph(rx.getDrugs() != null ? rx.getDrugs() : "N/A"));
+            drugsTable.addCell(drugsCell);
+            document.add(drugsTable);
+
+            document.add(new Paragraph("\n"));
+            Paragraph instrHeader = new Paragraph("Hướng dẫn sử dụng").setBold().setFontSize(12);
+            document.add(instrHeader);
+            Paragraph instr = new Paragraph(rx.getInstructions() != null ? rx.getInstructions() : "N/A").setFontSize(11);
+            document.add(instr);
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi tạo PDF đơn thuốc: " + e.getMessage(), e);
+        }
+    }
+
+    public byte[] generatePrescriptionPdfForRecord(MedicalRecord record) {
+        Optional<Prescription> opt = prescriptionRepository.findByRecordId(record.getRecordId());
+        Prescription rx = opt.orElseThrow(() -> new RuntimeException("Không tìm thấy đơn thuốc cho hồ sơ."));
+        return generatePrescriptionPdf(rx);
     }
     
     private void addTableRow(Table table, String label, String value) {

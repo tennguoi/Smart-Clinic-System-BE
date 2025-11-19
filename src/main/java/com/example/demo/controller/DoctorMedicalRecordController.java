@@ -125,4 +125,24 @@ public class DoctorMedicalRecordController {
                     .body("Lỗi khi xuất PDF: " + e.getMessage());
         }
     }
+
+    @GetMapping("/{recordId}/export-prescription")
+    public ResponseEntity<?> exportPrescriptionAsPdf(@PathVariable UUID recordId) {
+        try {
+            MedicalRecord record = medicalRecordRepository.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Hồ sơ không tồn tại"));
+
+            byte[] pdfContent = pdfExportService.generatePrescriptionPdfForRecord(record);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header("Content-Disposition", "attachment; filename=\"DonThuoc_" + recordId + ".pdf\"")
+                    .body(pdfContent);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi xuất PDF: " + e.getMessage());
+        }
+    }
 }
