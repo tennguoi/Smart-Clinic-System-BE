@@ -1,18 +1,20 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.ChatRequest;
-import com.example.demo.dto.ChatResponse;
-import com.example.demo.entity.ChatbotConversation;
-import com.example.demo.service.ChatbotService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Map;
+import com.example.demo.dto.ChatRequest;
+import com.example.demo.dto.ChatResponse;
+import com.example.demo.entity.ChatbotConversation;
+import com.example.demo.service.ChatbotService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
@@ -47,7 +49,7 @@ public class ChatbotController {
             );
 
             ResponseEntity<Map> res = rest.postForEntity(
-                    "https://n8n.quanliduan-pms.site/webhook/chat",
+                    "https://n8n.quanliduan-pms.site/webhook-test/chat",
                     body,
                     Map.class
             );
