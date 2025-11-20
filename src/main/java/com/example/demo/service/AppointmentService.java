@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AppointmentService {
@@ -28,8 +29,15 @@ public class AppointmentService {
         this.userRepo = userRepo;
         this.emailService = emailService;
     }
+
+    // Phương thức đặt lịch nhanh (Khách đặt)
     @Transactional
     public AppointmentResponse quickBook(AppointmentRequest req) {
+        // Kiểm tra thời gian: Không được đặt quá khứ
+        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
+        }
+
         Appointment entity = Appointment.builder()
                 .patientName(req.patientName())
                 .phone(req.phone())
@@ -57,16 +65,67 @@ public class AppointmentService {
         return toResponse(entity);
     }
 
+    // Phương thức tạo lịch hẹn từ form quản lý (Lễ tân)
+    @Transactional
+    public AppointmentResponse create(AppointmentRequest req) {
+        // Kiểm tra thời gian: Không được đặt quá khứ
+        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
+        }
+
+        Appointment entity = Appointment.builder()
+                .patientName(req.patientName())
+                .phone(req.phone())
+                .email(req.email())
+                .appointmentTime(req.appointmentTime())
+                .notes(req.notes())
+                .quickBook(false)
+                .appointmentCode(generateUniqueCode())
+                .build();
+
+        entity = repo.save(entity);
+        return toResponse(entity);
+    }
+
+    // Phương thức cũ (giữ nguyên)
     public List<AppointmentResponse> listByStatus(Status status) {
         return repo.findByStatus(status).stream().map(this::toResponse).toList();
     }
 
+    // [CẬP NHẬT QUAN TRỌNG] Lọc danh sách & SẮP XẾP MỚI NHẤT LÊN ĐẦU
+    public List<AppointmentResponse> listBy(Status status, String phone, String patientName) {
+        List<Appointment> results = repo.findByStatus(status);
+
+        // 1. Lọc theo SĐT
+        if (phone != null && !phone.isBlank()) {
+            String searchPhone = phone.trim();
+            results = results.stream()
+                    .filter(a -> a.getPhone().contains(searchPhone))
+                    .collect(Collectors.toList());
+        }
+
+        // 2. Lọc theo Tên
+        if (patientName != null && !patientName.isBlank()) {
+            String searchName = patientName.trim().toLowerCase();
+            results = results.stream()
+                    .filter(a -> a.getPatientName().toLowerCase().contains(searchName))
+                    .collect(Collectors.toList());
+        }
+
+        // 3. [MỚI] Sắp xếp và trả về (Newest First)
+        return results.stream()
+                // Logic sắp xếp: So sánh ngày tạo, cái nào lớn hơn (mới hơn) thì đứng trước
+                .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // Phương thức cập nhật trạng thái
     @Transactional
     public AppointmentResponse updateStatus(UUID id, Status status) {
         Appointment appt = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
         appt.setStatus(status);
-        
-        // Nếu status là CONFIRMED, lưu thông tin người xác nhận và gửi email
+
         if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
             var authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || authentication.getName() == null) {
@@ -74,32 +133,52 @@ public class AppointmentService {
             }
             String username = authentication.getName();
             User confirmedBy = userRepo.findByEmail(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
             appt.setConfirmedBy(confirmedBy);
             appt.setConfirmedAt(LocalDateTime.now());
-            
-            // Gửi email xác nhận nếu có email
+
             if (appt.getEmail() != null && !appt.getEmail().isEmpty()) {
                 try {
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
                     String formattedTime = appt.getAppointmentTime().format(formatter);
-                    
+
                     emailService.sendAppointmentConfirmation(
-                        appt.getEmail(),
-                        appt.getPatientName(),
-                        appt.getAppointmentCode(),
-                        formattedTime,
-                        confirmedBy.getFullName()
+                            appt.getEmail(),
+                            appt.getPatientName(),
+                            appt.getAppointmentCode(),
+                            formattedTime,
+                            confirmedBy.getFullName()
                     );
                 } catch (Exception e) {
-                    // Log lỗi nhưng không throw để không ảnh hưởng đến việc xác nhận
                     System.err.println("Failed to send confirmation email: " + e.getMessage());
                 }
             }
         }
-        
+
         appt = repo.save(appt);
+        return toResponse(appt);
+    }
+
+    // Chức năng sửa thông tin lịch hẹn
+    @Transactional
+    public AppointmentResponse updateInfo(UUID id, AppointmentRequest req) {
+        // Kiểm tra thời gian: Không được dời lịch về quá khứ
+        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Thời gian hẹn mới không được ở quá khứ.");
+        }
+
+        Appointment appt = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found with id: " + id));
+
+        appt.setPatientName(req.patientName());
+        appt.setPhone(req.phone());
+        appt.setEmail(req.email());
+        appt.setAppointmentTime(req.appointmentTime());
+        appt.setNotes(req.notes());
+
+        appt = repo.save(appt);
+
         return toResponse(appt);
     }
 
@@ -108,7 +187,7 @@ public class AppointmentService {
         if (a.getConfirmedBy() != null) {
             confirmedByName = a.getConfirmedBy().getFullName();
         }
-        
+
         return new AppointmentResponse(
                 a.getAppointmentId(),
                 a.getPatientName(),
