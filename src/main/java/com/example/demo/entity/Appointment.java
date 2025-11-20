@@ -65,6 +65,9 @@ public class Appointment {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "service_ids", columnDefinition = "TEXT")
+    private String serviceIds; // comma-separated service IDs selected by patient
+
     @Column(name = "quick_book")
     private Boolean quickBook;
 

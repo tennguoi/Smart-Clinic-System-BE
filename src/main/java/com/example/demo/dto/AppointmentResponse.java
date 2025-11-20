@@ -2,9 +2,10 @@ package com.example.demo.dto;
 
 
 
-import com.example.demo.entity.Appointment.Status;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.example.demo.entity.Appointment.Status;
 
 public record AppointmentResponse(
         UUID appointmentId,
@@ -16,6 +17,7 @@ public record AppointmentResponse(
         String appointmentCode,
         String notes,
         Boolean quickBook,
+        java.util.List<String> serviceIds,
         LocalDateTime createdAt,
         LocalDateTime confirmedAt,
         String confirmedByName

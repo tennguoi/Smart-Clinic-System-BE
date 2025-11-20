@@ -1,5 +1,5 @@
 package com.example.demo.dto;
-import java.time.*;
+import java.time.LocalDateTime;
 
 
 
@@ -8,5 +8,6 @@ public record AppointmentRequest(
         String phone,
         String email,
         LocalDateTime appointmentTime,
-        String notes
+        String notes,
+        java.util.List<String> serviceIds
 ) {}

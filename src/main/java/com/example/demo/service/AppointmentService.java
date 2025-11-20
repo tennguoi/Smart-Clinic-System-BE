@@ -44,7 +44,8 @@ public class AppointmentService {
                 .email(req.email())
                 .appointmentTime(req.appointmentTime())
                 .notes(req.notes())
-                .quickBook(true)
+            .quickBook(true)
+            .serviceIds(req.serviceIds() != null ? String.join(",", req.serviceIds()) : null)
                 .appointmentCode(generateUniqueCode())
                 .build();
         entity = repo.save(entity);
@@ -79,7 +80,8 @@ public class AppointmentService {
                 .email(req.email())
                 .appointmentTime(req.appointmentTime())
                 .notes(req.notes())
-                .quickBook(false)
+            .quickBook(false)
+            .serviceIds(req.serviceIds() != null ? String.join(",", req.serviceIds()) : null)
                 .appointmentCode(generateUniqueCode())
                 .build();
 
@@ -188,6 +190,14 @@ public class AppointmentService {
             confirmedByName = a.getConfirmedBy().getFullName();
         }
 
+        java.util.List<String> serviceIdsList = null;
+        if (a.getServiceIds() != null && !a.getServiceIds().isBlank()) {
+            serviceIdsList = java.util.Arrays.stream(a.getServiceIds().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+        }
+
         return new AppointmentResponse(
                 a.getAppointmentId(),
                 a.getPatientName(),
@@ -198,6 +208,7 @@ public class AppointmentService {
                 a.getAppointmentCode(),
                 a.getNotes(),
                 a.getQuickBook(),
+                serviceIdsList,
                 a.getCreatedAt(),
                 a.getConfirmedAt(),
                 confirmedByName
