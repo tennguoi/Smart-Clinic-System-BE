@@ -25,4 +25,7 @@ public class QueuePatientResponse {
     private LocalDate dob;
     private String gender;
     private String address;
+    private String idNumber;           // Số căn cước
+    private String insuranceNumber;    // Số thẻ bảo hiểm y tế
+    private String notes;              // Triệu chứng
 }

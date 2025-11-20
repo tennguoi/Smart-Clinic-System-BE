@@ -39,6 +39,7 @@ public class QueueService {
         this.userRepository = userRepository;
         this.examinationRoomRepository = examinationRoomRepository;
     }
+
     // --- Lấy chi tiết một hàng đợi theo ID ---
     public Optional<QueuePatientResponse> getQueueById(UUID queueId) {
         return queueRepository.findById(queueId)
@@ -46,8 +47,6 @@ public class QueueService {
     }
 
     // --- Lấy danh sách đang chờ ---
-    // Trả về tất cả bệnh nhân đang chờ (bao gồm cả đã phân phòng và chưa phân phòng)
-    // Sắp xếp theo priority (Emergency → Urgent → Normal) và checkInTime
     public List<QueuePatientResponse> getWaitingPatients() {
         List<Queue> queueList = queueRepository.findWaitingQueuesOrderedByPriority();
 
@@ -55,9 +54,8 @@ public class QueueService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
-    
+
     // --- Lấy danh sách đang chờ và chưa được phân phòng ---
-    // Dùng cho lễ tân khi cần phân phòng
     public List<QueuePatientResponse> getUnassignedWaitingPatients() {
         List<Queue> queueList = queueRepository.findUnassignedWaitingQueuesOrderedByPriority();
 
@@ -67,8 +65,6 @@ public class QueueService {
     }
 
     // --- Thêm mới ---
-
-
     public String generateNextQueueNumber() {
         String prefix = "A";
 
@@ -103,6 +99,9 @@ public class QueueService {
                 .dob(dto.getDob())
                 .gender(mapGender(dto.getGender()))
                 .address(dto.getAddress() != null ? dto.getAddress().trim() : null)
+                .idNumber(dto.getIdNumber() != null ? dto.getIdNumber().trim() : null)
+                .insuranceNumber(dto.getInsuranceNumber() != null ? dto.getInsuranceNumber().trim() : null)
+                .notes(dto.getNotes() != null ? dto.getNotes().trim() : null)
                 .build();
 
         Patient savedPatient = patientRepository.save(newPatient);
@@ -113,7 +112,6 @@ public class QueueService {
             try {
                 priority = Queue.Priority.valueOf(dto.getPriority().trim());
             } catch (IllegalArgumentException e) {
-                // Nếu priority không hợp lệ, dùng mặc định
                 priority = Queue.Priority.Normal;
             }
         }
@@ -124,15 +122,14 @@ public class QueueService {
             try {
                 checkInTime = LocalDateTime.parse(dto.getCheckInTime());
             } catch (Exception e) {
-                // Nếu format không đúng, dùng thời gian hiện tại
                 checkInTime = LocalDateTime.now();
             }
         }
 
         Queue queue = Queue.builder()
-                .queueNumber(generateNextQueueNumber()) // ✔ auto generate
+                .queueNumber(generateNextQueueNumber())
                 .priority(priority)
-                .status(Queue.QueueStatus.Waiting) // ✔ FE chỉ cho chọn "Chờ khám"
+                .status(Queue.QueueStatus.Waiting)
                 .checkInTime(checkInTime)
                 .patient(savedPatient)
                 .build();
@@ -142,11 +139,10 @@ public class QueueService {
         return mapToDto(savedQueue);
     }
 
-    // helper: map gender string -> Patient.Gender an toàn (chấp nhận "Male", "male", "MALE" ...)
+    // helper: map gender string -> Patient.Gender an toàn
     private Patient.Gender mapGender(String genderStr) {
         if (genderStr == null) return Patient.Gender.other;
         try {
-            // enum values in Patient are: male, female, other (lowercase)
             return Patient.Gender.valueOf(genderStr.trim().toLowerCase());
         } catch (IllegalArgumentException ex) {
             return Patient.Gender.other;
@@ -170,8 +166,6 @@ public class QueueService {
         queue.setStatus(Queue.QueueStatus.valueOf(status));
         queueRepository.save(queue);
 
-        // Khi hoàn thành khám, chỉ clear currentQueueId từ ExaminationRoom
-        // MedicalRecord đã được lưu trước đó bởi frontend
         if ("Completed".equals(status)) {
             clearCurrentQueueFromRoom(queue);
         }
@@ -198,30 +192,27 @@ public class QueueService {
     // Helper: Tạo MedicalRecord từ Queue khi hoàn thành
     private void createMedicalRecordFromQueue(Queue queue) {
         try {
-            // Lấy doctor hiện tại từ SecurityContext
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || authentication.getName() == null) {
                 return;
             }
             String email = authentication.getName();
             User doctor = userRepository.findByEmail(email).orElse(null);
-            
+
             if (doctor == null) {
                 return;
             }
 
-            // Tạo MedicalRecord mới
             MedicalRecord record = MedicalRecord.builder()
                     .doctor(doctor)
-                    .patient(null) // Patient là User entity, Queue.patient là Patient entity
+                    .patient(null)
                     .patientName(queue.getPatient() != null ? queue.getPatient().getFullName() : null)
-                    .diagnosis(null) // Sẽ được điền sau bởi bác sĩ
-                    .treatmentNotes(null) // Sẽ được điền sau bởi bác sĩ
+                    .diagnosis(null)
+                    .treatmentNotes(null)
                     .build();
-            
+
             medicalRecordRepository.save(record);
         } catch (Exception e) {
-            // Log lỗi nhưng không throw exception để không làm fail việc hoàn thành khám
             System.err.println("Error creating medical record: " + e.getMessage());
         }
     }
@@ -233,10 +224,6 @@ public class QueueService {
                 .orElseThrow(() -> new RuntimeException("Hàng đợi không tồn tại"));
 
         // --- Update queue info ---
-        // ❌ KHÔNG SET queueNumber - giữ nguyên giá trị cũ
-        // queue.setQueueNumber(dto.getQueueNumber()); // XÓA DÒNG NÀY!
-
-        // ✅ Chỉ update các field cần thiết
         if (dto.getPriority() != null) {
             queue.setPriority(Queue.Priority.valueOf(dto.getPriority()));
         }
@@ -258,6 +245,11 @@ public class QueueService {
             if (dto.getAddress() != null) patient.setAddress(dto.getAddress());
             if (dto.getDob() != null) patient.setDob(dto.getDob());
 
+            // Cập nhật các trường mới
+            if (dto.getIdNumber() != null) patient.setIdNumber(dto.getIdNumber());
+            if (dto.getInsuranceNumber() != null) patient.setInsuranceNumber(dto.getInsuranceNumber());
+            if (dto.getNotes() != null) patient.setNotes(dto.getNotes());
+
             // Gender phải convert String -> Enum
             if (dto.getGender() != null) {
                 try {
@@ -273,7 +265,6 @@ public class QueueService {
         return mapToDto(queue);
     }
 
-
     // --- Tìm kiếm ---
     public List<QueuePatientResponse> searchQueue(String phone, String status) {
         List<Queue> list = queueRepository.findAll();
@@ -286,10 +277,8 @@ public class QueueService {
     }
 
     public List<Queue> getCompletedQueues() {
-        return queueRepository.findByStatus(Queue.QueueStatus.Completed); // hoặc QueueStatus.Completed
+        return queueRepository.findByStatus(Queue.QueueStatus.Completed);
     }
-
-
 
     // --- Helper map entity -> DTO ---
     public QueuePatientResponse mapToDto(Queue queue) {
@@ -313,8 +302,11 @@ public class QueueService {
                 .gender(p != null && p.getGender() != null ? p.getGender().getLabel() : null)
                 .address(p != null ? p.getAddress() : null)
 
+                // Thông tin bổ sung
+                .idNumber(p != null ? p.getIdNumber() : null)
+                .insuranceNumber(p != null ? p.getInsuranceNumber() : null)
+                .notes(p != null ? p.getNotes() : null)
+
                 .build();
     }
-
 }
-//.
