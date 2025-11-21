@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "examination_rooms")
+@Table(name = "examination_rooms", indexes = {
+        @Index(name = "idx_exam_room_doctor", columnList = "doctor_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
