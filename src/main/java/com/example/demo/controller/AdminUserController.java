@@ -5,66 +5,85 @@ import com.example.demo.dto.UpdateUserRequest;
 import com.example.demo.dto.UpdateUserRolesRequest;
 import com.example.demo.dto.UserAdminResponse;
 import com.example.demo.service.AdminUserService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/users")
+
 public class AdminUserController {
 
     @Autowired
     private AdminUserService adminUserService;
 
-    // Tạo người dùng mới
-    @PostMapping("/create")
-    public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
-        try {
-            UserAdminResponse response = adminUserService.createUser(request);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest()
-                    .body(new com.example.demo.dto.GenericResponse(false, e.getMessage()));
-        }
+    /**
+     * Tạo user mới
+     * @param req - Thông tin user (JSON)
+     * @param photo - File ảnh (optional)
+     */
+    @PostMapping
+    public ResponseEntity<UserAdminResponse> createUser(
+            @RequestPart("data") CreateUserRequest req,
+            @RequestPart(value = "photo", required = false) MultipartFile photo) {
+        UserAdminResponse response = adminUserService.createUser(req, photo);
+        return ResponseEntity.ok(response);
     }
 
-    // Cập nhật vai trò người dùng
-    @PutMapping("/{userId}/roles")
-    public ResponseEntity<UserAdminResponse> updateRoles(
-            @PathVariable("userId") UUID userId,
-            @Valid @RequestBody UpdateUserRolesRequest request) {
-        return ResponseEntity.ok(adminUserService.updateUserRoles(userId, request));
-    }
-
-    // Lấy danh sách tất cả người dùng
+    /**
+     * Lấy danh sách tất cả users
+     */
     @GetMapping
     public ResponseEntity<List<UserAdminResponse>> getAllUsers() {
-        return ResponseEntity.ok(adminUserService.getAllUsers());
+        List<UserAdminResponse> users = adminUserService.getAllUsers();
+        return ResponseEntity.ok(users);
     }
 
-    // Lấy thông tin chi tiết của một người dùng
+    /**
+     * Lấy thông tin user theo ID
+     */
     @GetMapping("/{userId}")
-    public ResponseEntity<UserAdminResponse> getUserById(@PathVariable("userId") UUID userId) {
-        return ResponseEntity.ok(adminUserService.getUserById(userId));
+    public ResponseEntity<UserAdminResponse> getUserById(@PathVariable UUID userId) {
+        UserAdminResponse user = adminUserService.getUserById(userId);
+        return ResponseEntity.ok(user);
     }
 
-    // Cập nhật thông tin cá nhân của người dùng
+    /**
+     * Cập nhật thông tin user
+     * @param userId - ID của user
+     * @param req - Thông tin cập nhật (JSON)
+     * @param photo - File ảnh mới (optional)
+     */
     @PutMapping("/{userId}")
     public ResponseEntity<UserAdminResponse> updateUser(
-            @PathVariable("userId") UUID userId,
-            @Valid @RequestBody UpdateUserRequest request) {
-        return ResponseEntity.ok(adminUserService.updateUser(userId, request));
+            @PathVariable UUID userId,
+            @RequestPart("data") UpdateUserRequest req,
+            @RequestPart(value = "photo", required = false) MultipartFile photo) {
+        UserAdminResponse response = adminUserService.updateUser(userId, req, photo);
+        return ResponseEntity.ok(response);
     }
 
-    // Xóa người dùng
+    /**
+     * Cập nhật roles của user
+     */
+    @PutMapping("/{userId}/roles")
+    public ResponseEntity<UserAdminResponse> updateUserRoles(
+            @PathVariable UUID userId,
+            @RequestBody UpdateUserRolesRequest req) {
+        UserAdminResponse response = adminUserService.updateUserRoles(userId, req);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Xóa user
+     */
     @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> deleteUser(@PathVariable("userId") UUID userId) {
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID userId) {
         adminUserService.deleteUser(userId);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        return ResponseEntity.noContent().build();
     }
 }
