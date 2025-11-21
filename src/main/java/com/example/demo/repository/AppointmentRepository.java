@@ -12,4 +12,5 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     List<Appointment> findByPhone(String phone);
     List<Appointment> findByPhoneAndStatus(String phone, Appointment.Status status);
     List<Appointment> findByStatus(Appointment.Status status);
+    List<Appointment> findByAppointmentTimeBetweenAndReminderSentFalse(java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

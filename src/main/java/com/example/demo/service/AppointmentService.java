@@ -250,4 +250,32 @@ public class AppointmentService {
         } while (repo.findByAppointmentCode(code).isPresent());
         return code;
     }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 900000) // Run every 15 minutes
+    @Transactional
+    public void sendAppointmentReminders() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startWindow = now.plusHours(24);
+        LocalDateTime endWindow = startWindow.plusMinutes(30); // Check for appointments in the next 24h to 24h30m window
+
+        List<Appointment> appointments = repo.findByAppointmentTimeBetweenAndReminderSentFalse(startWindow, endWindow);
+
+        for (Appointment appt : appointments) {
+            if (appt.getEmail() != null && !appt.getEmail().isBlank()) {
+                try {
+                    emailService.sendAppointmentReminder(
+                            appt.getEmail(),
+                            appt.getPatientName(),
+                            appt.getAppointmentCode(),
+                            appt.getAppointmentTime()
+                    );
+                    appt.setReminderSent(true);
+                    repo.save(appt);
+                    System.out.println("Sent reminder email to: " + appt.getEmail());
+                } catch (Exception e) {
+                    System.err.println("Failed to send reminder email to " + appt.getEmail() + ": " + e.getMessage());
+                }
+            }
+        }
+    }
 }
