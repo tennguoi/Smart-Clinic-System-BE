@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/chatbot/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/invoices/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_TIEP_TAN")
                         .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
                         .requestMatchers("/api/doctors/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
                         .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
