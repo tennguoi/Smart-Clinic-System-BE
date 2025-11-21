@@ -2,14 +2,18 @@ package com.example.demo.service;
 
 import com.example.demo.dto.AppointmentRequest;
 import com.example.demo.dto.AppointmentResponse;
+import com.example.demo.dto.ServiceResponse;
 import com.example.demo.entity.Appointment;
 import com.example.demo.entity.Appointment.Status;
+import com.example.demo.entity.Service;
 import com.example.demo.entity.User;
 import com.example.demo.repository.AppointmentRepository;
+import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.CodeGenerator;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -18,15 +22,17 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Service
+@org.springframework.stereotype.Service
 public class AppointmentService {
     private final AppointmentRepository repo;
     private final UserRepository userRepo;
+    private final ServiceRepository serviceRepo;
     private final EmailService emailService;
 
-    public AppointmentService(AppointmentRepository repo, UserRepository userRepo, EmailService emailService) {
+    public AppointmentService(AppointmentRepository repo, UserRepository userRepo, ServiceRepository serviceRepo, EmailService emailService) {
         this.repo = repo;
         this.userRepo = userRepo;
+        this.serviceRepo = serviceRepo;
         this.emailService = emailService;
     }
 
@@ -191,11 +197,29 @@ public class AppointmentService {
         }
 
         java.util.List<String> serviceIdsList = null;
+        java.util.List<ServiceResponse> serviceResponses = new java.util.ArrayList<>();
+
         if (a.getServiceIds() != null && !a.getServiceIds().isBlank()) {
             serviceIdsList = java.util.Arrays.stream(a.getServiceIds().split(","))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .toList();
+
+            // Fetch services details
+            if (serviceIdsList != null && !serviceIdsList.isEmpty()) {
+                List<Service> services = serviceRepo.findAllById(serviceIdsList);
+                serviceResponses = services.stream()
+                        .map(s -> new ServiceResponse(
+                                s.getServiceId(),
+                                s.getName(),
+                                s.getDescription(),
+                                s.getCategory().name(),
+                                s.getPrice(),
+                                s.getIsActive(),
+                                s.getPhotoUrl()
+                        ))
+                        .toList();
+            }
         }
 
         return new AppointmentResponse(
@@ -209,6 +233,7 @@ public class AppointmentService {
                 a.getNotes(),
                 a.getQuickBook(),
                 serviceIdsList,
+                serviceResponses,
                 a.getCreatedAt(),
                 a.getConfirmedAt(),
                 confirmedByName

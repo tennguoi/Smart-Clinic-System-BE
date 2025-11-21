@@ -18,6 +18,7 @@ public record AppointmentResponse(
         String notes,
         Boolean quickBook,
         java.util.List<String> serviceIds,
+        java.util.List<ServiceResponse> services,
         LocalDateTime createdAt,
         LocalDateTime confirmedAt,
         String confirmedByName
