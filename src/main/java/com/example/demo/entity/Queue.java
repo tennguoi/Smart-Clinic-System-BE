@@ -6,7 +6,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "queues")
+@Table(name = "queues", indexes = {
+        @Index(name = "idx_queue_status", columnList = "status"),
+        @Index(name = "idx_queue_room", columnList = "assigned_room_id"),
+        @Index(name = "idx_queue_checkin", columnList = "check_in_time")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

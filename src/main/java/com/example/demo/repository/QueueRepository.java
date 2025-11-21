@@ -2,8 +2,13 @@ package com.example.demo.repository;
 
 import com.example.demo.entity.Queue;
 import com.example.demo.entity.Queue.QueueStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,5 +84,44 @@ public interface QueueRepository extends JpaRepository<Queue, UUID> {
             "WHERE q.queueId = :queueId")
     Optional<Queue> findByIdWithPatientAndRoom(UUID queueId);
     List<Queue> findByStatus(QueueStatus status);
+
+    @Query("""
+            SELECT q FROM Queue q
+            JOIN q.assignedRoom r
+            JOIN r.doctor d
+            LEFT JOIN FETCH q.patient
+            LEFT JOIN FETCH q.assignedRoom
+            WHERE d.userId = :doctorId
+            AND q.checkInTime >= :start AND q.checkInTime < :end
+            AND (q.status IS NULL OR q.status <> :excludedStatus)
+            """)
+    List<Queue> findDoctorQueuesWithinRange(@Param("doctorId") UUID doctorId,
+                                            @Param("start") LocalDateTime start,
+                                            @Param("end") LocalDateTime end,
+                                            @Param("excludedStatus") QueueStatus excludedStatus);
+
+    @Query(value = """
+            SELECT q FROM Queue q
+            JOIN q.assignedRoom r
+            JOIN r.doctor d
+            LEFT JOIN FETCH q.patient
+            LEFT JOIN FETCH q.assignedRoom
+            WHERE d.userId = :doctorId
+            AND q.checkInTime >= :start AND q.checkInTime < :end
+            AND (q.status IS NULL OR q.status <> :excludedStatus)
+            """,
+            countQuery = """
+            SELECT COUNT(q) FROM Queue q
+            JOIN q.assignedRoom r
+            JOIN r.doctor d
+            WHERE d.userId = :doctorId
+            AND q.checkInTime >= :start AND q.checkInTime < :end
+            AND (q.status IS NULL OR q.status <> :excludedStatus)
+            """)
+    Page<Queue> findDoctorQueuesWithinRange(@Param("doctorId") UUID doctorId,
+                                            @Param("start") LocalDateTime start,
+                                            @Param("end") LocalDateTime end,
+                                            @Param("excludedStatus") QueueStatus excludedStatus,
+                                            Pageable pageable);
 
 }
