@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -38,9 +39,18 @@ public class AdminUserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public UserAdminResponse createUser(CreateUserRequest req) {
+    @Autowired
+    private FileStorageService fileStorageService;
+
+    public UserAdminResponse createUser(CreateUserRequest req, MultipartFile photo) {
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new RuntimeException("Email đã tồn tại");
+        }
+
+        // Lưu ảnh nếu có
+        String photoUrl = null;
+        if (photo != null && !photo.isEmpty()) {
+            photoUrl = fileStorageService.savePhoto(photo);
         }
 
         User user = User.builder()
@@ -52,10 +62,10 @@ public class AdminUserService {
                 .gender(parseGender(req.getGender()))
                 .address(req.getAddress())
                 .experienceYears(req.getExperienceYears())
-                .photoUrl(req.getPhotoUrl())
+                .photoUrl(photoUrl)
                 .bio(req.getBio())
-                .isVerified(true)
-                .twoFactorEnabled(false)
+                .isVerified(req.getIsVerified() != null ? req.getIsVerified() : true) // Mặc định là chưa xác thực
+                .twoFactorEnabled(true)
                 .build();
         user = userRepository.save(user);
 
@@ -75,6 +85,7 @@ public class AdminUserService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roles(savedRoleNames)
+                .isVerified(user.getIsVerified())
                 .build();
     }
 
@@ -100,6 +111,7 @@ public class AdminUserService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roles(savedRoleNames)
+                .isVerified(user.getIsVerified())
                 .build();
     }
 
@@ -124,17 +136,29 @@ public class AdminUserService {
         return buildUserAdminResponse(user, roleNames);
     }
 
-    public UserAdminResponse updateUser(UUID userId, UpdateUserRequest req) {
+    public UserAdminResponse updateUser(UUID userId, UpdateUserRequest req, MultipartFile photo) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
         user.setFullName(req.getFullName());
         user.setPhone(req.getPhone());
         user.setDob(req.getDob() != null ? LocalDate.parse(req.getDob()) : null);
         user.setGender(parseGender(req.getGender()));
         user.setAddress(req.getAddress());
         user.setExperienceYears(req.getExperienceYears());
-        user.setPhotoUrl(req.getPhotoUrl());
         user.setBio(req.getBio());
+
+        // Xử lý ảnh
+        if (photo != null && !photo.isEmpty()) {
+            // Xóa ảnh cũ nếu có
+            if (user.getPhotoUrl() != null && !user.getPhotoUrl().isEmpty()) {
+                fileStorageService.deletePhoto(user.getPhotoUrl());
+            }
+            // Lưu ảnh mới
+            String photoUrl = fileStorageService.savePhoto(photo);
+            user.setPhotoUrl(photoUrl);
+        }
+
         user = userRepository.save(user);
 
         List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
@@ -144,9 +168,36 @@ public class AdminUserService {
         return buildUserAdminResponse(user, roleNames);
     }
 
+    /**
+     * Đổi trạng thái xác thực của user
+     * @param userId - ID của user
+     * @param isVerified - Trạng thái mới (true/false)
+     * @return UserAdminResponse
+     */
+    public UserAdminResponse toggleVerifyStatus(UUID userId, Boolean isVerified) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+        user.setIsVerified(isVerified);
+        user = userRepository.save(user);
+
+        List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
+                .stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toList());
+
+        return buildUserAdminResponse(user, roleNames);
+    }
+
     public void deleteUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+        // Xóa ảnh nếu có
+        if (user.getPhotoUrl() != null && !user.getPhotoUrl().isEmpty()) {
+            fileStorageService.deletePhoto(user.getPhotoUrl());
+        }
+
         userRoleRepository.deleteAll(userRoleRepository.findByUser_UserId(userId));
         userRepository.delete(user);
     }
@@ -164,6 +215,7 @@ public class AdminUserService {
                 .photoUrl(user.getPhotoUrl())
                 .bio(user.getBio())
                 .roles(roleNames)
+                .isVerified(user.getIsVerified())
                 .build();
     }
 
