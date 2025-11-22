@@ -1,7 +1,8 @@
+// src/main/java/com/example/demo/dto/AppointmentRequest.java
 package com.example.demo.dto;
+
 import java.time.LocalDateTime;
-
-
+import java.util.List;
 
 public record AppointmentRequest(
         String patientName,
@@ -9,5 +10,6 @@ public record AppointmentRequest(
         String email,
         LocalDateTime appointmentTime,
         String notes,
-        java.util.List<String> serviceIds
+        Boolean quickBook,                   // Thêm để tránh lỗi
+        List<String> serviceIds
 ) {}

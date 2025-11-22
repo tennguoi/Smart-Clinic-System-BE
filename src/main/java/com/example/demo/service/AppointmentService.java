@@ -12,24 +12,26 @@ import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.CodeGenerator;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @org.springframework.stereotype.Service
 public class AppointmentService {
+
     private final AppointmentRepository repo;
     private final UserRepository userRepo;
     private final ServiceRepository serviceRepo;
     private final EmailService emailService;
 
-    public AppointmentService(AppointmentRepository repo, UserRepository userRepo, ServiceRepository serviceRepo, EmailService emailService) {
+    public AppointmentService(AppointmentRepository repo,
+                              UserRepository userRepo,
+                              ServiceRepository serviceRepo,
+                              EmailService emailService) {
         this.repo = repo;
         this.userRepo = userRepo;
         this.serviceRepo = serviceRepo;
@@ -39,7 +41,6 @@ public class AppointmentService {
     // Phương thức đặt lịch nhanh (Khách đặt)
     @Transactional
     public AppointmentResponse quickBook(AppointmentRequest req) {
-        // Kiểm tra thời gian: Không được đặt quá khứ
         if (req.appointmentTime().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
         }
@@ -50,10 +51,11 @@ public class AppointmentService {
                 .email(req.email())
                 .appointmentTime(req.appointmentTime())
                 .notes(req.notes())
-            .quickBook(true)
-            .serviceIds(req.serviceIds() != null ? String.join(",", req.serviceIds()) : null)
+                .quickBook(true)
+                .serviceIds(joinServiceIds(req.serviceIds()))
                 .appointmentCode(generateUniqueCode())
                 .build();
+
         entity = repo.save(entity);
 
         if (entity.getEmail() != null && !entity.getEmail().isBlank()) {
@@ -68,14 +70,12 @@ public class AppointmentService {
                 System.err.println("Failed to send pending appointment email: " + e.getMessage());
             }
         }
-
         return toResponse(entity);
     }
 
     // Phương thức tạo lịch hẹn từ form quản lý (Lễ tân)
     @Transactional
     public AppointmentResponse create(AppointmentRequest req) {
-        // Kiểm tra thời gian: Không được đặt quá khứ
         if (req.appointmentTime().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
         }
@@ -86,8 +86,8 @@ public class AppointmentService {
                 .email(req.email())
                 .appointmentTime(req.appointmentTime())
                 .notes(req.notes())
-            .quickBook(false)
-            .serviceIds(req.serviceIds() != null ? String.join(",", req.serviceIds()) : null)
+                .quickBook(false)
+                .serviceIds(joinServiceIds(req.serviceIds()))
                 .appointmentCode(generateUniqueCode())
                 .build();
 
@@ -97,32 +97,30 @@ public class AppointmentService {
 
     // Phương thức cũ (giữ nguyên)
     public List<AppointmentResponse> listByStatus(Status status) {
-        return repo.findByStatus(status).stream().map(this::toResponse).toList();
+        return repo.findByStatus(status).stream()
+                .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
+                .map(this::toResponse)
+                .toList();
     }
 
-    // [CẬP NHẬT QUAN TRỌNG] Lọc danh sách & SẮP XẾP MỚI NHẤT LÊN ĐẦU
+    // Lọc danh sách & sắp xếp mới nhất lên đầu
     public List<AppointmentResponse> listBy(Status status, String phone, String patientName) {
-        List<Appointment> results = repo.findByStatus(status);
+        var results = repo.findByStatus(status);
 
-        // 1. Lọc theo SĐT
         if (phone != null && !phone.isBlank()) {
             String searchPhone = phone.trim();
             results = results.stream()
                     .filter(a -> a.getPhone().contains(searchPhone))
-                    .collect(Collectors.toList());
+                    .toList();
         }
-
-        // 2. Lọc theo Tên
         if (patientName != null && !patientName.isBlank()) {
             String searchName = patientName.trim().toLowerCase();
             results = results.stream()
                     .filter(a -> a.getPatientName().toLowerCase().contains(searchName))
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
-        // 3. [MỚI] Sắp xếp và trả về (Newest First)
         return results.stream()
-                // Logic sắp xếp: So sánh ngày tạo, cái nào lớn hơn (mới hơn) thì đứng trước
                 .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
                 .map(this::toResponse)
                 .toList();
@@ -131,7 +129,9 @@ public class AppointmentService {
     // Phương thức cập nhật trạng thái
     @Transactional
     public AppointmentResponse updateStatus(UUID id, Status status) {
-        Appointment appt = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+        Appointment appt = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+
         appt.setStatus(status);
 
         if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
@@ -148,9 +148,8 @@ public class AppointmentService {
 
             if (appt.getEmail() != null && !appt.getEmail().isEmpty()) {
                 try {
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-                    String formattedTime = appt.getAppointmentTime().format(formatter);
-
+                    String formattedTime = appt.getAppointmentTime()
+                            .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
                     emailService.sendAppointmentConfirmation(
                             appt.getEmail(),
                             appt.getPatientName(),
@@ -163,15 +162,13 @@ public class AppointmentService {
                 }
             }
         }
-
         appt = repo.save(appt);
         return toResponse(appt);
     }
 
-    // Chức năng sửa thông tin lịch hẹn
+    // Chức năng sửa thông tin lịch hẹn (bây giờ cho sửa luôn dịch vụ)
     @Transactional
     public AppointmentResponse updateInfo(UUID id, AppointmentRequest req) {
-        // Kiểm tra thời gian: Không được dời lịch về quá khứ
         if (req.appointmentTime().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Thời gian hẹn mới không được ở quá khứ.");
         }
@@ -184,36 +181,39 @@ public class AppointmentService {
         appt.setEmail(req.email());
         appt.setAppointmentTime(req.appointmentTime());
         appt.setNotes(req.notes());
+        appt.setServiceIds(joinServiceIds(req.serviceIds())); // ← ĐÃ THÊM DÒNG NÀY
 
         appt = repo.save(appt);
-
         return toResponse(appt);
     }
 
-    private AppointmentResponse toResponse(Appointment a) {
-        String confirmedByName = null;
-        if (a.getConfirmedBy() != null) {
-            confirmedByName = a.getConfirmedBy().getFullName();
-        }
+    // Helper: chuyển List<String> → "id1,id2,id3"
+    private String joinServiceIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return null;
+        return String.join(",", ids);
+    }
 
-        java.util.List<String> serviceIdsList = null;
-        java.util.List<ServiceResponse> serviceResponses = new java.util.ArrayList<>();
+    private AppointmentResponse toResponse(Appointment a) {
+        String confirmedByName = a.getConfirmedBy() != null ? a.getConfirmedBy().getFullName() : null;
+
+        List<String> serviceIdsList = null;
+        List<ServiceResponse> serviceResponses = new ArrayList<>();
 
         if (a.getServiceIds() != null && !a.getServiceIds().isBlank()) {
-            serviceIdsList = java.util.Arrays.stream(a.getServiceIds().split(","))
+            serviceIdsList = List.of(a.getServiceIds().split(","))
+                    .stream()
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .toList();
 
-            // Fetch services details
-            if (serviceIdsList != null && !serviceIdsList.isEmpty()) {
+            if (!serviceIdsList.isEmpty()) {
                 List<Service> services = serviceRepo.findAllById(serviceIdsList);
                 serviceResponses = services.stream()
                         .map(s -> new ServiceResponse(
                                 s.getServiceId(),
                                 s.getName(),
                                 s.getDescription(),
-                                s.getCategory().name(),
+                                s.getCategory().getDisplayName(), // ← tiếng Việt đẹp
                                 s.getPrice(),
                                 s.getIsActive(),
                                 s.getPhotoUrl()
