@@ -11,11 +11,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/users")
-
 public class AdminUserController {
 
     @Autowired
@@ -75,6 +75,24 @@ public class AdminUserController {
             @PathVariable UUID userId,
             @RequestBody UpdateUserRolesRequest req) {
         UserAdminResponse response = adminUserService.updateUserRoles(userId, req);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Đổi trạng thái xác thực của user (kích hoạt/vô hiệu hóa tài khoản)
+     * @param userId - ID của user
+     * @param request - Body chứa isVerified (true/false)
+     * @return UserAdminResponse
+     */
+    @PatchMapping("/{userId}/verify-status")
+    public ResponseEntity<UserAdminResponse> toggleVerifyStatus(
+            @PathVariable UUID userId,
+            @RequestBody Map<String, Boolean> request) {
+        Boolean isVerified = request.get("isVerified");
+        if (isVerified == null) {
+            throw new RuntimeException("isVerified không được để trống");
+        }
+        UserAdminResponse response = adminUserService.toggleVerifyStatus(userId, isVerified);
         return ResponseEntity.ok(response);
     }
 

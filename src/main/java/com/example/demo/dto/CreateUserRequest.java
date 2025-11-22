@@ -47,7 +47,7 @@ public class CreateUserRequest {
     @NotBlank(message = "Giới thiệu không được để trống")
     @Size(max = 1000, message = "Giới thiệu không được vượt quá 1000 ký tự")
     private String bio;
-
+    private Boolean isVerified;
     // role names, e.g. ["admin"], ["bac_si"], ["tiep_tan"]
     private List<String> roles;
 }

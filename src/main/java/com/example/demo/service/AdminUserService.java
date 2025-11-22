@@ -64,8 +64,8 @@ public class AdminUserService {
                 .experienceYears(req.getExperienceYears())
                 .photoUrl(photoUrl)
                 .bio(req.getBio())
-                .isVerified(true)
-                .twoFactorEnabled(false)
+                .isVerified(req.getIsVerified() != null ? req.getIsVerified() : true) // Mặc định là chưa xác thực
+                .twoFactorEnabled(true)
                 .build();
         user = userRepository.save(user);
 
@@ -85,6 +85,7 @@ public class AdminUserService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roles(savedRoleNames)
+                .isVerified(user.getIsVerified())
                 .build();
     }
 
@@ -110,6 +111,7 @@ public class AdminUserService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roles(savedRoleNames)
+                .isVerified(user.getIsVerified())
                 .build();
     }
 
@@ -166,6 +168,27 @@ public class AdminUserService {
         return buildUserAdminResponse(user, roleNames);
     }
 
+    /**
+     * Đổi trạng thái xác thực của user
+     * @param userId - ID của user
+     * @param isVerified - Trạng thái mới (true/false)
+     * @return UserAdminResponse
+     */
+    public UserAdminResponse toggleVerifyStatus(UUID userId, Boolean isVerified) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+        user.setIsVerified(isVerified);
+        user = userRepository.save(user);
+
+        List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
+                .stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toList());
+
+        return buildUserAdminResponse(user, roleNames);
+    }
+
     public void deleteUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
@@ -192,6 +215,7 @@ public class AdminUserService {
                 .photoUrl(user.getPhotoUrl())
                 .bio(user.getBio())
                 .roles(roleNames)
+                .isVerified(user.getIsVerified())
                 .build();
     }
 
