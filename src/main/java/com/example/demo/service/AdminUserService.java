@@ -15,7 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +65,7 @@ public class AdminUserService {
                 .photoUrl(photoUrl)
                 .bio(req.getBio())
                 .isVerified(req.getIsVerified() != null ? req.getIsVerified() : true) // Mặc định là chưa xác thực
-                .twoFactorEnabled(true)
+                .twoFactorEnabled(false)
                 .build();
         user = userRepository.save(user);
 
@@ -136,37 +136,86 @@ public class AdminUserService {
         return buildUserAdminResponse(user, roleNames);
     }
 
+
     public UserAdminResponse updateUser(UUID userId, UpdateUserRequest req, MultipartFile photo) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
-        user.setFullName(req.getFullName());
-        user.setPhone(req.getPhone());
-        user.setDob(req.getDob() != null ? LocalDate.parse(req.getDob()) : null);
-        user.setGender(parseGender(req.getGender()));
-        user.setAddress(req.getAddress());
-        user.setExperienceYears(req.getExperienceYears());
-        user.setBio(req.getBio());
+        // Cập nhật thông tin cơ bản
+        if (req.getFullName() != null) {
+            user.setFullName(req.getFullName());
+        }
 
-        // Xử lý ảnh
+        if (req.getPhone() != null) {
+            user.setPhone(req.getPhone());
+        }
+
+        if (req.getAddress() != null) {
+            user.setAddress(req.getAddress());
+        }
+
+        if (req.getExperienceYears() != null) {
+            user.setExperienceYears(req.getExperienceYears());
+        }
+
+        if (req.getBio() != null) {
+            user.setBio(req.getBio());
+        }
+
+        // Xử lý ngày sinh
+        if (req.getDob() != null && !req.getDob().trim().isEmpty()) {
+            try {
+                // Nếu format từ frontend là dd/MM/yyyy
+                if (req.getDob().contains("/")) {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                    user.setDob(LocalDate.parse(req.getDob(), formatter));
+                } else {
+                    // Nếu format là yyyy-MM-dd
+                    user.setDob(LocalDate.parse(req.getDob()));
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Định dạng ngày sinh không hợp lệ");
+            }
+        }
+
+        // Xử lý giới tính
+        if (req.getGender() != null) {
+            user.setGender(parseGender(req.getGender()));
+        }
+
+        // Cập nhật mật khẩu nếu có
+        if (req.getPassword() != null && !req.getPassword().trim().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(req.getPassword()));
+        }
+
+        // Xử lý ảnh đại diện
         if (photo != null && !photo.isEmpty()) {
             // Xóa ảnh cũ nếu có
             if (user.getPhotoUrl() != null && !user.getPhotoUrl().isEmpty()) {
-                fileStorageService.deletePhoto(user.getPhotoUrl());
+                try {
+                    fileStorageService.deletePhoto(user.getPhotoUrl());
+                } catch (Exception e) {
+                    // Log lỗi nhưng không throw exception
+                    System.err.println("Không thể xóa ảnh cũ: " + e.getMessage());
+                }
             }
             // Lưu ảnh mới
             String photoUrl = fileStorageService.savePhoto(photo);
             user.setPhotoUrl(photoUrl);
         }
 
+        // Lưu user
         user = userRepository.save(user);
 
+        // Lấy danh sách role để trả về
         List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
                 .stream()
                 .map(ur -> ur.getRole().getName())
                 .collect(Collectors.toList());
+
         return buildUserAdminResponse(user, roleNames);
     }
+
 
     /**
      * Đổi trạng thái xác thực của user
