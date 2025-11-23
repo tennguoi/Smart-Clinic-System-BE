@@ -12,6 +12,8 @@ import java.util.Set;
 
 @Repository
 public interface ServiceRepository extends JpaRepository<Service, String> {
+    List<Service> findAllByIsActiveTrue();
+    List<Service> findAllByServiceIdInAndIsActiveTrue(List<String> serviceIds);
     Set<Service> findAllByServiceIdIn(List<String> serviceIds);
     Page<Service> findByIsActiveTrue(Pageable pageable);
     Page<Service> findByCategoryAndIsActiveTrue(ServiceCategory category, Pageable pageable);

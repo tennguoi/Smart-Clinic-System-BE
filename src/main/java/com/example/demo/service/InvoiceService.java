@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -24,6 +25,9 @@ import java.util.UUID;
 @Transactional
 public class InvoiceService {
 
+    private final MedicalRecordRepository medicalRecordRepository;
+    private final MedicalRecordServiceRepository medicalRecordServiceRepository;
+    private final QueueRepository queueRepository;
     private final InvoiceRepository invoiceRepository;
     private final PatientRepository patientRepository;
     private final ServiceRepository serviceRepository;
@@ -175,5 +179,67 @@ public class InvoiceService {
                 i.getStatus().name(),
                 items
         );
+    }
+    public InvoiceResponseDTO createInvoiceFromExamination(UUID currentQueueId, User doctor) {
+        if (!hasRole("BAC_SI")) {
+            throw new AccessDeniedException("Chỉ bác sĩ mới được tạo hóa đơn từ buổi khám");
+        }
+
+        Queue queue = queueRepository.findById(currentQueueId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lượt khám"));
+
+        // Tìm hồ sơ bệnh án của buổi khám hôm nay
+        String patientName = queue.getPatient().getFullName();
+        LocalDateTime today = LocalDate.now().atStartOfDay();
+
+        MedicalRecord record = medicalRecordRepository
+                .findByDoctor_UserIdAndPatientNameAndCreatedAtAfter(doctor.getUserId(), patientName, today)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ bệnh án"));
+
+        List<MedicalRecordServiceEntity> services = medicalRecordServiceRepository
+                .findAllByMedicalRecord_RecordId(record.getRecordId());
+
+        if (services.isEmpty()) {
+            throw new RuntimeException("Chưa chỉ định dịch vụ nào để lập hóa đơn");
+        }
+
+        Patient patient = queue.getPatient();
+
+        Invoice invoice = Invoice.builder()
+                .invoiceCode(generateInvoiceCode())
+                .patient(patient)
+                .createdBy(doctor)
+                .status(InvoiceStatus.ISSUED)
+                .paidAmount(BigDecimal.ZERO)
+                .build();
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        for (MedicalRecordServiceEntity mrs : services) {
+            com.example.demo.entity.Service service = mrs.getService();
+            BigDecimal unitPrice = service.getPrice();
+            int quantity = mrs.getQuantity();
+            BigDecimal amount = unitPrice.multiply(BigDecimal.valueOf(quantity));
+
+            InvoiceDetail detail = InvoiceDetail.builder()
+                    .invoice(invoice)
+                    .service(service)
+                    .quantity(quantity)
+                    .unitPrice(unitPrice)
+                    .amount(amount)
+                    .build();
+
+            invoice.getDetails().add(detail);
+            totalAmount = totalAmount.add(amount);
+        }
+
+        invoice.setTotalAmount(totalAmount);
+        invoice.setRemainingAmount(totalAmount);
+
+        invoiceRepository.save(invoice);
+
+        return toResponseDTO(invoice);
     }
 }
