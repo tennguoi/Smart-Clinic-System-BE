@@ -2,13 +2,14 @@ package com.example.demo.repository;
 
 import com.example.demo.entity.MedicalRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID> {
+public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID>, JpaSpecificationExecutor<MedicalRecord> {
     // Thêm vào file MedicalRecordRepository.java
     List<MedicalRecord> findByDoctor_UserIdAndPatientNameAndCreatedAtAfter(
             UUID doctorId, String patientName, LocalDateTime createdAt);

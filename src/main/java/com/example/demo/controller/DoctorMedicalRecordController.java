@@ -1,15 +1,19 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.MedicalRecordSearchCriteria;
 import com.example.demo.dto.*;
 import com.example.demo.entity.MedicalRecord;
 import com.example.demo.repository.MedicalRecordRepository;
 import com.example.demo.service.MedicalRecordService;
 import com.example.demo.service.PdfExportService;
+import com.example.demo.util.JwtUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,15 +24,41 @@ public class DoctorMedicalRecordController {
     private final MedicalRecordService medicalRecordService;
     private final PdfExportService pdfExportService;
     private final MedicalRecordRepository medicalRecordRepository;
+    private final JwtUtil jwtUtil;;
 
     public DoctorMedicalRecordController(MedicalRecordService medicalRecordService,
                                          PdfExportService pdfExportService,
-                                         MedicalRecordRepository medicalRecordRepository) {
+                                         MedicalRecordRepository medicalRecordRepository,
+                                         JwtUtil jwtUtil) {
         this.medicalRecordService = medicalRecordService;
         this.pdfExportService = pdfExportService;
         this.medicalRecordRepository = medicalRecordRepository;
+        this.jwtUtil = jwtUtil;
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<MedicalRecordResponse>> searchMine(
+            @RequestHeader("Authorization") String authorization,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        // 1. Lấy token sạch (bỏ chữ Bearer)
+        String token = extractToken(authorization);
+
+        // 2. Lấy ID bác sĩ từ token
+        UUID doctorId = jwtUtil.getUserIdFromToken(token);
+
+        // 3. Đóng gói dữ liệu vào SearchCriteria
+        MedicalRecordSearchCriteria criteria = new MedicalRecordSearchCriteria();
+        criteria.setKeyword(keyword);
+        criteria.setStartDate(startDate);
+        criteria.setEndDate(endDate);
+        criteria.setDoctorId(doctorId); // Quan trọng: Gán ID bác sĩ để chỉ tìm hồ sơ của họ
+
+        // 4. Gọi Service
+        return ResponseEntity.ok(medicalRecordService.searchMyRecords(criteria));
+    }
     @PostMapping
     public ResponseEntity<MedicalRecordResponse> create(
             @RequestHeader("Authorization") String authorization,
@@ -117,5 +147,11 @@ public class DoctorMedicalRecordController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
+    }
+    private String extractToken(String bearerToken) {
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return bearerToken;
     }
 }
