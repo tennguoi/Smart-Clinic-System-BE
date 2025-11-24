@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.*;
-import com.example.demo.dto.invoice.InvoiceResponseDTO;
+import com.example.demo.dto.billing.BillingResponseDTO;
 import com.example.demo.entity.ExaminationRoom;
 import com.example.demo.entity.Patient;
 import com.example.demo.entity.Queue;
@@ -9,10 +9,10 @@ import com.example.demo.entity.User;
 import com.example.demo.repository.ExaminationRoomRepository;
 import com.example.demo.repository.QueueRepository;
 import com.example.demo.repository.UserRepository;
-import com.example.demo.service.InvoiceService;
 import com.example.demo.service.MedicalRecordService;
 import com.example.demo.service.QueueService;
 import com.example.demo.service.RoomService;
+import com.example.demo.service.BillingService;  // ✅ THÊM
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,13 +28,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CurrentPatientController {
 
-    private final InvoiceService invoiceService;
     private final ExaminationRoomRepository examinationRoomRepository;
     private final QueueRepository queueRepository;
     private final QueueService queueService;
     private final UserRepository userRepository;
     private final RoomService roomService;
     private final MedicalRecordService medicalRecordService;
+    private final BillingService billingService;  // ✅ THÊM
 
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -42,7 +42,8 @@ public class CurrentPatientController {
         return userRepository.findByEmail(auth.getName()).orElse(null);
     }
 
-    // ================== TẤT CẢ API CŨ – GIỮ NGUYÊN 100% ==================
+    // ================== API CŨ - GIỮ NGUYÊN ==================
+
     @PostMapping("/complete-examination")
     @Transactional
     public ResponseEntity<ApiResponse> completeCurrentExamination() {
@@ -124,7 +125,7 @@ public class CurrentPatientController {
         return ResponseEntity.ok(queues.stream().map(queueService::mapToDto).toList());
     }
 
-    // ================== 3 API MỚI – HOÀN HẢO, ĐÃ TEST OK ==================
+    // ================== API KHÁM BỆNH ==================
 
     @PostMapping("/services")
     public ResponseEntity<?> addService(@RequestBody AddServiceToExaminationRequest request) {
@@ -163,27 +164,6 @@ public class CurrentPatientController {
         }
     }
 
-    // TẠO HÓA ĐƠN TỪ BUỔI KHÁM HIỆN TẠI (chỉ bác sĩ gọi được)
-    @PostMapping("/create-invoice")
-    public ResponseEntity<?> createInvoiceFromCurrentExamination() {
-        User doctor = getCurrentUser();
-        if (doctor == null) return ResponseEntity.status(401).body("Unauthorized");
-
-        ExaminationRoom room = examinationRoomRepository
-                .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
-                .orElse(null);
-        if (room == null || room.getCurrentQueueId() == null) {
-            return ResponseEntity.badRequest().body("Không có bệnh nhân đang khám");
-        }
-
-        try {
-            InvoiceResponseDTO invoice = invoiceService.createInvoiceFromExamination(
-                    room.getCurrentQueueId(), doctor);
-            return ResponseEntity.ok(invoice);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
     @GetMapping("/examination-summary")
     public ResponseEntity<?> getExaminationSummary() {
         User doctor = getCurrentUser();
@@ -200,6 +180,37 @@ public class CurrentPatientController {
             return ResponseEntity.ok(summary);
         } catch (Exception e) {
             return ResponseEntity.ok(null);
+        }
+    }
+
+    @PostMapping("/create-invoice")
+    public ResponseEntity<?> createInvoiceFromCurrentExamination() {
+        User doctor = getCurrentUser();
+        if (doctor == null) return ResponseEntity.status(401).body("Unauthorized");
+
+        ExaminationRoom room = examinationRoomRepository
+                .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
+                .orElse(null);
+
+        if (room == null || room.getCurrentQueueId() == null) {
+            return ResponseEntity.badRequest().body("Không có bệnh nhân đang khám");
+        }
+
+        try {
+            // Lấy summary để tạo hóa đơn
+            ExaminationSummaryResponse summary = medicalRecordService
+                    .getCurrentExaminationSummary(room.getCurrentQueueId(), doctor);
+
+            if (summary.services() == null || summary.services().isEmpty()) {
+                return ResponseEntity.badRequest().body("Chưa chỉ định dịch vụ nào để tạo hóa đơn");
+            }
+
+            // Tạo hóa đơn từ summary
+            BillingResponseDTO invoice = billingService.createInvoiceFromExaminationSummary(summary, doctor);
+
+            return ResponseEntity.ok(invoice);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

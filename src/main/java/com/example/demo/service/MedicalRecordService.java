@@ -54,16 +54,26 @@ public class MedicalRecordService {
         User doctor = userRepository.findById(doctorId)
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
 
-        String patientName = request.getPatientName() != null && !request.getPatientName().trim().isEmpty()
-                ? request.getPatientName().trim() : null;
+        Patient patient = null;
+        String patientName = null;
+
+        // Ưu tiên lấy từ patientId nếu có
+        if (request.getPatientId() != null) {
+            patient = patientRepository.findById(request.getPatientId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân với ID: " + request.getPatientId()));
+            patientName = patient.getFullName();
+        } else if (request.getPatientName() != null && !request.getPatientName().trim().isEmpty()) {
+            patientName = request.getPatientName().trim();
+        }
 
         MedicalRecord record = MedicalRecord.builder()
                 .doctor(doctor)
-                .patient(null)
+                .patient(patient)                  // Gán patient nếu có
                 .patientName(patientName)
                 .diagnosis(request.getDiagnosis())
                 .treatmentNotes(request.getTreatmentNotes())
                 .build();
+
         record = medicalRecordRepository.save(record);
         return toResponse(record);
     }
@@ -256,17 +266,23 @@ public class MedicalRecordService {
     // ============================== CHỨC NĂNG CHO BỆNH NHÂN ĐANG KHÁM ==============================
 
     private MedicalRecord getOrCreateRecordForCurrentPatient(Queue queue, User doctor) {
-        String patientName = queue.getPatient().getFullName();
+        Patient patient = queue.getPatient(); // Đảm bảo queue có patient
+        String patientName = patient.getFullName();
         LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
 
-        return medicalRecordRepository.findByDoctor_UserIdAndPatientNameAndCreatedAtAfter(doctor.getUserId(), patientName, today)
+        return medicalRecordRepository
+                .findByDoctor_UserIdAndPatient_PatientIdAndCreatedAtAfter(
+                        doctor.getUserId(),
+                        patient.getPatientId(),
+                        today
+                )
                 .stream()
                 .findFirst()
                 .orElseGet(() -> {
                     MedicalRecord newRecord = MedicalRecord.builder()
                             .doctor(doctor)
-                            .patient(null)
-                            .patientName(patientName)
+                            .patient(patient)                    // Gán patient entity
+                            .patientName(patientName)             // Vẫn giữ tên để hiển thị nhanh
                             .diagnosis("")
                             .treatmentNotes("")
                             .createdAt(LocalDateTime.now())
