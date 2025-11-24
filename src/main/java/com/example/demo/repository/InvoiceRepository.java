@@ -14,6 +14,7 @@ import java.util.UUID;
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    boolean existsByInvoiceCode(String code);
 
     // Thêm method tìm theo tên bệnh nhân (dùng trong search)
     @Query("SELECT i FROM Invoice i WHERE LOWER(i.patient.fullName) LIKE LOWER(CONCAT('%', :name, '%'))")
