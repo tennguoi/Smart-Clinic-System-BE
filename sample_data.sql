@@ -1,20 +1,3 @@
--- ==========================================
--- SAMPLE DATA FOR ADMIN DASHBOARD STATISTICS
--- ==========================================
-
--- 1. CLEANUP (Optional - Be careful!)
--- DELETE FROM invoice_details;
--- DELETE FROM invoices;
--- DELETE FROM appointments;
--- DELETE FROM patients;
--- DELETE FROM services;
--- DELETE FROM users;
-
--- 2. USERS (Admin/Doctor)
--- ID: 11111111-1111-1111-1111-111111111111
-INSERT INTO users (user_id, email, password, full_name, is_verified, two_factor_enabled, created_at, role_name)
-VALUES 
-('11111111-1111-1111-1111-111111111111', 'admin@clinic.com', '$2a$10$YourHashedPasswordHere', 'Admin User', 1, 0, NOW(), 'ROLE_ADMIN');
 
 -- 3. SERVICES (Top Services Data)
 INSERT INTO SERVICES (service_id, name, category, price, is_active, photo_url) VALUES
