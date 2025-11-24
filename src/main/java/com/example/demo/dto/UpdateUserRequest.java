@@ -2,7 +2,7 @@ package com.example.demo.dto;
 
 import lombok.Data;
 import java.time.LocalDate;
-
+import java.util.List;
 @Data
 public class UpdateUserRequest {
     private String fullName;
@@ -13,5 +13,8 @@ public class UpdateUserRequest {
     private Integer experienceYears;
     private String photoUrl;
     private String bio;
-    private String password; // Thêm dòng này
+    private List<String> roles;
+    private String password;
+    private Boolean isVerified;// Thêm dòng này
+    private Boolean twoFactorEnabled;
 }

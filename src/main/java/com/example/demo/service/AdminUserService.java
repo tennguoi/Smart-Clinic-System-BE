@@ -137,85 +137,84 @@ public class AdminUserService {
     }
 
 
-    public UserAdminResponse updateUser(UUID userId, UpdateUserRequest req, MultipartFile photo) {
+    @Transactional
+    public UserAdminResponse updateUserFully(UUID userId, UpdateUserRequest req, MultipartFile photo) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
-        // Cập nhật thông tin cơ bản
-        if (req.getFullName() != null) {
-            user.setFullName(req.getFullName());
-        }
+        // === 1. Cập nhật các field thông tin cá nhân (giống như cũ) ===
+        if (req.getFullName() != null) user.setFullName(req.getFullName());
+        if (req.getPhone() != null) user.setPhone(req.getPhone());
+        if (req.getAddress() != null) user.setAddress(req.getAddress());
+        if (req.getExperienceYears() != null) user.setExperienceYears(req.getExperienceYears());
+        if (req.getBio() != null) user.setBio(req.getBio());
 
-        if (req.getPhone() != null) {
-            user.setPhone(req.getPhone());
-        }
-
-        if (req.getAddress() != null) {
-            user.setAddress(req.getAddress());
-        }
-
-        if (req.getExperienceYears() != null) {
-            user.setExperienceYears(req.getExperienceYears());
-        }
-
-        if (req.getBio() != null) {
-            user.setBio(req.getBio());
-        }
-
-        // Xử lý ngày sinh
+        // Ngày sinh
         if (req.getDob() != null && !req.getDob().trim().isEmpty()) {
             try {
-                // Nếu format từ frontend là dd/MM/yyyy
-                if (req.getDob().contains("/")) {
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                    user.setDob(LocalDate.parse(req.getDob(), formatter));
-                } else {
-                    // Nếu format là yyyy-MM-dd
-                    user.setDob(LocalDate.parse(req.getDob()));
-                }
+                LocalDate parsed = req.getDob().contains("/")
+                        ? LocalDate.parse(req.getDob(), DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        : LocalDate.parse(req.getDob());
+                user.setDob(parsed);
             } catch (Exception e) {
                 throw new RuntimeException("Định dạng ngày sinh không hợp lệ");
             }
         }
 
-        // Xử lý giới tính
+        // Giới tính
         if (req.getGender() != null) {
             user.setGender(parseGender(req.getGender()));
         }
-
-        // Cập nhật mật khẩu nếu có
+        if (req.getTwoFactorEnabled() != null) {
+            user.setTwoFactorEnabled(req.getTwoFactorEnabled());
+        }
+        // Mật khẩu (nếu có gửi lên)
         if (req.getPassword() != null && !req.getPassword().trim().isEmpty()) {
             user.setPassword(passwordEncoder.encode(req.getPassword()));
         }
 
-        // Xử lý ảnh đại diện
-        if (photo != null && !photo.isEmpty()) {
-            // Xóa ảnh cũ nếu có
-            if (user.getPhotoUrl() != null && !user.getPhotoUrl().isEmpty()) {
-                try {
-                    fileStorageService.deletePhoto(user.getPhotoUrl());
-                } catch (Exception e) {
-                    // Log lỗi nhưng không throw exception
-                    System.err.println("Không thể xóa ảnh cũ: " + e.getMessage());
-                }
-            }
-            // Lưu ảnh mới
-            String photoUrl = fileStorageService.savePhoto(photo);
-            user.setPhotoUrl(photoUrl);
+        // Trạng thái xác thực (admin bật/tắt tài khoản)
+        if (req.getIsVerified() != null) {
+            user.setIsVerified(req.getIsVerified());
         }
 
-        // Lưu user
+        // Ảnh đại diện
+        if (photo != null && !photo.isEmpty()) {
+            if (user.getPhotoUrl() != null) {
+                try { fileStorageService.deletePhoto(user.getPhotoUrl()); }
+                catch (Exception ignored) {}
+            }
+            user.setPhotoUrl(fileStorageService.savePhoto(photo));
+        }
+
+        // === 2. Cập nhật roles (nếu có gửi lên) ===
+        if (req.getRoles() != null && !req.getRoles().isEmpty()) {
+            // Xóa hết role cũ
+            List<UserRole> oldRoles = userRoleRepository.findByUser_UserId(userId);
+            if (!oldRoles.isEmpty()) {
+                userRoleRepository.deleteAll(oldRoles);
+            }
+
+            // Thêm role mới
+            for (String roleName : req.getRoles()) {
+                String normalized = normalizeRoleName(roleName);
+                Role role = roleRepository.findByName(normalized)
+                        .orElseThrow(() -> new RuntimeException("Role không tồn tại: " + roleName));
+                userRoleRepository.save(UserRole.builder().user(user).role(role).build());
+            }
+        }
+        // Nếu frontend không gửi roles → giữ nguyên roles cũ (hợp lý)
+
         user = userRepository.save(user);
 
-        // Lấy danh sách role để trả về
-        List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
+        // Lấy lại roles mới nhất để trả về
+        List<String> currentRoleNames = userRoleRepository.findByUser_UserId(userId)
                 .stream()
                 .map(ur -> ur.getRole().getName())
                 .collect(Collectors.toList());
 
-        return buildUserAdminResponse(user, roleNames);
+        return buildUserAdminResponse(user, currentRoleNames);
     }
-
 
     /**
      * Đổi trạng thái xác thực của user

@@ -63,7 +63,8 @@ public class AdminUserController {
             @PathVariable UUID userId,
             @RequestPart("data") UpdateUserRequest req,
             @RequestPart(value = "photo", required = false) MultipartFile photo) {
-        UserAdminResponse response = adminUserService.updateUser(userId, req, photo);
+
+        UserAdminResponse response = adminUserService.updateUserFully(userId, req, photo);
         return ResponseEntity.ok(response);
     }
 
