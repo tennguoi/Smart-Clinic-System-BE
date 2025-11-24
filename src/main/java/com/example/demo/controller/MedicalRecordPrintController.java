@@ -11,20 +11,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import com.example.demo.dto.MedicalRecordDetailResponse;
 import com.example.demo.dto.PrescriptionResponse;
 import com.example.demo.service.MedicalRecordService;
-import com.example.demo.service.ThymeleafPdfService;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 
 @Controller
 @RequestMapping("/api/doctor/medical-records")
 public class MedicalRecordPrintController {
     private final MedicalRecordService medicalRecordService;
-    private final ThymeleafPdfService thymeleafPdfService;
 
-    public MedicalRecordPrintController(MedicalRecordService medicalRecordService, ThymeleafPdfService thymeleafPdfService) {
+    public MedicalRecordPrintController(MedicalRecordService medicalRecordService) {
         this.medicalRecordService = medicalRecordService;
-        this.thymeleafPdfService = thymeleafPdfService;
     }
 
     @GetMapping("/{recordId}/print")
@@ -34,14 +28,5 @@ public class MedicalRecordPrintController {
         PrescriptionResponse pres = detail.getPrescription();
         model.addAttribute("prescription", pres);
         return "medical-record-print";
-    }
-
-    @GetMapping("/{recordId}/export-pdf-html")
-    public ResponseEntity<byte[]> exportPdfHtml(@PathVariable UUID recordId) {
-        byte[] pdfBytes = thymeleafPdfService.generatePdfForRecord(recordId);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=medical-record-" + recordId + ".pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdfBytes);
     }
 }

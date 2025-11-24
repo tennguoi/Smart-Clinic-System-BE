@@ -4,10 +4,14 @@ import com.example.demo.entity.MedicalRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID> {
+    // Thêm vào file MedicalRecordRepository.java
+    List<MedicalRecord> findByDoctor_UserIdAndPatientNameAndCreatedAtAfter(
+            UUID doctorId, String patientName, LocalDateTime createdAt);
     /**
      * Lấy danh sách hồ sơ bệnh án theo bác sĩ, sắp xếp theo thời gian tạo mới nhất trước
      * Sử dụng JOIN FETCH để tránh N+1 query problem

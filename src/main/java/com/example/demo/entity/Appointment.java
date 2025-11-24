@@ -33,15 +33,6 @@ public class Appointment {
     @Column(name = "appointment_id", nullable = false, updatable = false)
     private UUID appointmentId;
 
-    @PrePersist
-    public void prePersist() {
-        if (appointmentId == null) appointmentId = UUID.randomUUID();
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (status == null) status = Status.Pending;
-        if (quickBook == null) quickBook = true;
-    }
-
-    // NOT NULL
     @Column(name = "patient_name", nullable = false)
     private String patientName;
 
@@ -71,6 +62,9 @@ public class Appointment {
     @Column(name = "quick_book")
     private Boolean quickBook;
 
+    @Column(name = "reminder_sent")
+    private Boolean reminderSent;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -83,5 +77,14 @@ public class Appointment {
 
     public enum Status {
         Pending, Confirmed, Cancelled
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (appointmentId == null) appointmentId = UUID.randomUUID();
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (status == null) status = Status.Pending;
+        if (quickBook == null) quickBook = true;
+        if (reminderSent == null) reminderSent = false;
     }
 }
