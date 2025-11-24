@@ -11,6 +11,7 @@ import com.example.demo.repository.AppointmentRepository;
 import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.CodeGenerator;
+import com.example.demo.repository.PatientRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,15 +28,19 @@ public class AppointmentService {
     private final UserRepository userRepo;
     private final ServiceRepository serviceRepo;
     private final EmailService emailService;
+    private final PatientRepository patientRepo;
+    private final com.example.demo.repository.InvoiceRepository invoiceRepo;
+    private final com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo;
 
-    public AppointmentService(AppointmentRepository repo,
-                              UserRepository userRepo,
-                              ServiceRepository serviceRepo,
-                              EmailService emailService) {
+    public AppointmentService(AppointmentRepository repo, UserRepository userRepo, ServiceRepository serviceRepo, EmailService emailService,
+                              PatientRepository patientRepo, com.example.demo.repository.InvoiceRepository invoiceRepo, com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo) {
         this.repo = repo;
         this.userRepo = userRepo;
         this.serviceRepo = serviceRepo;
         this.emailService = emailService;
+        this.patientRepo = patientRepo;
+        this.invoiceRepo = invoiceRepo;
+        this.invoiceDetailRepo = invoiceDetailRepo;
     }
 
     // Phương thức đặt lịch nhanh (Khách đặt)
@@ -70,6 +75,18 @@ public class AppointmentService {
                 System.err.println("Failed to send pending appointment email: " + e.getMessage());
             }
         }
+
+        // [NEW] Create Draft Invoice for Stats
+        if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
+            try {
+                com.example.demo.entity.Patient patient = findOrCreatePatient(req);
+                createDraftInvoice(patient, req.serviceIds());
+            } catch (Exception e) {
+                System.err.println("Failed to create draft invoice: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
         return toResponse(entity);
     }
 
@@ -92,6 +109,18 @@ public class AppointmentService {
                 .build();
 
         entity = repo.save(entity);
+
+        // [NEW] Create Draft Invoice for Stats
+        if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
+            try {
+                com.example.demo.entity.Patient patient = findOrCreatePatient(req);
+                createDraftInvoice(patient, req.serviceIds());
+            } catch (Exception e) {
+                System.err.println("Failed to create draft invoice: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
         return toResponse(entity);
     }
 
@@ -251,31 +280,71 @@ public class AppointmentService {
         return code;
     }
 
-    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 900000) // Run every 15 minutes
-    @Transactional
-    public void sendAppointmentReminders() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startWindow = now.plusHours(24);
-        LocalDateTime endWindow = startWindow.plusMinutes(30); // Check for appointments in the next 24h to 24h30m window
+    private com.example.demo.entity.Patient findOrCreatePatient(AppointmentRequest req) {
+        return patientRepo.findByPhone(req.phone())
+                .orElseGet(() -> {
+                    com.example.demo.entity.Patient newPatient = com.example.demo.entity.Patient.builder()
+                            .fullName(req.patientName())
+                            .phone(req.phone())
+                            .email(req.email())
+                            .dob(java.time.LocalDate.of(2000, 1, 1)) // Default DOB
+                            .gender(com.example.demo.entity.Patient.Gender.other) // Default Gender
+                            .address("Unknown")
+                            .build();
+                    return patientRepo.save(newPatient);
+                });
+    }
 
-        List<Appointment> appointments = repo.findByAppointmentTimeBetweenAndReminderSentFalse(startWindow, endWindow);
+    private void createDraftInvoice(com.example.demo.entity.Patient patient, List<String> serviceIds) {
+        if (serviceIds == null || serviceIds.isEmpty()) return;
 
-        for (Appointment appt : appointments) {
-            if (appt.getEmail() != null && !appt.getEmail().isBlank()) {
-                try {
-                    emailService.sendAppointmentReminder(
-                            appt.getEmail(),
-                            appt.getPatientName(),
-                            appt.getAppointmentCode(),
-                            appt.getAppointmentTime()
-                    );
-                    appt.setReminderSent(true);
-                    repo.save(appt);
-                    System.out.println("Sent reminder email to: " + appt.getEmail());
-                } catch (Exception e) {
-                    System.err.println("Failed to send reminder email to " + appt.getEmail() + ": " + e.getMessage());
-                }
-            }
+        List<Service> services = serviceRepo.findAllById(serviceIds);
+        if (services.isEmpty()) return;
+
+        // Find a system user (Admin) to assign as creator
+        // In a real app, this should be the logged in user or a system bot
+        User systemUser = userRepo.findAll().stream().findFirst().orElseThrow(() -> new IllegalStateException("No users found"));
+
+        // Create Invoice
+        com.example.demo.entity.Invoice invoice = com.example.demo.entity.Invoice.builder()
+                .invoiceCode(generateUniqueInvoiceCode())
+                .patient(patient)
+                .createdBy(systemUser)
+                .status(com.example.demo.enums.InvoiceStatus.DRAFT)
+                .totalAmount(java.math.BigDecimal.ZERO)
+                .build();
+        
+        // Calculate total & details
+        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+        List<com.example.demo.entity.InvoiceDetail> details = new java.util.ArrayList<>();
+
+        for (Service s : services) {
+            com.example.demo.entity.InvoiceDetail detail = com.example.demo.entity.InvoiceDetail.builder()
+                    .invoice(invoice)
+                    .service(s)
+                    .quantity(1)
+                    .unitPrice(s.getPrice())
+                    .amount(s.getPrice())
+                    .build();
+            details.add(detail);
+            total = total.add(s.getPrice());
         }
+
+        invoice.setTotalAmount(total);
+        invoice.setRemainingAmount(total);
+        invoice.setDetails(details);
+
+        invoiceRepo.save(invoice);
+    }
+
+    private String generateUniqueInvoiceCode() {
+        String code;
+        int attempts = 0;
+        do {
+            code = "INV-" + CodeGenerator.generate(6);
+            attempts++;
+            if (attempts > 100) throw new IllegalStateException("Cannot generate unique invoice code");
+        } while (invoiceRepo.existsByInvoiceCode(code));
+        return code;
     }
 }

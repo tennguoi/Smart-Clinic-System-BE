@@ -17,4 +17,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Modifying
     @Query("UPDATE User u SET u.otpCode = :otpCode, u.isVerified = false, u.twoFactorEnabled = true WHERE u.email = :email")
     void updateOtpForEmail(@Param("email") String email, @Param("otpCode") String otpCode);
+
+    @Query("SELECT COUNT(u) FROM User u JOIN u.userRoles ur JOIN ur.role r WHERE r.name = :roleName")
+    long countByRoleName(@Param("roleName") String roleName);
 }
