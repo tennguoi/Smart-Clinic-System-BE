@@ -31,7 +31,7 @@ public class MedicalRecord {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id")
-    private User patient;
+    private Patient patient;
 
     @Column(name = "patient_name", length = 255)
     private String patientName;
