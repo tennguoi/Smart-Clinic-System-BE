@@ -5,52 +5,45 @@ import com.example.demo.dto.ArticleResponse;
 import com.example.demo.entity.Article;
 import com.example.demo.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor  // thay vì constructor thủ công
+@RequiredArgsConstructor
 public class ArticleService {
 
     private final ArticleRepository articleRepository;
 
-    /* ====================== PUBLIC METHODS (không cần auth) ====================== */
+    /* ================= PUBLIC APIs ================= */
 
-    // 1. Lấy tất cả bài viết + phân trang + sắp xếp mới nhất
     public Page<ArticleResponse> getAllArticles(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
+        Pageable pageable = PageRequest.of(page, size);
         return articleRepository.findAllByOrderByPublishedAtDesc(pageable)
                 .map(this::toResponse);
     }
 
-    // 2. Lấy theo danh mục + phân trang + sắp xếp mới nhất
     public Page<ArticleResponse> getArticlesByCategory(String category, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
+        Pageable pageable = PageRequest.of(page, size);
         return articleRepository.findByCategoryOrderByPublishedAtDesc(category, pageable)
                 .map(this::toResponse);
     }
 
-    // 3. Tìm kiếm theo tiêu đề + phân trang + sắp xếp mới nhất
     public Page<ArticleResponse> searchArticlesByTitle(String keyword, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
+        Pageable pageable = PageRequest.of(page, size);
         return articleRepository.searchByTitle(keyword, pageable)
                 .map(this::toResponse);
     }
 
-    // 4. Chi tiết bài viết (giữ nguyên)
     public ArticleResponse getArticleById(Long id) {
         Article article = articleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Article not found with id: " + id));
         return toResponse(article);
     }
 
-    /* ====================== ADMIN METHODS (cần auth) ====================== */
+    /* ================= ADMIN APIs ================= */
 
     @Transactional
     public ArticleResponse createArticle(ArticleRequest request) {
@@ -59,13 +52,12 @@ public class ArticleService {
                 .content(request.content())
                 .category(request.category())
                 .author(request.author())
-                .publishedAt(LocalDateTime.now())
                 .source(request.source())
                 .image(request.image())
+                .publishedAt(LocalDateTime.now())
                 .build();
 
-        Article saved = articleRepository.save(article);
-        return toResponse(saved);
+        return toResponse(articleRepository.save(article));
     }
 
     @Transactional
@@ -80,8 +72,7 @@ public class ArticleService {
         article.setSource(request.source());
         article.setImage(request.image());
 
-        Article updated = articleRepository.save(article);
-        return toResponse(updated);
+        return toResponse(articleRepository.save(article));
     }
 
     @Transactional
@@ -92,7 +83,7 @@ public class ArticleService {
         articleRepository.deleteById(id);
     }
 
-    /* ====================== PRIVATE HELPER ====================== */
+    /* ================= PRIVATE ================= */
 
     private ArticleResponse toResponse(Article article) {
         return new ArticleResponse(

@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/public/articles")
-@CrossOrigin(origins = {     // ← Đổi từ "*" thành danh sách cụ thể
+@CrossOrigin(origins = {
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:3000",
         "http://127.0.0.1:5173"
-}, allowCredentials = "true")  // ← Bắt buộc phải có khi dùng danh sách gốc
+}, allowCredentials = "true")
 @RequiredArgsConstructor
 public class PublicArticleController {
 
