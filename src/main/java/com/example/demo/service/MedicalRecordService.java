@@ -1,21 +1,15 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.AddPrescriptionRequest;
-import com.example.demo.dto.MedicalRecordRequest;
-import com.example.demo.dto.MedicalRecordResponse;
-import com.example.demo.dto.MedicalRecordDetailResponse;
-import com.example.demo.dto.PrescriptionResponse;
-import com.example.demo.dto.UpdateMedicalRecordRequest;
-import com.example.demo.entity.MedicalRecord;
-import com.example.demo.entity.Prescription;
-import com.example.demo.entity.User;
-import com.example.demo.repository.MedicalRecordRepository;
-import com.example.demo.repository.PrescriptionRepository;
-import com.example.demo.repository.UserRepository;
+import com.example.demo.dto.*;
+import com.example.demo.entity.*;
+import com.example.demo.entity.MedicalRecordServiceEntity;
+import com.example.demo.repository.*;
 import com.example.demo.util.JwtUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,20 +17,35 @@ import java.util.stream.Collectors;
 
 @Service
 public class MedicalRecordService {
+
     private final MedicalRecordRepository medicalRecordRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
 
+    // === THÊM MỚI ĐỂ HỖ TRỢ BỆNH NHÂN ĐANG KHÁM ===
+    private final QueueRepository queueRepository;
+    private final ServiceRepository serviceRepository;
+    private final MedicalRecordServiceRepository medicalRecordServiceRepository;
+
+    // Constructor giữ nguyên + thêm 3 repo mới
     public MedicalRecordService(MedicalRecordRepository medicalRecordRepository,
                                 PrescriptionRepository prescriptionRepository,
                                 UserRepository userRepository,
-                                JwtUtil jwtUtil) {
+                                JwtUtil jwtUtil,
+                                QueueRepository queueRepository,
+                                ServiceRepository serviceRepository,
+                                MedicalRecordServiceRepository medicalRecordServiceRepository) {
         this.medicalRecordRepository = medicalRecordRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.queueRepository = queueRepository;
+        this.serviceRepository = serviceRepository;
+        this.medicalRecordServiceRepository = medicalRecordServiceRepository;
     }
+
+    // ============================== TẤT CẢ CÁC METHOD CŨ – GIỮ NGUYÊN 100% ==============================
     @Transactional
     public MedicalRecordResponse create(String bearerToken, MedicalRecordRequest request) {
         String token = extractToken(bearerToken);
@@ -44,18 +53,12 @@ public class MedicalRecordService {
         User doctor = userRepository.findById(doctorId)
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
 
-        User patient = null;
-        String patientName = null;
-
-        // Lưu ý: patientId từ frontend là Patient UUID (từ Patient entity), không phải User UUID
-        // Nên ta chỉ lưu patientName, không cần tìm trong User table
-        if (request.getPatientName() != null && !request.getPatientName().trim().isEmpty()) {
-            patientName = request.getPatientName().trim();
-        }
+        String patientName = request.getPatientName() != null && !request.getPatientName().trim().isEmpty()
+                ? request.getPatientName().trim() : null;
 
         MedicalRecord record = MedicalRecord.builder()
                 .doctor(doctor)
-                .patient(patient)  // Để null vì patientId từ frontend là Patient UUID, không phải User UUID
+                .patient(null)
                 .patientName(patientName)
                 .diagnosis(request.getDiagnosis())
                 .treatmentNotes(request.getTreatmentNotes())
@@ -77,20 +80,20 @@ public class MedicalRecordService {
         }
 
         MedicalRecord record = medicalRecordRepository.findById(request.getRecordId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ bệnh án với ID: " + request.getRecordId()));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơổ bệnh án với ID: " + request.getRecordId()));
 
         Optional<Prescription> existingPrescriptionOpt = prescriptionRepository.findByRecordId(request.getRecordId());
-        
+
         if (existingPrescriptionOpt.isPresent()) {
             Prescription prescription = existingPrescriptionOpt.get();
             String existingDrugs = prescription.getDrugs();
             String newDrugs = request.getDrugs().trim();
             String updatedDrugs = existingDrugs + "\n" + newDrugs;
-            
+
             String existingInstructions = prescription.getInstructions();
             String newInstructions = request.getInstructions().trim();
             String updatedInstructions = existingInstructions + "\n" + newInstructions;
-            
+
             prescription.setDrugs(updatedDrugs);
             prescription.setInstructions(updatedInstructions);
             prescriptionRepository.save(prescription);
@@ -103,6 +106,7 @@ public class MedicalRecordService {
             prescriptionRepository.save(prescription);
         }
     }
+
     @Transactional(readOnly = true)
     public List<MedicalRecordResponse> listByPatient(UUID patientId) {
         return medicalRecordRepository.findByPatient_UserIdOrderByCreatedAtDesc(patientId)
@@ -125,6 +129,7 @@ public class MedicalRecordService {
     public MedicalRecordDetailResponse updateRecord(UUID recordId, UpdateMedicalRecordRequest request) {
         MedicalRecord record = medicalRecordRepository.findById(recordId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ bệnh án với ID: " + recordId));
+
         if (request.getPatientId() != null) {
             User patient = userRepository.findById(request.getPatientId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân với ID: " + request.getPatientId()));
@@ -137,17 +142,15 @@ public class MedicalRecordService {
         if (request.getDiagnosis() != null) {
             record.setDiagnosis(request.getDiagnosis());
         }
-
         if (request.getTreatmentNotes() != null) {
             record.setTreatmentNotes(request.getTreatmentNotes());
         }
-
         record = medicalRecordRepository.save(record);
 
         if (request.getPrescription() != null) {
             UpdateMedicalRecordRequest.PrescriptionUpdateRequest prescriptionRequest = request.getPrescription();
             Optional<Prescription> existingPrescriptionOpt = prescriptionRepository.findByRecordId(recordId);
-            
+
             if (existingPrescriptionOpt.isPresent()) {
                 Prescription prescription = existingPrescriptionOpt.get();
                 if (prescriptionRequest.getDrugs() != null) {
@@ -166,7 +169,6 @@ public class MedicalRecordService {
                 prescriptionRepository.save(newPrescription);
             }
         }
-
         return getRecordDetail(recordId);
     }
 
@@ -219,7 +221,6 @@ public class MedicalRecordService {
                 finalPatientName = r.getPatientName();
             }
         }
-
         return MedicalRecordResponse.builder()
                 .recordId(r.getRecordId())
                 .patientId(r.getPatient() != null ? r.getPatient().getUserId() : null)
@@ -241,7 +242,6 @@ public class MedicalRecordService {
         if (prescriptionOpt.isPresent()) {
             prescriptionRepository.delete(prescriptionOpt.get());
         }
-
         medicalRecordRepository.delete(record);
     }
 
@@ -251,4 +251,121 @@ public class MedicalRecordService {
         }
         return bearerToken.substring(7);
     }
+
+    // ============================== MỚI: CHỨC NĂNG CHO BỆNH NHÂN ĐANG KHÁM ==============================
+
+    private MedicalRecord getOrCreateRecordForCurrentPatient(Queue queue, User doctor) {
+        String patientName = queue.getPatient().getFullName();
+        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+
+        return medicalRecordRepository.findByDoctor_UserIdAndPatientNameAndCreatedAtAfter(doctor.getUserId(), patientName, today)
+                .stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    MedicalRecord newRecord = MedicalRecord.builder()
+                            .doctor(doctor)
+                            .patient(null)
+                            .patientName(patientName)
+                            .diagnosis("")
+                            .treatmentNotes("")
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                    return medicalRecordRepository.save(newRecord);
+                });
+    }
+
+    @Transactional
+    public ExaminationSummaryResponse addServiceToCurrentExamination(UUID currentQueueId, String serviceId, Integer quantity, String note, User doctor) {
+        Queue queue = queueRepository.findById(currentQueueId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lượt khám"));
+
+        com.example.demo.entity.Service service = serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại"));
+
+        MedicalRecord record = getOrCreateRecordForCurrentPatient(queue, doctor);
+
+        MedicalRecordServiceEntity mrs = MedicalRecordServiceEntity.builder()
+                .medicalRecord(record)
+                .service(service)
+                .quantity(quantity != null && quantity > 0 ? quantity : 1)
+                .unitPrice(service.getPrice())
+                .note(note)
+                .build();
+
+        medicalRecordServiceRepository.save(mrs);
+        return buildExaminationSummary(record.getRecordId());
+    }
+
+    @Transactional
+    public ExaminationSummaryResponse addPrescriptionToCurrentExamination(UUID currentQueueId, String drugs, String instructions, User doctor) {
+        Queue queue = queueRepository.findById(currentQueueId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lượt khám"));
+
+        MedicalRecord record = getOrCreateRecordForCurrentPatient(queue, doctor);
+
+        AddPrescriptionRequest req = new AddPrescriptionRequest();
+        req.setRecordId(record.getRecordId());
+        req.setDrugs(drugs);
+        req.setInstructions(instructions);
+        addPrescriptionToRecord(req);
+
+        return buildExaminationSummary(record.getRecordId());
+    }
+
+    @Transactional(readOnly = true)
+    public ExaminationSummaryResponse getCurrentExaminationSummary(UUID currentQueueId, User doctor) {
+        Queue queue = queueRepository.findById(currentQueueId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lượt khám"));
+        MedicalRecord record = getOrCreateRecordForCurrentPatient(queue, doctor);
+        return buildExaminationSummary(record.getRecordId());
+    }
+
+    private ExaminationSummaryResponse buildExaminationSummary(UUID recordId) {
+        MedicalRecord record = medicalRecordRepository.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ"));
+
+        List<MedicalRecordServiceEntity> services = medicalRecordServiceRepository.findAllByMedicalRecord_RecordId(recordId);
+
+        var serviceItems = services.stream()
+                .map(ms -> new ExaminationSummaryResponse.ExaminationServiceItem(
+                        ms.getService().getServiceId(),
+                        ms.getService().getName(),
+                        ms.getService().getCategory().getDisplayName(),
+                        ms.getQuantity(),
+                        ms.getUnitPrice(),
+                        ms.getUnitPrice().multiply(BigDecimal.valueOf(ms.getQuantity())),
+                        ms.getNote()
+                ))
+                .toList();
+
+        BigDecimal total = serviceItems.stream()
+                .map(ExaminationSummaryResponse.ExaminationServiceItem::totalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        PrescriptionResponse prescription = null;
+        Optional<Prescription> presOpt = prescriptionRepository.findByRecordId(recordId);
+        if (presOpt.isPresent()) {
+            Prescription p = presOpt.get();
+            prescription = PrescriptionResponse.builder()
+                    .prescriptionId(p.getPrescriptionId())
+                    .recordId(recordId)
+                    .drugs(p.getDrugs())
+                    .instructions(p.getInstructions())
+                    .issuedAt(p.getIssuedAt())
+                    .build();
+        }
+
+        return new ExaminationSummaryResponse(
+                record.getRecordId(),
+                record.getPatient() != null ? record.getPatient().getUserId() : null,
+                record.getPatientName(),
+                record.getDiagnosis(),
+                record.getTreatmentNotes(),
+                record.getCreatedAt(),
+                prescription,
+                serviceItems,
+                total
+        );
+    }
+
 }

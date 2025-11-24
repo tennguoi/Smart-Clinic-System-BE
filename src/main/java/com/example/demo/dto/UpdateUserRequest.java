@@ -13,4 +13,5 @@ public class UpdateUserRequest {
     private Integer experienceYears;
     private String photoUrl;
     private String bio;
+    private String password; // Thêm dòng này
 }

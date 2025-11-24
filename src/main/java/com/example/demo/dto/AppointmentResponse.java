@@ -1,11 +1,11 @@
+// src/main/java/com/example/demo/dto/AppointmentResponse.java
 package com.example.demo.dto;
 
-
+import com.example.demo.entity.Appointment.Status;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
-
-import com.example.demo.entity.Appointment.Status;
 
 public record AppointmentResponse(
         UUID appointmentId,
@@ -17,8 +17,8 @@ public record AppointmentResponse(
         String appointmentCode,
         String notes,
         Boolean quickBook,
-        java.util.List<String> serviceIds,
-        java.util.List<ServiceResponse> services,
+        List<String> serviceIds,                    // vẫn trả về list ID nếu cần
+        List<ServiceResponse> services,             // chi tiết dịch vụ
         LocalDateTime createdAt,
         LocalDateTime confirmedAt,
         String confirmedByName
