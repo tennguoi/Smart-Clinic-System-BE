@@ -5,6 +5,7 @@ import com.example.demo.dto.appointment.AppointmentRequest;
 import com.example.demo.dto.appointment.AppointmentResponse;
 import com.example.demo.dto.ServiceResponse;
 import com.example.demo.entity.Appointment;
+
 import com.example.demo.entity.Invoice;
 import com.example.demo.entity.InvoiceDetail;
 import com.example.demo.entity.Patient;
@@ -40,7 +41,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.time.LocalDate;
 @org.springframework.stereotype.Service
 
-@Service
 public class AppointmentService {
 
     private final AppointmentRepository repo;
@@ -89,7 +89,7 @@ public AppointmentResponse quickBook(AppointmentRequest req) {
             if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
                 serviceNames = serviceRepo.findAllById(req.serviceIds())
                         .stream()
-                        .map(Service::getName)
+                        .map(com.example.demo.entity.Service::getName)
                         .collect(Collectors.toList());
             }
             
@@ -135,7 +135,7 @@ public AppointmentResponse create(AppointmentRequest req) {
             if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
                 serviceNames = serviceRepo.findAllById(req.serviceIds())
                         .stream()
-                        .map(Service::getName)
+                        .map(com.example.demo.entity.Service::getName)
                         .collect(Collectors.toList());
             }
             
@@ -157,7 +157,7 @@ public AppointmentResponse create(AppointmentRequest req) {
 }
 
     // Phương thức cũ (giữ nguyên)
-    public List<AppointmentResponse> listByStatus(Status status) {
+    public List<AppointmentResponse> listByStatus(Appointment.Status status) {
         return repo.findByStatus(status).stream()
                 .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
                 .map(this::toResponse)
@@ -369,7 +369,7 @@ public void sendDailyReminderEmails() {
     try {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         
-        List<Appointment> tomorrowAppointments = repo.findByStatus(Status.Confirmed)
+        List<Appointment> tomorrowAppointments = repo.findByStatus(Appointment.Status.Confirmed)
                 .stream()
                 .filter(appointment -> {
                     LocalDateTime appointmentTime = appointment.getAppointmentTime();
