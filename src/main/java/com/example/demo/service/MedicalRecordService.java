@@ -1,5 +1,11 @@
 package com.example.demo.service;
 
+import jakarta.persistence.criteria.Join;      // Mới
+import jakarta.persistence.criteria.JoinType;
+import com.example.demo.dto.MedicalRecordSearchCriteria; // Import DTO mới
+import org.springframework.data.jpa.domain.Specification; // Import Specification
+import jakarta.persistence.criteria.Predicate;// Import Predicate
+import java.util.ArrayList;                               // Import ArrayList
 import com.example.demo.dto.*;
 import com.example.demo.dto.prescription.AddPrescriptionRequest;
 import com.example.demo.dto.prescription.PrescriptionResponse;
@@ -11,6 +17,7 @@ import com.example.demo.repository.PatientRepository;
 import com.example.demo.util.JwtUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -133,6 +140,72 @@ public class MedicalRecordService {
         String token = extractToken(bearerToken);
         UUID doctorId = jwtUtil.getUserIdFromToken(token);
         return medicalRecordRepository.findByDoctor_UserIdOrderByCreatedAtDesc(doctorId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> searchMyRecords(MedicalRecordSearchCriteria criteria) {
+        Specification<MedicalRecord> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 1. Chỉ lấy hồ sơ của Bác sĩ đang request
+            if (criteria.getDoctorId() != null) {
+                // "doctor" vẫn là User, nên trỏ vào userId
+                predicates.add(cb.equal(root.get("doctor").get("userId"), criteria.getDoctorId()));
+            }
+
+            // 2. TÌM KIẾM THÔNG MINH (Bao gồm cả Vãng lai & Patient hệ thống)
+            if (criteria.getKeyword() != null && !criteria.getKeyword().trim().isEmpty()) {
+                String key = criteria.getKeyword().trim().toLowerCase();
+
+                // Các mẫu tìm kiếm Tên (chính xác, đầu, cuối, giữa)
+                String exact = key;
+                String start = key + " %";
+                String end = "% " + key;
+                String middle = "% " + key + " %";
+
+                // --- KẾT NỐI VỚI BẢNG PATIENT (Dùng LEFT JOIN) ---
+                // JoinType.LEFT cực quan trọng: Giúp không bị mất hồ sơ khách vãng lai
+                Join<MedicalRecord, Patient> patientJoin = root.join("patient", JoinType.LEFT);
+
+                // A. TÌM KHÁCH VÃNG LAI (Tìm trong cột patientName của MedicalRecord)
+                var tempName = cb.lower(cb.coalesce(root.get("patientName"), ""));
+                Predicate matchTempName = cb.or(
+                        cb.equal(tempName, exact), cb.like(tempName, start),
+                        cb.like(tempName, end), cb.like(tempName, middle)
+                );
+
+                // B. TÌM KHÁCH HỆ THỐNG - TÊN (Tìm trong bảng Patient)
+                var realName = cb.lower(cb.coalesce(patientJoin.get("fullName"), ""));
+                Predicate matchRealName = cb.or(
+                        cb.equal(realName, exact), cb.like(realName, start),
+                        cb.like(realName, end), cb.like(realName, middle)
+                );
+
+                // C. TÌM KHÁCH HỆ THỐNG - SĐT (Tìm trong bảng Patient)
+                var phone = cb.coalesce(patientJoin.get("phone"), "");
+                Predicate matchPhone = cb.like(phone, "%" + key + "%");
+
+                // ===> GỘP TẤT CẢ LẠI BẰNG OR <===
+                // Chỉ cần khớp 1 trong 3 điều kiện trên là lấy
+                predicates.add(cb.or(matchTempName, matchRealName, matchPhone));
+            }
+
+            // 3. Tìm theo ngày tháng
+            if (criteria.getStartDate() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), criteria.getStartDate().atStartOfDay()));
+            }
+            if (criteria.getEndDate() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), criteria.getEndDate().atTime(23, 59, 59)));
+            }
+
+            query.orderBy(cb.desc(root.get("createdAt")));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return medicalRecordRepository.findAll(spec)
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
