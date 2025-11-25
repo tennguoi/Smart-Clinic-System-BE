@@ -21,6 +21,15 @@ public class AdminUserController {
     @Autowired
     private AdminUserService adminUserService;
 
+    @GetMapping
+    public ResponseEntity<List<UserAdminResponse>> getAllUsers(
+            @RequestParam(required = false) String keyword, // Hứng tên
+            @RequestParam(required = false) String phone    // Hứng sđt
+    ) {
+        // Truyền vào Service
+        List<UserAdminResponse> users = adminUserService.getAllUsers(keyword, phone);
+        return ResponseEntity.ok(users);
+    }
     /**
      * Tạo user mới
      * @param req - Thông tin user (JSON)
@@ -32,15 +41,6 @@ public class AdminUserController {
             @RequestPart(value = "photo", required = false) MultipartFile photo) {
         UserAdminResponse response = adminUserService.createUser(req, photo);
         return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Lấy danh sách tất cả users
-     */
-    @GetMapping
-    public ResponseEntity<List<UserAdminResponse>> getAllUsers() {
-        List<UserAdminResponse> users = adminUserService.getAllUsers();
-        return ResponseEntity.ok(users);
     }
 
     /**

@@ -17,6 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
+import org.springframework.data.jpa.domain.Specification; // Mới
+import jakarta.persistence.criteria.Predicate;            // Mới
+import org.springframework.data.domain.Sort;              // Mới
+import java.util.ArrayList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -115,8 +119,27 @@ public class AdminUserService {
                 .build();
     }
 
-    public List<UserAdminResponse> getAllUsers() {
-        List<User> users = userRepository.findAll();
+    public List<UserAdminResponse> getAllUsers(String keyword, String phone) {
+
+        Specification<User> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String searchName = "%" + keyword.trim().toLowerCase() + "%";
+                // lower() để không phân biệt hoa thường
+                predicates.add(cb.like(cb.lower(root.get("fullName")), searchName));
+            }
+
+            // Điều kiện 2: Tìm theo SĐT (nếu có nhập)
+            if (phone != null && !phone.trim().isEmpty()) {
+                String searchPhone = "%" + phone.trim() + "%";
+                predicates.add(cb.like(root.get("phone"), searchPhone));
+            }
+
+            // Gộp các điều kiện lại bằng AND
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<User> users = userRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
         return users.stream().map(user -> {
             List<String> roleNames = userRoleRepository.findByUser_UserId(user.getUserId())
                     .stream()
