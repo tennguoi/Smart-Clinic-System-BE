@@ -11,8 +11,8 @@ import com.example.demo.dto.TrendDataPoint;
 import com.example.demo.entity.Appointment;
 import com.example.demo.entity.MedicalRecordServiceEntity;
 import com.example.demo.repository.AppointmentRepository;
+import com.example.demo.repository.BillingRecordRepository;
 import com.example.demo.repository.InvoiceDetailRepository;
-import com.example.demo.repository.InvoiceRepository;
 import com.example.demo.repository.MedicalRecordRepository;
 import com.example.demo.repository.MedicalRecordServiceRepository;
 import com.example.demo.repository.PatientRepository;
@@ -46,7 +46,7 @@ public class DashboardService {
     private PatientRepository patientRepository;
 
     @Autowired
-    private InvoiceRepository invoiceRepository;
+    private BillingRecordRepository billingRecordRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -88,7 +88,8 @@ public class DashboardService {
     public DashboardStatsDTO getDashboardStats(String startDate, String endDate) {
         long totalAppointments = appointmentRepository.count();
         long totalPatients = patientRepository.count();
-        BigDecimal totalRevenue = invoiceRepository.sumTotalRevenue();
+        // Sử dụng BillingRecordRepository để lấy doanh thu từ các hóa đơn đã thanh toán
+        BigDecimal totalRevenue = billingRecordRepository.sumTotalRevenue();
         long totalDoctors = userRepository.countByRoleName("ROLE_BAC_SI");
         if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
 
@@ -135,9 +136,9 @@ public class DashboardService {
         long medicalRecordsYesterday = medicalRecordRepository.countByCreatedAtBetween(startOfYesterday, endOfYesterday);
         double medicalRecordsGrowth = calculateGrowth(medicalRecordsToday, medicalRecordsYesterday);
 
-        // 3) Revenue Month
-        BigDecimal revenueMonth = invoiceRepository.sumTotalRevenueBetween(startOfMonth, now);
-        BigDecimal revenueLastMonth = invoiceRepository.sumTotalRevenueBetween(startOfLastMonth, endOfLastMonth);
+        // 3) Revenue Month - Sử dụng BillingRecordRepository để lấy doanh thu từ các hóa đơn đã thanh toán
+        BigDecimal revenueMonth = billingRecordRepository.sumTotalRevenueBetween(startOfMonth, now);
+        BigDecimal revenueLastMonth = billingRecordRepository.sumTotalRevenueBetween(startOfLastMonth, endOfLastMonth);
         if (revenueMonth == null) revenueMonth = BigDecimal.ZERO;
         if (revenueLastMonth == null) revenueLastMonth = BigDecimal.ZERO;
         double revenueGrowth = calculateGrowth(revenueMonth.doubleValue(), revenueLastMonth.doubleValue());
@@ -199,7 +200,7 @@ public class DashboardService {
     }
 
     /**
-     * Trend doanh thu theo ngày
+     * Trend doanh thu theo ngày - Sử dụng BillingRecordRepository để lấy doanh thu từ các hóa đơn đã thanh toán
      */
     public List<TrendDataPoint> getRevenueTrend(String startDate, String endDate) {
         // If date filters are provided, use them; otherwise use default 7 days
@@ -207,18 +208,18 @@ public class DashboardService {
             try {
                 LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
                 LocalDateTime end = LocalDate.parse(endDate).atTime(LocalTime.MAX);
-                return invoiceRepository.findTrendBetween(start, end);
+                return billingRecordRepository.findRevenueTrendBetween(start, end);
             } catch (Exception e) {
                 // Fall back to default if date parsing fails
                 LocalDateTime end = LocalDateTime.now();
                 LocalDateTime start = end.minusDays(7);
-                return invoiceRepository.findTrendBetween(start, end);
+                return billingRecordRepository.findRevenueTrendBetween(start, end);
             }
         }
         
         LocalDateTime end = LocalDateTime.now();
         LocalDateTime start = end.minusDays(7);
-        return invoiceRepository.findTrendBetween(start, end);
+        return billingRecordRepository.findRevenueTrendBetween(start, end);
     }
 
     /**

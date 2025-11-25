@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -68,4 +69,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             @Param("keyword") String keyword,
             Pageable pageable
     );
+    @Query("SELECT a FROM Appointment a WHERE a.status = :status AND DATE(a.appointmentTime) = :date")
+    List<Appointment> findByStatusAndAppointmentTimeDate(Appointment.Status status, LocalDate date);
 }

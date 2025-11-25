@@ -369,14 +369,9 @@ public void sendDailyReminderEmails() {
     try {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         
-        List<Appointment> tomorrowAppointments = repo.findByStatus(Appointment.Status.Confirmed)
-                .stream()
-                .filter(appointment -> {
-                    LocalDateTime appointmentTime = appointment.getAppointmentTime();
-                    return appointmentTime != null && 
-                           appointmentTime.toLocalDate().equals(tomorrow);
-                })
-                .collect(Collectors.toList());
+        // Sử dụng phương thức mới để tối ưu truy vấn
+        List<Appointment> tomorrowAppointments = repo.findByStatusAndAppointmentTimeDate(
+            Appointment.Status.Confirmed, tomorrow);
         
         int sentCount = 0;
         int failedCount = 0;
@@ -392,7 +387,6 @@ public void sendDailyReminderEmails() {
                     );
                     sentCount++;
                     
-                    // Ghi log cho mỗi email gửi thành công
                     System.out.println("Đã gửi email nhắc nhở cho: " + appointment.getPatientName() + 
                                      " - Email: " + appointment.getEmail() + 
                                      " - Thời gian: " + appointment.getAppointmentTime());
@@ -401,15 +395,16 @@ public void sendDailyReminderEmails() {
                     failedCount++;
                     System.err.println("Lỗi gửi email nhắc nhở cho: " + appointment.getPatientName() + 
                                      " - Lỗi: " + e.getMessage());
-                    e.printStackTrace();
                 }
             }
         }
         
+        System.out.println("Kết quả gửi email nhắc nhở: " + 
+                         "Thành công: " + sentCount + ", Thất bại: " + failedCount +
+                         ", Tổng lịch hẹn: " + tomorrowAppointments.size());
         
     } catch (Exception e) {
         System.err.println("Lỗi trong quá trình gửi email nhắc nhở hàng loạt: " + e.getMessage());
-        e.printStackTrace();
     }
 }
 }

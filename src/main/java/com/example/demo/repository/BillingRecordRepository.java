@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,4 +45,30 @@ public interface BillingRecordRepository extends JpaRepository<BillingRecord, UU
 
     // ==================== TÌM HÓA ĐƠN THEO MEDICAL RECORD ====================
     Optional<BillingRecord> findByMedicalRecord_RecordId(UUID recordId);
+
+    // ==================== DOANH THU ====================
+    // Tính tổng doanh thu từ các hóa đơn đã thanh toán
+    @Query("SELECT SUM(b.amountPaid) FROM BillingRecord b WHERE b.paymentStatus = 'Paid'")
+    BigDecimal sumTotalRevenue();
+
+    // Tính tổng doanh thu trong khoảng thời gian (chỉ tính hóa đơn đã thanh toán)
+    @Query("SELECT SUM(b.amountPaid) FROM BillingRecord b WHERE b.paymentStatus = 'Paid' AND b.createdAt BETWEEN :start AND :end")
+    BigDecimal sumTotalRevenueBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    // Lấy xu hướng doanh thu theo ngày
+    @Query("""
+        SELECT new com.example.demo.dto.TrendDataPoint(
+            FUNCTION('DATE_FORMAT', b.createdAt, '%d/%m'), 
+            SUM(b.amountPaid), 
+            ''
+        )
+        FROM BillingRecord b
+        WHERE b.paymentStatus = 'Paid' AND b.createdAt BETWEEN :start AND :end
+        GROUP BY FUNCTION('DATE_FORMAT', b.createdAt, '%d/%m')
+        ORDER BY FUNCTION('DATE_FORMAT', b.createdAt, '%d/%m')
+    """)
+    List<com.example.demo.dto.TrendDataPoint> findRevenueTrendBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    // Đếm số lượng hóa đơn trong khoảng thời gian
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
