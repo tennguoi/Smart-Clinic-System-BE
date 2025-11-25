@@ -235,6 +235,9 @@ public class QueueService {
         Optional.ofNullable(dto.getAddress()).ifPresent(patient::setAddress);
         Optional.ofNullable(dto.getDob()).ifPresent(patient::setDob);
         Optional.ofNullable(dto.getGender()).ifPresent(g -> patient.setGender(safeParseGender(g)));
+        Optional.ofNullable(dto.getNotes()).ifPresent(patient::setNotes);
+        Optional.ofNullable(dto.getIdNumber()).ifPresent(patient::setIdNumber);
+        Optional.ofNullable(dto.getInsuranceNumber()).ifPresent(patient::setInsuranceNumber);
 
         patientRepository.save(patient);
         return mapToDto(queue);
