@@ -39,30 +39,41 @@ public class ClinicService {
         Optional<Clinic> clinicOpt = clinicRepository.findFirstByOrderByCreatedAtAsc();
         
         Clinic clinic;
+        boolean isNew = false;
         if (clinicOpt.isPresent()) {
             clinic = clinicOpt.get();
         } else {
             clinic = new Clinic();
+            isNew = true;
         }
         
-        // Cập nhật thông tin
-        if (request.getName() != null) {
-            clinic.setName(request.getName());
+        // Validation: Nếu là tạo mới, name là bắt buộc
+        if (isNew && (request.getName() == null || request.getName().trim().isEmpty())) {
+            throw new IllegalArgumentException("Tên phòng khám không được để trống");
+        }
+        
+        // Cập nhật thông tin (chỉ update các field không null)
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            clinic.setName(request.getName().trim());
         }
         if (request.getAddress() != null) {
-            clinic.setAddress(request.getAddress());
+            clinic.setAddress(request.getAddress().trim());
         }
         if (request.getPhone() != null) {
-            clinic.setPhone(request.getPhone());
+            clinic.setPhone(request.getPhone().trim());
         }
         if (request.getEmail() != null) {
-            clinic.setEmail(request.getEmail());
+            String email = request.getEmail().trim();
+            if (!email.isEmpty() && !email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                throw new IllegalArgumentException("Email không hợp lệ");
+            }
+            clinic.setEmail(email.isEmpty() ? null : email);
         }
         if (request.getWebsite() != null) {
-            clinic.setWebsite(request.getWebsite());
+            clinic.setWebsite(request.getWebsite().trim());
         }
         if (request.getLogoUrl() != null) {
-            clinic.setLogoUrl(request.getLogoUrl());
+            clinic.setLogoUrl(request.getLogoUrl().trim());
         }
         
         Clinic saved = clinicRepository.save(clinic);
