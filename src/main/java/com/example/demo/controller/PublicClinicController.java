@@ -31,7 +31,12 @@ public class PublicClinicController {
         if (response == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(response);
+        // Thêm cache headers để đảm bảo luôn lấy dữ liệu mới nhất từ database
+        return ResponseEntity.ok()
+                .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                .header("Pragma", "no-cache")
+                .header("Expires", "0")
+                .body(response);
     }
 }
 

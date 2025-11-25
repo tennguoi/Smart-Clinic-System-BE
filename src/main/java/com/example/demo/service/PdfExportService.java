@@ -1,10 +1,15 @@
 package com.example.demo.service;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
+import com.example.demo.entity.MedicalRecordServiceEntity;
 import com.example.demo.entity.Patient;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -12,8 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import com.example.demo.entity.MedicalRecord;
 import com.example.demo.entity.Prescription;
+import com.example.demo.repository.MedicalRecordServiceRepository;
 import com.example.demo.repository.PrescriptionRepository;
-import com.example.demo.service.ClinicService;
 import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.font.PdfFont;
@@ -39,10 +44,14 @@ public class PdfExportService {
     
     private final PrescriptionRepository prescriptionRepository;
     private final ClinicService clinicService;
+    private final MedicalRecordServiceRepository medicalRecordServiceRepository;
 
-    public PdfExportService(PrescriptionRepository prescriptionRepository, ClinicService clinicService) {
+    public PdfExportService(PrescriptionRepository prescriptionRepository,
+                            ClinicService clinicService,
+                            MedicalRecordServiceRepository medicalRecordServiceRepository) {
         this.prescriptionRepository = prescriptionRepository;
         this.clinicService = clinicService;
+        this.medicalRecordServiceRepository = medicalRecordServiceRepository;
     }
 
     public byte[] generateMedicalRecordPdf(MedicalRecord record) {
@@ -302,9 +311,9 @@ public class PdfExportService {
             
             // ========== 3. THÔNG TIN CHUNG (Không có bảng) ==========
             String visitDate = record.getCreatedAt() != null ? 
-                    record.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "N/A";
+                    record.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "Trống";
             String ticketNumber = "PK-" + record.getRecordId().toString().substring(0, 8).toUpperCase();
-            String doctorName = record.getDoctor() != null ? record.getDoctor().getFullName() : "N/A";
+            String doctorName = record.getDoctor() != null ? record.getDoctor().getFullName() : "Trống";
             
             Paragraph infoLine = new Paragraph("Ngày khám: " + visitDate + "     Số phiếu: " + ticketNumber + "     Bác sĩ khám: BS. " + doctorName)
                     .setFontSize(12)
@@ -312,21 +321,25 @@ public class PdfExportService {
             document.add(infoLine);
             
             // Lấy thông tin bệnh nhân
-            Patient patient = record.getPatient();  // ← ĐÚNG!
+            Patient patient = record.getPatient();
 
             String patientName = record.getPatientName();
             if ((patientName == null || patientName.trim().isEmpty()) && patient != null) {
                 patientName = patient.getFullName();
             }
-            patientName = patientName != null ? patientName.trim() : "N/A";
+            patientName = (patientName != null && !patientName.trim().isEmpty()) ? patientName.trim() : "Trống";
 
-            String patientPhone = patient != null && patient.getPhone() != null ? patient.getPhone() : "N/A";
-            String patientAddress = patient != null && patient.getAddress() != null ? patient.getAddress() : "N/A";
+            String patientPhone = (patient != null && patient.getPhone() != null && !patient.getPhone().isEmpty())
+                    ? patient.getPhone()
+                    : "Trống";
+            String patientAddress = (patient != null && patient.getAddress() != null && !patient.getAddress().isEmpty())
+                    ? patient.getAddress()
+                    : "Trống";
 
             LocalDate patientDob = patient != null ? patient.getDob() : null;
-            String patientDobStr = patientDob != null ? patientDob.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "N/A";
+            String patientDobStr = patientDob != null ? patientDob.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "Trống";
 
-            String patientGender = "N/A";
+            String patientGender = "Trống";
             if (patient != null && patient.getGender() != null) {
                 patientGender = patient.getGender().getLabel();  // tự động trả về "Nam", "Nữ", "Khác"
             }
@@ -340,7 +353,8 @@ public class PdfExportService {
             document.add(patientSection);
             
             document.add(createDottedLine("Họ tên:", patientName, 12));
-            document.add(createDottedLine("Giới tính: " + patientGender + "     Ngày sinh: " + patientDobStr, "", 12));
+            document.add(createDottedLine("Giới tính:", patientGender, 12));
+            document.add(createDottedLine("Ngày sinh:", patientDobStr, 12));
             document.add(createDottedLine("SĐT:", patientPhone, 12));
             document.add(createDottedLine("Địa chỉ:", patientAddress, 12));
             
@@ -353,9 +367,8 @@ public class PdfExportService {
             document.add(symptomSection);
             
             // Lấy từ treatmentNotes hoặc để trống
-            String symptoms = record.getTreatmentNotes() != null ? record.getTreatmentNotes() : "";
-            document.add(createDottedLine("", symptoms, 12));
-            document.add(createDottedLine("", "", 12));
+            String symptoms = record.getTreatmentNotes() != null ? record.getTreatmentNotes() : null;
+            document.add(createDottedLine("Triệu chứng:", symptoms, 12));
             
             // ========== 6. III. CHẨN ĐOÁN ==========
             Paragraph diagnosisSection = new Paragraph("III. CHẨN ĐOÁN")
@@ -365,8 +378,8 @@ public class PdfExportService {
                     .setMarginBottom(8);
             document.add(diagnosisSection);
             
-            String diagnosisText = record.getDiagnosis() != null ? record.getDiagnosis() : "";
-            document.add(createDottedLine("", diagnosisText, 12));
+            String diagnosisText = record.getDiagnosis() != null ? record.getDiagnosis() : null;
+            document.add(createDottedLine("Chẩn đoán:", diagnosisText, 12));
             
             // ========== 7. IV. CHỈ ĐỊNH DỊCH VỤ (BẢNG 2 CỘT) ==========
             Paragraph serviceSection = new Paragraph("IV. CHỈ ĐỊNH DỊCH VỤ")
@@ -393,22 +406,56 @@ public class PdfExportService {
             serviceHeader2.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
             serviceTable.addCell(serviceHeader2);
             
-            // Dữ liệu dịch vụ (có thể lấy từ database sau)
-            // Tạm thời dùng treatmentNotes hoặc để trống
-            String serviceText = record.getTreatmentNotes() != null && !record.getTreatmentNotes().isEmpty() 
-                    ? record.getTreatmentNotes() : "Nội soi tai mũi họng";
-            
-            Cell serviceCell1 = new Cell();
-            serviceCell1.setPadding(5);
-            serviceCell1.add(new Paragraph(serviceText).setFontSize(11));
-            serviceCell1.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
-            serviceTable.addCell(serviceCell1);
-            
-            Cell serviceCell2 = new Cell();
-            serviceCell2.setPadding(5);
-            serviceCell2.add(new Paragraph("500.000 đ").setFontSize(11));
-            serviceCell2.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
-            serviceTable.addCell(serviceCell2);
+            List<MedicalRecordServiceEntity> serviceEntities =
+                    medicalRecordServiceRepository.findAllByMedicalRecord_RecordId(record.getRecordId());
+
+            if (serviceEntities.isEmpty()) {
+                Cell emptyServiceCell = new Cell();
+                emptyServiceCell.setPadding(5);
+                emptyServiceCell.add(new Paragraph("Trống").setFontSize(11));
+                emptyServiceCell.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
+                serviceTable.addCell(emptyServiceCell);
+
+                Cell emptyPriceCell = new Cell();
+                emptyPriceCell.setPadding(5);
+                emptyPriceCell.add(new Paragraph("Trống").setFontSize(11));
+                emptyPriceCell.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
+                serviceTable.addCell(emptyPriceCell);
+            } else {
+                for (MedicalRecordServiceEntity serviceEntity : serviceEntities) {
+                    StringBuilder serviceInfo = new StringBuilder();
+                    if (serviceEntity.getService() != null && serviceEntity.getService().getName() != null) {
+                        serviceInfo.append(serviceEntity.getService().getName());
+                    } else {
+                        serviceInfo.append("Dịch vụ");
+                    }
+
+                    Integer quantity = serviceEntity.getQuantity() != null ? serviceEntity.getQuantity() : 1;
+                    if (quantity > 1) {
+                        serviceInfo.append(" x").append(quantity);
+                    }
+
+                    if (serviceEntity.getNote() != null && !serviceEntity.getNote().isBlank()) {
+                        serviceInfo.append("\nGhi chú: ").append(serviceEntity.getNote());
+                    }
+
+                    Cell serviceCell = new Cell();
+                    serviceCell.setPadding(5);
+                    serviceCell.add(new Paragraph(serviceInfo.toString()).setFontSize(11));
+                    serviceCell.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
+                    serviceTable.addCell(serviceCell);
+
+                    BigDecimal unitPrice = serviceEntity.getUnitPrice() != null ? serviceEntity.getUnitPrice() : BigDecimal.ZERO;
+                    BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
+                    String priceText = formatCurrency(totalPrice);
+
+                    Cell priceCell = new Cell();
+                    priceCell.setPadding(5);
+                    priceCell.add(new Paragraph(priceText).setFontSize(11));
+                    priceCell.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
+                    serviceTable.addCell(priceCell);
+                }
+            }
             
             document.add(serviceTable);
             
@@ -474,20 +521,7 @@ public class PdfExportService {
             
             document.add(prescriptionTable);
             
-            // ========== 9. VI. LỜI DẶN ==========
-            Paragraph adviceSection = new Paragraph("VI. LỜI DẶN")
-                    .setFontSize(12)
-                    .setBold()
-                    .setMarginTop(15)
-                    .setMarginBottom(8);
-            document.add(adviceSection);
-            
-            String instructions = prescription.isPresent() && prescription.get().getInstructions() != null 
-                    ? prescription.get().getInstructions() : "";
-            document.add(createDottedLine("", instructions, 12));
-            document.add(createDottedLine("", "", 12));
-            
-            // ========== 10. CHỮ KÝ BÁC SĨ (Căn phải, không có bảng) ==========
+            // ========== 9. CHỮ KÝ BÁC SĨ (Căn phải, không có bảng) ==========
             document.add(new Paragraph("\n\n"));
             
             Paragraph doctorLabel = new Paragraph("Bác sĩ khám bệnh")
@@ -562,8 +596,8 @@ public class PdfExportService {
             info.addCell(c1);
             Cell c2 = new Cell();
             String patientName = rx.getMedicalRecord() != null && rx.getMedicalRecord().getPatient() != null
-                    ? rx.getMedicalRecord().getPatient().getFullName() : "N/A";
-            c2.add(new Paragraph(patientName));
+                    ? rx.getMedicalRecord().getPatient().getFullName() : "Trống";
+            c2.add(new Paragraph(patientName != null ? patientName : "Trống"));
             info.addCell(c2);
 
             Cell c3 = new Cell();
@@ -571,15 +605,15 @@ public class PdfExportService {
             info.addCell(c3);
             Cell c4 = new Cell();
             String doctorName = rx.getMedicalRecord() != null && rx.getMedicalRecord().getDoctor() != null
-                    ? rx.getMedicalRecord().getDoctor().getFullName() : "N/A";
-            c4.add(new Paragraph(doctorName));
+                    ? rx.getMedicalRecord().getDoctor().getFullName() : "Trống";
+            c4.add(new Paragraph(doctorName != null ? doctorName : "Trống"));
             info.addCell(c4);
 
             Cell c5 = new Cell();
             c5.add(new Paragraph("Ngày kê đơn:").setBold());
             info.addCell(c5);
             Cell c6 = new Cell();
-            c6.add(new Paragraph(rx.getIssuedAt() != null ? rx.getIssuedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "N/A"));
+            c6.add(new Paragraph(rx.getIssuedAt() != null ? rx.getIssuedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "Trống"));
             info.addCell(c6);
 
             document.add(info);
@@ -590,14 +624,14 @@ public class PdfExportService {
             Table drugsTable = new Table(1);
             drugsTable.setWidth(UnitValue.createPercentValue(100));
             Cell drugsCell = new Cell();
-            drugsCell.add(new Paragraph(rx.getDrugs() != null ? rx.getDrugs() : "N/A"));
+            drugsCell.add(new Paragraph(rx.getDrugs() != null ? rx.getDrugs() : "Trống"));
             drugsTable.addCell(drugsCell);
             document.add(drugsTable);
 
             document.add(new Paragraph("\n"));
             Paragraph instrHeader = new Paragraph("Hướng dẫn sử dụng").setBold().setFontSize(12);
             document.add(instrHeader);
-            Paragraph instr = new Paragraph(rx.getInstructions() != null ? rx.getInstructions() : "N/A").setFontSize(11);
+            Paragraph instr = new Paragraph(rx.getInstructions() != null ? rx.getInstructions() : "Trống").setFontSize(11);
             document.add(instr);
 
             document.close();
@@ -613,31 +647,43 @@ public class PdfExportService {
         return generatePrescriptionPdf(rx);
     }
     
-    private void addInfoRow(Table table, String label, String value) {
-        Cell labelCell = new Cell();
-        labelCell.add(new Paragraph(label).setBold().setFontSize(11));
-        labelCell.setPadding(8);
-        table.addCell(labelCell);
-        
-        Cell valueCell = new Cell();
-        valueCell.add(new Paragraph(value != null ? value : "N/A").setFontSize(11));
-        valueCell.setPadding(8);
-        table.addCell(valueCell);
-    }
-    
     private Paragraph createDottedLine(String label, String value, float fontSize) {
-        // Tạo dòng với label và value, phần còn lại là dấu chấm
-        String text = label;
-        if (value != null && !value.isEmpty()) {
-            text += " " + value;
+        String safeLabel = label != null ? label.trim() : "";
+        boolean hasValue = value != null && !value.trim().isEmpty();
+
+        if (safeLabel.isEmpty() && !hasValue) {
+            return new Paragraph(" ").setFontSize(fontSize).setMarginBottom(5);
         }
-        // Thêm dấu chấm để tạo hiệu ứng gạch chấm
-        int dotsNeeded = 80 - text.length();
-        if (dotsNeeded > 0) {
-            for (int i = 0; i < dotsNeeded && i < 50; i++) {
-                text += ".";
+
+        StringBuilder text = new StringBuilder();
+        if (!safeLabel.isEmpty()) {
+            text.append(safeLabel);
+        }
+
+        if (hasValue) {
+            if (text.length() > 0) {
+                text.append(" ");
             }
+            text.append(value.trim());
+        } else {
+            if (text.length() > 0) {
+                text.append(" ");
+            }
+            text.append("Trống");
         }
-        return new Paragraph(text).setFontSize(fontSize).setMarginBottom(5);
+
+        return new Paragraph(text.toString()).setFontSize(fontSize).setMarginBottom(5);
+    }
+
+    private String formatCurrency(BigDecimal amount) {
+        if (amount == null) {
+            return "Trống";
+        }
+        try {
+            NumberFormat formatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+            return formatter.format(amount);
+        } catch (Exception e) {
+            return amount.stripTrailingZeros().toPlainString();
+        }
     }
 }
