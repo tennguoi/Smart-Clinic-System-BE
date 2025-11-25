@@ -1,8 +1,11 @@
 // src/main/java/com/example/demo/service/BillingService.java
 package com.example.demo.service;
 
+import com.example.demo.dto.ExaminationSummaryResponse;
 import com.example.demo.dto.billing.*;
 import com.example.demo.entity.*;
+import com.example.demo.enums.PaymentMethod;
+import com.example.demo.enums.PaymentStatus;
 import com.example.demo.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -22,7 +26,7 @@ public class BillingService {
 
     private final BillingRecordRepository billingRepo;
     private final MedicalRecordRepository medicalRecordRepo;
-    private final ServiceRepository serviceRepo;        // giữ nguyên tên repo cũ
+    private final ServiceRepository serviceRepo;
     private final UserRepository userRepo;
 
     private User getCurrentUser() {
@@ -31,23 +35,77 @@ public class BillingService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // FIX: đúng cách kiểm tra role
-    private boolean hasRole(String role) {
-        String roleWithPrefix = "ROLE_" + role.toUpperCase();
-        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals(roleWithPrefix));
+    // Thêm vào cuối class BillingService.java
+
+    // ==================== TẠO HÓA ĐƠN TỪ EXAMINATION SUMMARY ====================
+    @Transactional
+    public BillingResponseDTO createInvoiceFromExaminationSummary(
+            ExaminationSummaryResponse summary,
+            User doctor) {
+
+        // Kiểm tra đã có hóa đơn chưa
+        Optional<BillingRecord> existing = billingRepo.findByMedicalRecord_RecordId(summary.recordId());
+        if (existing.isPresent()) {
+            throw new RuntimeException("Hóa đơn đã được tạo cho buổi khám này");
+        }
+
+        // Kiểm tra có dịch vụ không
+        if (summary.services() == null || summary.services().isEmpty()) {
+            throw new RuntimeException("Chưa có dịch vụ nào để tạo hóa đơn");
+        }
+
+        MedicalRecord record = medicalRecordRepo.findById(summary.recordId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ khám"));
+
+        // Tạo hóa đơn mới
+        BillingRecord billing = BillingRecord.builder()
+                .users(doctor)
+                .medicalRecord(record)
+                .paymentMethod(PaymentMethod.Cash)  // Mặc định
+                .paymentStatus(PaymentStatus.Pending)
+                .totalAmount(summary.totalServiceAmount())
+                .finalAmount(summary.totalServiceAmount())
+                .amountPaid(BigDecimal.ZERO)
+                .build();
+
+        // Thêm từng dịch vụ vào hóa đơn
+        for (ExaminationSummaryResponse.ExaminationServiceItem item : summary.services()) {
+            com.example.demo.entity.Service svc = serviceRepo.findById(item.serviceId())
+                    .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại: " + item.serviceId()));
+
+            BillingDetail detail = BillingDetail.builder()
+                    .billingRecord(billing)
+                    .service(svc)
+                    .quantity(item.quantity())
+                    .unitPrice(item.unitPrice())
+                    .subTotal(item.totalPrice())
+                    .description(item.note())
+                    .build();
+
+            billing.getDetails().add(detail);
+        }
+
+        billingRepo.save(billing);
+        return toDto(billing);
     }
 
-    // TẠO HÓA ĐƠN
-    public BillingResponseDTO create(BillingCreateDTO dto) {
-        if (!hasRole("TIEP_TAN")) throw new AccessDeniedException("Chỉ lễ tân được tạo hóa đơn");
+    private boolean hasRole(String role) {
+        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_" + role.toUpperCase()));
+    }
 
-        User receptionist = getCurrentUser();
+    // ==================== TẠO HÓA ĐƠN ====================
+    public BillingResponseDTO create(BillingCreateDTO dto) {
+        // ✅ CHO PHÉP CẢ BÁC SĨ VÀ LỄ TÂN
+        if (!hasRole("TIEP_TAN") && !hasRole("BAC_SI"))
+            throw new AccessDeniedException("Chỉ bác sĩ và lễ tân được tạo hóa đơn");
+
+        User currentUser = getCurrentUser();
         MedicalRecord record = medicalRecordRepo.findById(dto.recordId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ khám"));
 
         BillingRecord billing = BillingRecord.builder()
-                .users(receptionist)
+                .users(currentUser)
                 .medicalRecord(record)
                 .paymentMethod(dto.paymentMethod())
                 .paymentStatus(PaymentStatus.Pending)
@@ -58,7 +116,6 @@ public class BillingService {
 
         BigDecimal total = BigDecimal.ZERO;
         for (BillingItemDTO item : dto.items()) {
-            // FIX: dùng đúng entity Service của bạn (String id)
             com.example.demo.entity.Service svc = serviceRepo.findById(item.serviceId())
                     .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại: " + item.serviceId()));
 
@@ -66,7 +123,7 @@ public class BillingService {
 
             BillingDetail detail = BillingDetail.builder()
                     .billingRecord(billing)
-                    .service(svc)                               // tự động hiểu đúng nhờ import
+                    .service(svc)
                     .description(item.description())
                     .quantity(item.quantity())
                     .unitPrice(svc.getPrice())
@@ -84,9 +141,10 @@ public class BillingService {
         return toDto(billing);
     }
 
-    // THANH TOÁN
+    // ==================== THANH TOÁN ====================
     public BillingResponseDTO pay(UUID billId, BigDecimal paidAmount, PaymentMethod method) {
-        if (!hasRole("TIEP_TAN")) throw new AccessDeniedException("Chỉ lễ tân được thu tiền");
+        if (!hasRole("TIEP_TAN"))
+            throw new AccessDeniedException("Chỉ lễ tân được thu tiền");
 
         BillingRecord billing = billingRepo.findById(billId)
                 .orElseThrow(() -> new RuntimeException("Hóa đơn không tồn tại"));
@@ -111,6 +169,23 @@ public class BillingService {
         return toDto(billing);
     }
 
+    // ==================== LẤY HÓA ĐƠN CHỜ THANH TOÁN ====================
+    public Page<BillingResponseDTO> getPendingBills(Pageable pageable, String search) {
+        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN"))
+            throw new AccessDeniedException("Không có quyền");
+
+        Page<BillingRecord> page;
+
+        if (search == null || search.isBlank()) {
+            page = billingRepo.findByPaymentStatus(PaymentStatus.Pending, pageable);
+        } else {
+            page = billingRepo.searchPending(search, pageable);
+        }
+
+        return page.map(this::toDto);
+    }
+
+    // ==================== LẤY TẤT CẢ HÓA ĐƠN ====================
     public Page<BillingResponseDTO> getAll(Pageable pageable, String search) {
         if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN"))
             throw new AccessDeniedException("Không có quyền");
@@ -122,6 +197,7 @@ public class BillingService {
         return page.map(this::toDto);
     }
 
+    // ==================== LẤY CHI TIẾT HÓA ĐƠN ====================
     public BillingResponseDTO getById(UUID id) {
         if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN"))
             throw new AccessDeniedException("Không có quyền");
@@ -130,6 +206,7 @@ public class BillingService {
                 .orElseThrow(() -> new RuntimeException("Hóa đơn không tồn tại")));
     }
 
+    // ==================== HELPER: CONVERT TO DTO ====================
     private BillingResponseDTO toDto(BillingRecord b) {
         var items = b.getDetails().stream()
                 .map(d -> new BillingItemResponseDTO(

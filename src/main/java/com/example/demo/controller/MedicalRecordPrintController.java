@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.example.demo.dto.MedicalRecordDetailResponse;
-import com.example.demo.dto.PrescriptionResponse;
+import com.example.demo.dto.prescription.PrescriptionResponse;
 import com.example.demo.service.MedicalRecordService;
 
 @Controller

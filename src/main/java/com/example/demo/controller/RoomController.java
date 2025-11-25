@@ -41,19 +41,6 @@ public class RoomController {
     }
 
     /**
-     * PHÂN BỆNH NHÂN VÀO PHÒNG KHÁM
-     * POST /api/rooms/assign
-     * Body: { "queueId": "uuid", "roomId": "uuid" }
-     * ⚠️ Đặt TRƯỚC /{roomId} để tránh conflict
-     */
-    @PostMapping("/assign")
-    public ResponseEntity<ApiResponse<RoomResponse>> assignPatientToRoom(
-            @RequestBody AssignRoomRequest request) {
-        ApiResponse<RoomResponse> response = roomService.assignPatientToRoom(request);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
      * Lấy chi tiết một phòng khám
      * GET /api/rooms/{roomId}
      * ⚠️ Đặt SAU các route cụ thể như /assign, /available
@@ -119,5 +106,10 @@ public class RoomController {
     public ResponseEntity<ApiResponse<RoomService.RoomStatistics>> getStatistics() {
         RoomService.RoomStatistics stats = roomService.getRoomStatistics();
         return ResponseEntity.ok(ApiResponse.success(stats));
+    }
+    @PostMapping("/{roomId}/call-next")
+    public ResponseEntity<ApiResponse<QueuePatientResponse>> callNextPatient(@PathVariable UUID roomId) {
+        var result = roomService.callNextPatient(roomId);
+        return ResponseEntity.ok(result);
     }
 }

@@ -1,10 +1,10 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.DoctorStatsDetailItem;
-import com.example.demo.dto.DoctorStatsDetailResponse;
-import com.example.demo.dto.DoctorStatsKpis;
-import com.example.demo.dto.DoctorStatsResponse;
-import com.example.demo.dto.DoctorStatsSeriesItem;
+import com.example.demo.dto.doctor.DoctorStatsDetailItem;
+import com.example.demo.dto.doctor.DoctorStatsDetailResponse;
+import com.example.demo.dto.doctor.DoctorStatsKpis;
+import com.example.demo.dto.doctor.DoctorStatsResponse;
+import com.example.demo.dto.doctor.DoctorStatsSeriesItem;
 import com.example.demo.entity.Patient;
 import com.example.demo.entity.Queue;
 import com.example.demo.entity.Queue.QueueStatus;

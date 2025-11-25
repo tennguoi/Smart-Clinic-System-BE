@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.AssignRoomRequest;
-import com.example.demo.dto.DoctorSimpleResponse;
+import com.example.demo.dto.doctor.DoctorSimpleResponse;
 import com.example.demo.dto.ExaminationRoomRequest;
 import com.example.demo.dto.ExaminationRoomResponse;
 import com.example.demo.entity.ExaminationRoom;

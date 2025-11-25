@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
+import com.example.demo.entity.Patient;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -311,16 +312,24 @@ public class PdfExportService {
             document.add(infoLine);
             
             // Lấy thông tin bệnh nhân
-            com.example.demo.entity.User patient = record.getPatient();
-            String patientName = record.getPatientName() != null ? record.getPatientName() : 
-                    (patient != null ? patient.getFullName() : "N/A");
+            Patient patient = record.getPatient();  // ← ĐÚNG!
+
+            String patientName = record.getPatientName();
+            if ((patientName == null || patientName.trim().isEmpty()) && patient != null) {
+                patientName = patient.getFullName();
+            }
+            patientName = patientName != null ? patientName.trim() : "N/A";
+
             String patientPhone = patient != null && patient.getPhone() != null ? patient.getPhone() : "N/A";
             String patientAddress = patient != null && patient.getAddress() != null ? patient.getAddress() : "N/A";
+
             LocalDate patientDob = patient != null ? patient.getDob() : null;
             String patientDobStr = patientDob != null ? patientDob.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "N/A";
-            String patientGender = patient != null && patient.getGender() != null ? 
-                    (patient.getGender() == com.example.demo.entity.User.Gender.male ? "Nam" : 
-                     patient.getGender() == com.example.demo.entity.User.Gender.female ? "Nữ" : "Khác") : "N/A";
+
+            String patientGender = "N/A";
+            if (patient != null && patient.getGender() != null) {
+                patientGender = patient.getGender().getLabel();  // tự động trả về "Nam", "Nữ", "Khác"
+            }
             
             // ========== 4. I. THÔNG TIN BỆNH NHÂN (Dạng gạch chấm) ==========
             Paragraph patientSection = new Paragraph("I. THÔNG TIN BỆNH NHÂN")
