@@ -2,6 +2,8 @@ package com.example.demo.repository;
 
 import com.example.demo.entity.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.UUID;
 import java.util.List;
@@ -16,10 +18,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
     long countByStatusAndCreatedAtBetween(Appointment.Status status, java.time.LocalDateTime start, java.time.LocalDateTime end);
 
-    @org.springframework.data.jpa.repository.Query("SELECT new com.example.demo.dto.TrendDataPoint(FUNCTION('DATE_FORMAT', a.createdAt, '%d/%m'), COUNT(a), '') " +
+    @Query("SELECT new com.example.demo.dto.TrendDataPoint(FUNCTION('DATE_FORMAT', a.createdAt, '%d/%m'), COUNT(a), '') " +
             "FROM Appointment a " +
             "WHERE a.createdAt BETWEEN :start AND :end " +
             "GROUP BY FUNCTION('DATE_FORMAT', a.createdAt, '%d/%m') " +
             "ORDER BY FUNCTION('DATE_FORMAT', a.createdAt, '%d/%m')")
-    List<com.example.demo.dto.TrendDataPoint> findTrendBetween(@org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start, @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
+    List<com.example.demo.dto.TrendDataPoint> findTrendBetween(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    // Lấy tất cả Appointment trong khoảng thời gian (để xử lý serviceIds)
+    @Query("SELECT a FROM Appointment a WHERE a.createdAt BETWEEN :start AND :end")
+    List<Appointment> findAllBetween(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
 }

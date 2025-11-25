@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.CompletedMedicalRecordDTO;
+import com.example.demo.dto.TopServiceAnalysisDTO;
 import com.example.demo.dto.TopServiceDTO;
 import com.example.demo.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,5 +54,35 @@ public class AdminDashboardController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         return ResponseEntity.ok(dashboardService.getRevenueTrend(startDate, endDate));
+    }
+
+    @GetMapping("/completed-records-with-services")
+    public ResponseEntity<List<CompletedMedicalRecordDTO>> getCompletedMedicalRecordsWithServices(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(dashboardService.getCompletedMedicalRecordsWithServices(startDate, endDate));
+    }
+
+    // ============ TOP 5 DỊCH VỤ - 3 LOẠI KHÁC NHAU ============
+
+    @GetMapping("/top-services-by-appointments")
+    public ResponseEntity<List<TopServiceAnalysisDTO.TopServiceItemDTO>> getTopServicesByAppointments(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(dashboardService.getTopServicesByAppointments(startDate, endDate));
+    }
+
+    @GetMapping("/top-services-by-medical-records")
+    public ResponseEntity<List<TopServiceAnalysisDTO.TopServiceItemDTO>> getTopServicesByMedicalRecords(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(dashboardService.getTopServicesByMedicalRecords(startDate, endDate));
+    }
+
+    @GetMapping("/top-services-by-revenue")
+    public ResponseEntity<List<TopServiceAnalysisDTO.TopServiceItemDTO>> getTopServicesByRevenue(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(dashboardService.getTopServicesByRevenue(startDate, endDate));
     }
 }

@@ -13,17 +13,19 @@ import com.example.demo.repository.UserRepository;
 import com.example.demo.util.CodeGenerator;
 import com.example.demo.repository.PatientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.UUID;
-
+import org.springframework.scheduling.annotation.Scheduled;
+import java.time.LocalDate;
 @org.springframework.stereotype.Service
 public class AppointmentService {
 
@@ -311,17 +313,54 @@ public AppointmentResponse create(AppointmentRequest req) {
                 });
     }
 
-    
-
-
-    private String generateUniqueInvoiceCode() {
-        String code;
-        int attempts = 0;
-        do {
-            code = "INV-" + CodeGenerator.generate(6);
-            attempts++;
-            if (attempts > 100) throw new IllegalStateException("Cannot generate unique invoice code");
-        } while (invoiceRepo.existsByInvoiceCode(code));
-        return code;
+    //@Scheduled(cron = "0 0 20 * * ?")  
+@Scheduled(cron = "0 */1 * * * ?")
+@Transactional
+public void sendDailyReminderEmails() {
+    try {
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        
+        List<Appointment> tomorrowAppointments = repo.findByStatus(Status.Confirmed)
+                .stream()
+                .filter(appointment -> {
+                    LocalDateTime appointmentTime = appointment.getAppointmentTime();
+                    return appointmentTime != null && 
+                           appointmentTime.toLocalDate().equals(tomorrow);
+                })
+                .collect(Collectors.toList());
+        
+        int sentCount = 0;
+        int failedCount = 0;
+        
+        for (Appointment appointment : tomorrowAppointments) {
+            if (appointment.getEmail() != null && !appointment.getEmail().trim().isEmpty()) {
+                try {
+                    emailService.sendAppointmentReminder(
+                            appointment.getEmail(),
+                            appointment.getPatientName(),
+                            appointment.getAppointmentCode(),
+                            appointment.getAppointmentTime()
+                    );
+                    sentCount++;
+                    
+                    // Ghi log cho mỗi email gửi thành công
+                    System.out.println("Đã gửi email nhắc nhở cho: " + appointment.getPatientName() + 
+                                     " - Email: " + appointment.getEmail() + 
+                                     " - Thời gian: " + appointment.getAppointmentTime());
+                    
+                } catch (Exception e) {
+                    failedCount++;
+                    System.err.println("Lỗi gửi email nhắc nhở cho: " + appointment.getPatientName() + 
+                                     " - Lỗi: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+        
+        
+    } catch (Exception e) {
+        System.err.println("Lỗi trong quá trình gửi email nhắc nhở hàng loạt: " + e.getMessage());
+        e.printStackTrace();
     }
+}
 }

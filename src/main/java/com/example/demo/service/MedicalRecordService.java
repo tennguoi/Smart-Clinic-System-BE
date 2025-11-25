@@ -1,11 +1,11 @@
 package com.example.demo.service;
 
-import jakarta.persistence.criteria.Join;      // Mới
+import jakarta.persistence.criteria.Join;      
 import jakarta.persistence.criteria.JoinType;
-import com.example.demo.dto.MedicalRecordSearchCriteria; // Import DTO mới
-import org.springframework.data.jpa.domain.Specification; // Import Specification
-import jakarta.persistence.criteria.Predicate;// Import Predicate
-import java.util.ArrayList;                               // Import ArrayList
+import com.example.demo.dto.MedicalRecordSearchCriteria; 
+import org.springframework.data.jpa.domain.Specification; 
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;                               
 import com.example.demo.dto.*;
 import com.example.demo.dto.prescription.AddPrescriptionRequest;
 import com.example.demo.dto.prescription.PrescriptionResponse;

@@ -28,4 +28,12 @@ public interface InvoiceDetailRepository extends JpaRepository<InvoiceDetail, Lo
             "GROUP BY d.service " +
             "ORDER BY SUM(d.quantity) DESC")
     List<TopServiceDTO> findTopServicesBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
+    // Top dịch vụ theo doanh thu (tổng amount)
+    @Query("SELECT new com.example.demo.dto.TopServiceDTO(d.service, SUM(d.amount)) " +
+            "FROM InvoiceDetail d " +
+            "WHERE d.invoice.createdAt BETWEEN :start AND :end " +
+            "GROUP BY d.service " +
+            "ORDER BY SUM(d.amount) DESC")
+    List<TopServiceDTO> findTopServicesByRevenueBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 }

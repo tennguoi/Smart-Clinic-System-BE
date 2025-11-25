@@ -101,32 +101,41 @@ public class EmailService {
     }
 
     public void sendAppointmentReminder(String toEmail, String patientName, String appointmentCode, LocalDateTime appointmentTime) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(toEmail);
-        message.setSubject("Nhắc nhở lịch khám - Smart Clinic System");
+    SimpleMailMessage message = new SimpleMailMessage();
+    message.setFrom(fromEmail);
+    message.setTo(toEmail);
+    message.setSubject(" Nhắc nhở lịch khám ngày mai - Smart Clinic System");
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
+    
+    // Thêm thông tin về thời gian còn lại
+    LocalDateTime now = LocalDateTime.now();
+    long hoursUntilAppointment = java.time.Duration.between(now, appointmentTime).toHours();
 
-        String emailContent = String.format(
-            "Kính gửi %s,\n\n" +
-            "Đây là email nhắc nhở lịch khám của bạn.\n\n" +
-            "Thông tin lịch khám:\n" +
-            "- Họ tên: %s\n" +
-            "- Mã lịch khám: %s\n" +
-            "- Thời gian: %s\n\n" +
-            "Vui lòng đến đúng giờ để được phục vụ tốt nhất.\n" +
-            "Nếu bạn cần thay đổi hoặc hủy lịch, vui lòng liên hệ với chúng tôi sớm nhất có thể.\n\n" +
-            "Trân trọng,\n" +
-            "Smart Clinic System",
-            patientName, patientName, appointmentCode, formattedTime
-        );
+    String emailContent = String.format(
+        "Kính gửi %s,\n\n" +
+        "Đây là email nhắc nhở lịch khám của bạn vào NGÀY MAI.\n\n" +
+        "Thông tin lịch khám:\n" +
+        "- Họ tên: %s\n" +
+        "- Mã lịch khám: %s\n" +
+        "- Thời gian: %s\n" +
+        "- Còn lại: Khoảng %d giờ nữa\n\n" +
+        " Lưu ý quan trọng:\n" +
+        "- Vui lòng đến sớm 15 phút trước giờ hẹn\n" +
+        "- Mang theo giấy tờ tùy thân (CMND/CCCD)\n" +
+        "- Nếu không thể đến, vui lòng liên hệ với chúng tôi sớm nhất có thể\n\n" +
+        "Nếu bạn cần thay đổi hoặc hủy lịch, vui lòng liên hệ với chúng tôi qua:\n" +
+        "- Hotline: [Số điện thoại phòng khám]\n" +
+        "- Email: %s\n\n" +
+        "Trân trọng,\n" +
+        "Smart Clinic System",
+        patientName, patientName, appointmentCode, formattedTime, hoursUntilAppointment, fromEmail
+    );
 
-        message.setText(emailContent);
-        mailSender.send(message);
-    }
-
+    message.setText(emailContent);
+    mailSender.send(message);
+}
     /**
      * Gửi email thông báo khi tạo lịch hẹn mới
      */
