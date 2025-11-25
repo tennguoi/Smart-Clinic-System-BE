@@ -33,4 +33,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
             "ORDER BY FUNCTION('DATE_FORMAT', i.createdAt, '%d/%m')")
     java.util.List<com.example.demo.dto.TrendDataPoint> findRevenueTrendBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
+    @Query("SELECT new com.example.demo.dto.TrendDataPoint(FUNCTION('DATE_FORMAT', i.createdAt, '%d/%m'), SUM(i.totalAmount), '') " +
+            "FROM Invoice i " +
+            "WHERE i.createdAt BETWEEN :start AND :end " +
+            "GROUP BY FUNCTION('DATE_FORMAT', i.createdAt, '%d/%m') " +
+            "ORDER BY FUNCTION('DATE_FORMAT', i.createdAt, '%d/%m')")
+    java.util.List<com.example.demo.dto.TrendDataPoint> findTrendBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
 }

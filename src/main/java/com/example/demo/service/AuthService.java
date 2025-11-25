@@ -71,7 +71,7 @@ public class AuthService {
 
         // Gửi email
         try {
-            emailService.sendOtpEmail(email, otp);
+            emailService.sendOtpEmail(email, user.getFullName(), otp);
             System.out.println("OTP sent to email: " + email + " - OTP: " + otp); // Debug log
             return new GenericResponse(true, "OTP đã được gửi đến email của bạn để bật 2FA!");
         } catch (Exception e) {
@@ -115,7 +115,6 @@ public class AuthService {
         user.setOtpCode(null);
         userRepository.save(user);
         // Tạo JWT token sau khi xác thực OTP
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         List<UserRole> userRoles = userRoleRepository.findByUser_UserId(user.getUserId());
         List<String> roleNames = userRoles.stream()
                 .map(ur -> ur.getRole().getName())
@@ -130,8 +129,10 @@ public class AuthService {
             return new GenericResponse(false, "Email không tồn tại!");
         }
         String otp = generateOtp();
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
         userRepository.updateOtpForEmail(request.getEmail(), otp);
-        emailService.sendOtpEmail(request.getEmail(), otp);
+        emailService.sendOtpEmail(request.getEmail(), user.getFullName(), otp);
         return new GenericResponse(true, "OTP đã được gửi đến email của bạn!");
     }
 
@@ -180,7 +181,7 @@ public class AuthService {
                 String otp = generateOtp();
                 user.setOtpCode(otp);
                 userRepository.save(user);
-                emailService.sendOtpEmail(user.getEmail(), otp);
+                emailService.sendOtpEmail(user.getEmail(), user.getFullName(), otp);
 
                 // Trả về response với requires2FA = true
                 return LoginResponse.builder()

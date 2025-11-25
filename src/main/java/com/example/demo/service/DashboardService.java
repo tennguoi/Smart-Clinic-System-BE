@@ -19,7 +19,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -47,15 +49,28 @@ public class DashboardService {
     /**
      * Top 5 dịch vụ theo doanh thu/số lượng (tùy implement trong InvoiceDetailRepository)
      */
-    public List<TopServiceDTO> getTop5Services() {
+    public List<TopServiceDTO> getTop5Services(String startDate, String endDate) {
         Pageable topFive = PageRequest.of(0, 5);
+        
+        // If date filters are provided, use them; otherwise use default behavior
+        if (startDate != null && endDate != null) {
+            try {
+                LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+                LocalDateTime end = LocalDate.parse(endDate).atTime(LocalTime.MAX);
+                return invoiceDetailRepository.findTopServicesBetween(start, end, topFive);
+            } catch (Exception e) {
+                // Fall back to default if date parsing fails
+                return invoiceDetailRepository.findTopServices(topFive);
+            }
+        }
+        
         return invoiceDetailRepository.findTopServices(topFive);
     }
 
     /**
      * Thống kê tổng quan (giữ nguyên, có thể xem là backward compatibility)
      */
-    public DashboardStatsDTO getDashboardStats() {
+    public DashboardStatsDTO getDashboardStats(String startDate, String endDate) {
         long totalAppointments = appointmentRepository.count();
         long totalPatients = patientRepository.count();
         BigDecimal totalRevenue = invoiceRepository.sumTotalRevenue();
@@ -81,7 +96,7 @@ public class DashboardService {
      * - cancelRate: tỷ lệ hủy lịch trong tháng hiện tại
      * - cancelRateGrowth: chênh lệch tỷ lệ hủy so với tháng trước (điểm phần trăm)
      */
-    public DashboardKPIResponse getDashboardKPIs() {
+    public DashboardKPIResponse getDashboardKPIs(String startDate, String endDate) {
         LocalDateTime now = LocalDateTime.now();
 
         // Mốc thời gian ngày
@@ -146,21 +161,49 @@ public class DashboardService {
     }
 
     /**
-     * Trend số lịch hẹn theo ngày (giữ nguyên)
+     * Trend số lịch hẹn theo ngày
      */
-    public List<TrendDataPoint> getAppointmentTrend(int days) {
+    public List<TrendDataPoint> getAppointmentTrend(String startDate, String endDate) {
+        // If date filters are provided, use them; otherwise use default 7 days
+        if (startDate != null && endDate != null) {
+            try {
+                LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+                LocalDateTime end = LocalDate.parse(endDate).atTime(LocalTime.MAX);
+                return appointmentRepository.findTrendBetween(start, end);
+            } catch (Exception e) {
+                // Fall back to default if date parsing fails
+                LocalDateTime end = LocalDateTime.now();
+                LocalDateTime start = end.minusDays(7);
+                return appointmentRepository.findTrendBetween(start, end);
+            }
+        }
+        
         LocalDateTime end = LocalDateTime.now();
-        LocalDateTime start = end.minusDays(days);
+        LocalDateTime start = end.minusDays(7);
         return appointmentRepository.findTrendBetween(start, end);
     }
 
     /**
-     * Trend doanh thu theo ngày (giữ nguyên)
+     * Trend doanh thu theo ngày
      */
-    public List<TrendDataPoint> getRevenueTrend(int days) {
+    public List<TrendDataPoint> getRevenueTrend(String startDate, String endDate) {
+        // If date filters are provided, use them; otherwise use default 7 days
+        if (startDate != null && endDate != null) {
+            try {
+                LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+                LocalDateTime end = LocalDate.parse(endDate).atTime(LocalTime.MAX);
+                return invoiceRepository.findTrendBetween(start, end);
+            } catch (Exception e) {
+                // Fall back to default if date parsing fails
+                LocalDateTime end = LocalDateTime.now();
+                LocalDateTime start = end.minusDays(7);
+                return invoiceRepository.findTrendBetween(start, end);
+            }
+        }
+        
         LocalDateTime end = LocalDateTime.now();
-        LocalDateTime start = end.minusDays(days);
-        return invoiceRepository.findRevenueTrendBetween(start, end);
+        LocalDateTime start = end.minusDays(7);
+        return invoiceRepository.findTrendBetween(start, end);
     }
 
     /**

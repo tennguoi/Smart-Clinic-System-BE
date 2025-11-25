@@ -12,13 +12,16 @@ import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.CodeGenerator;
 import com.example.demo.repository.PatientRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @org.springframework.stereotype.Service
@@ -32,6 +35,7 @@ public class AppointmentService {
     private final com.example.demo.repository.InvoiceRepository invoiceRepo;
     private final com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo;
 
+    @Autowired
     public AppointmentService(AppointmentRepository repo, UserRepository userRepo, ServiceRepository serviceRepo, EmailService emailService,
                               PatientRepository patientRepo, com.example.demo.repository.InvoiceRepository invoiceRepo, com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo) {
         this.repo = repo;
@@ -43,99 +47,98 @@ public class AppointmentService {
         this.invoiceDetailRepo = invoiceDetailRepo;
     }
 
-    // Phương thức đặt lịch nhanh (Khách đặt)
-    @Transactional
-    public AppointmentResponse quickBook(AppointmentRequest req) {
-        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
-        }
-
-        Appointment entity = Appointment.builder()
-                .patientName(req.patientName())
-                .phone(req.phone())
-                .email(req.email())
-                .appointmentTime(req.appointmentTime())
-                .notes(req.notes())
-                .quickBook(true)
-                .serviceIds(joinServiceIds(req.serviceIds()))
-                .appointmentCode(generateUniqueCode())
-                .build();
-
-        entity = repo.save(entity);
-
-        if (entity.getEmail() != null && !entity.getEmail().isBlank()) {
-            try {
-                // Lấy tên các dịch vụ
-                String serviceNames = "";
-                if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
-                    List<Service> services = serviceRepo.findAllById(req.serviceIds());
-                    serviceNames = services.stream()
-                            .map(Service::getName)
-                            .reduce((a, b) -> a + ", " + b)
-                            .orElse("");
-                }
-
-                emailService.sendAppointmentPendingNotification(
-                        entity.getEmail(),
-                        entity.getPatientName(),
-                        entity.getAppointmentCode(),
-                        entity.getAppointmentTime(),
-                        entity.getPhone(),
-                        entity.getNotes(),
-                        serviceNames
-                );
-            } catch (Exception e) {
-                System.err.println("Failed to send pending appointment email: " + e.getMessage());
-            }
-        }
-
-        // [NEW] Create Draft Invoice for Stats
-        if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
-            try {
-                com.example.demo.entity.Patient patient = findOrCreatePatient(req);
-                createDraftInvoice(patient, req.serviceIds());
-            } catch (Exception e) {
-                System.err.println("Failed to create draft invoice: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        return toResponse(entity);
+   @Transactional
+public AppointmentResponse quickBook(AppointmentRequest req) {
+    if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+        throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
     }
 
-    // Phương thức tạo lịch hẹn từ form quản lý (Lễ tân)
-    @Transactional
-    public AppointmentResponse create(AppointmentRequest req) {
-        if (req.appointmentTime().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
-        }
+    Appointment entity = Appointment.builder()
+            .patientName(req.patientName())
+            .phone(req.phone())
+            .email(req.email())
+            .appointmentTime(req.appointmentTime())
+            .notes(req.notes())
+            .quickBook(true)
+            .serviceIds(joinServiceIds(req.serviceIds()))
+            .appointmentCode(generateUniqueCode())
+            .build();
 
-        Appointment entity = Appointment.builder()
-                .patientName(req.patientName())
-                .phone(req.phone())
-                .email(req.email())
-                .appointmentTime(req.appointmentTime())
-                .notes(req.notes())
-                .quickBook(false)
-                .serviceIds(joinServiceIds(req.serviceIds()))
-                .appointmentCode(generateUniqueCode())
-                .build();
+    entity = repo.save(entity);
 
-        entity = repo.save(entity);
-
-        // [NEW] Create Draft Invoice for Stats
-        if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
-            try {
-                com.example.demo.entity.Patient patient = findOrCreatePatient(req);
-                createDraftInvoice(patient, req.serviceIds());
-            } catch (Exception e) {
-                System.err.println("Failed to create draft invoice: " + e.getMessage());
-                e.printStackTrace();
+    // Send email notification for new appointment
+    if (entity.getEmail() != null && !entity.getEmail().trim().isEmpty()) {
+        try {
+            List<String> serviceNames = new ArrayList<>();
+            if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
+                serviceNames = serviceRepo.findAllById(req.serviceIds())
+                        .stream()
+                        .map(Service::getName)
+                        .collect(Collectors.toList());
             }
+            
+            emailService.sendNewAppointmentNotification(
+                entity.getEmail(),
+                entity.getPatientName(),
+                entity.getAppointmentCode(),
+                entity.getAppointmentTime(),
+                entity.getNotes(),
+                serviceNames
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to send new appointment email: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        return toResponse(entity);
     }
+
+    return toResponse(entity);
+}
+  @Transactional
+public AppointmentResponse create(AppointmentRequest req) {
+    if (req.appointmentTime().isBefore(LocalDateTime.now())) {
+        throw new IllegalArgumentException("Thời gian hẹn phải từ thời điểm hiện tại trở về sau.");
+    }
+
+    Appointment entity = Appointment.builder()
+            .patientName(req.patientName())
+            .phone(req.phone())
+            .email(req.email())
+            .appointmentTime(req.appointmentTime())
+            .notes(req.notes())
+            .quickBook(false)
+            .serviceIds(joinServiceIds(req.serviceIds()))
+            .appointmentCode(generateUniqueCode())
+            .build();
+
+    entity = repo.save(entity);
+
+    // Send email notification for new appointment
+    if (entity.getEmail() != null && !entity.getEmail().trim().isEmpty()) {
+        try {
+            List<String> serviceNames = new ArrayList<>();
+            if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
+                serviceNames = serviceRepo.findAllById(req.serviceIds())
+                        .stream()
+                        .map(Service::getName)
+                        .collect(Collectors.toList());
+            }
+            
+            emailService.sendNewAppointmentNotification(
+                entity.getEmail(),
+                entity.getPatientName(),
+                entity.getAppointmentCode(),
+                entity.getAppointmentTime(),
+                entity.getNotes(),
+                serviceNames
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to send new appointment email: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    return toResponse(entity);
+}
 
     // Phương thức cũ (giữ nguyên)
     public List<AppointmentResponse> listByStatus(Status status) {
@@ -308,51 +311,7 @@ public class AppointmentService {
                 });
     }
 
-    private void createDraftInvoice(com.example.demo.entity.Patient patient, List<String> serviceIds) {
-        if (serviceIds == null || serviceIds.isEmpty()) return;
-
-        List<Service> services = serviceRepo.findAllById(serviceIds);
-        if (services.isEmpty()) return;
-
-        // Tìm user hệ thống (Admin) để gán creator
-        User systemUser = userRepo.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No users found"));
-
-        // Tạo Invoice Draft
-        com.example.demo.entity.Invoice invoice = new com.example.demo.entity.Invoice();
-        invoice.setInvoiceCode(generateUniqueInvoiceCode());
-        invoice.setPatient(patient);
-        invoice.setCreatedBy(systemUser);
-        invoice.setStatus(com.example.demo.enums.InvoiceStatus.DRAFT);
-        invoice.setTotalAmount(java.math.BigDecimal.ZERO);
-        invoice.setPaidAmount(java.math.BigDecimal.ZERO);
-        invoice.setRemainingAmount(java.math.BigDecimal.ZERO);
-
-        invoice = invoiceRepo.save(invoice); // save trước để có invoice_id
-
-        // Tạo InvoiceDetail liên kết với invoice đã lưu
-        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
-        List<com.example.demo.entity.InvoiceDetail> details = new ArrayList<>();
-
-        for (Service s : services) {
-            com.example.demo.entity.InvoiceDetail detail = new com.example.demo.entity.InvoiceDetail();
-            detail.setInvoice(invoice); // quan trọng: phải set invoice đã save
-            detail.setService(s);
-            detail.setQuantity(1);
-            detail.setUnitPrice(s.getPrice());
-            detail.setAmount(s.getPrice());
-            details.add(detail);
-
-            total = total.add(s.getPrice());
-        }
-
-        // Cập nhật tổng tiền vào invoice
-        invoice.setTotalAmount(total);
-        invoice.setRemainingAmount(total);
-
-        invoiceDetailRepo.saveAll(details); // lưu chi tiết
-        invoiceRepo.save(invoice); // cập nhật lại tổng tiền
-    }
+    
 
 
     private String generateUniqueInvoiceCode() {
