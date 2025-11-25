@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID> {
@@ -45,5 +46,10 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
     List<MedicalRecord> findByDoctor_UserIdAndPatient_PatientIdAndCreatedAtAfter(
             UUID doctorId, UUID patientId, LocalDateTime fromDate);
 
-    // KHÔNG CÒN METHOD findByPatient_UserId NỮA → KHÔNG CÒN LỖI!
+    Optional<MedicalRecord> findFirstByPatient_PatientIdOrderByCreatedAtDesc(UUID patientId);
+
+    /**
+     * Kiểm tra bệnh nhân đã có hồ sơ khám chưa
+     */
+    boolean existsByPatient_PatientId(UUID patientId);
 }

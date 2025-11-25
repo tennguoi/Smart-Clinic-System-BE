@@ -71,4 +71,12 @@ public class BillingController {
     public ResponseEntity<BillingResponseDTO> getDetail(@PathVariable UUID id) {
         return ResponseEntity.ok(billingService.getById(id));
     }
+    // ✅ CẬP NHẬT HÓA ĐƠN (CHỈ KHI CHƯA THANH TOÁN)
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('TIEP_TAN')")
+    public ResponseEntity<BillingResponseDTO> updateInvoice(
+            @PathVariable UUID id,
+            @Valid @RequestBody BillingUpdateDTO dto) {
+        return ResponseEntity.ok(billingService.updateInvoice(id, dto));
+    }
 }

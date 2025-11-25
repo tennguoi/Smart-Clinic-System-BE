@@ -235,4 +235,52 @@ public class BillingService {
                 items
         );
     }
+    // Thêm vào BillingService.java (cuối class)
+
+    @Transactional
+    public BillingResponseDTO updateInvoice(UUID billId, BillingUpdateDTO dto) {
+        BillingRecord billing = billingRepo.findById(billId)
+                .orElseThrow(() -> new RuntimeException("Hóa đơn không tồn tại"));
+
+        // Chỉ cho phép sửa khi chưa thanh toán gì
+        if (billing.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
+            throw new RuntimeException("Không thể chỉnh sửa hóa đơn đã thu tiền");
+        }
+        if (billing.getPaymentStatus() != PaymentStatus.Pending) {
+            throw new RuntimeException("Chỉ có thể chỉnh sửa hóa đơn đang chờ thanh toán");
+        }
+
+        // Xóa hết chi tiết cũ
+        billing.getDetails().clear();
+
+        BigDecimal newTotal = BigDecimal.ZERO;
+
+        // Thêm chi tiết mới từ DTO
+        for (BillingItemDTO itemDto : dto.items()) {
+            com.example.demo.entity.Service service = serviceRepo.findById(itemDto.serviceId())
+                    .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại: " + itemDto.serviceId()));
+
+            BigDecimal subTotal = service.getPrice().multiply(BigDecimal.valueOf(itemDto.quantity()));
+
+            BillingDetail detail = BillingDetail.builder()
+                    .billingRecord(billing)
+                    .service(service)
+                    .quantity(itemDto.quantity())
+                    .unitPrice(service.getPrice())
+                    .subTotal(subTotal)
+                    .description(itemDto.description())
+                    .build();
+
+            billing.getDetails().add(detail);
+            newTotal = newTotal.add(subTotal);
+        }
+
+        // Cập nhật tổng tiền
+        billing.setTotalAmount(newTotal);
+        billing.setFinalAmount(newTotal);
+
+        billingRepo.save(billing);
+        return toDto(billing);
+    }
+
 }
