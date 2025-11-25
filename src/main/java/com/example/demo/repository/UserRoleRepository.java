@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
+
     @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.user JOIN FETCH ur.role WHERE ur.user.userId = :userId")
     List<UserRole> findByUser_UserId(@Param("userId") UUID userId);
 
@@ -19,4 +20,11 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
 
     @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role WHERE ur.user.email = :email")
     List<UserRole> findByUserEmail(@Param("email") String email);
+
+    /**
+     * Tìm tất cả UserRole theo roleId
+     * Dùng để tìm user theo vai trò
+     */
+    @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.user JOIN FETCH ur.role WHERE ur.role.roleId = :roleId")
+    List<UserRole> findByRole_RoleId(@Param("roleId") UUID roleId);
 }
