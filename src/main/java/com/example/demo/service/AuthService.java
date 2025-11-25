@@ -139,13 +139,16 @@ public class AuthService {
     public GenericResponse verifyOtp(OtpVerificationRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+
         if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getOtpCode())) {
-            return new GenericResponse(false, "OTP không hợp lệ!");
+            throw new RuntimeException("OTP không hợp lệ!"); // ← Ném exception → 500 hoặc xử lý bằng @ExceptionHandler
         }
+
         user.setOtpCode(null);
         user.setIsVerified(true);
         user.setTwoFactorEnabled(false);
         userRepository.save(user);
+
         return new GenericResponse(true, "OTP xác thực thành công!");
     }
 

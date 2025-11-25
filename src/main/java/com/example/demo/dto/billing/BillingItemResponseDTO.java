@@ -4,6 +4,7 @@ package com.example.demo.dto.billing;
 import java.math.BigDecimal;
 
 public record BillingItemResponseDTO(
+        String serviceId,
         String serviceName,
         Integer quantity,
         BigDecimal unitPrice,
