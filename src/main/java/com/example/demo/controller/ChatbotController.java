@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import com.example.demo.dto.ChatRequest;
-import com.example.demo.dto.ChatResponse;
+import com.example.demo.dto.chat.ChatRequest;
+import com.example.demo.dto.chat.ChatResponse;
 import com.example.demo.entity.ChatbotConversation;
 import com.example.demo.service.ChatbotService;
 

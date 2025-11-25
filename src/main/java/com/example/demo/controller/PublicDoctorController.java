@@ -1,6 +1,6 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.DoctorResponse;
+import com.example.demo.dto.doctor.DoctorResponse;
 import com.example.demo.dto.GenericResponse;
 import com.example.demo.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.AppointmentChatbotRequest;
-import com.example.demo.dto.AppointmentChatbotResponse;
+import com.example.demo.dto.appointment.AppointmentChatbotRequest;
+import com.example.demo.dto.appointment.AppointmentChatbotResponse;
 import com.example.demo.entity.Appointment;
 import com.example.demo.repository.AppointmentChatbotRepository;
 import lombok.RequiredArgsConstructor;

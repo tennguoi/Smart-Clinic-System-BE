@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.AppointmentRequest;
-import com.example.demo.dto.AppointmentResponse;
+import com.example.demo.dto.appointment.AppointmentRequest;
+import com.example.demo.dto.appointment.AppointmentResponse;
 import com.example.demo.entity.Appointment.Status;
 import com.example.demo.service.AppointmentService;
 import org.springframework.http.HttpStatus;

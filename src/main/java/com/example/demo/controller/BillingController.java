@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.billing.*;
-import com.example.demo.entity.PaymentMethod;
+import com.example.demo.enums.PaymentMethod;
 import com.example.demo.service.BillingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

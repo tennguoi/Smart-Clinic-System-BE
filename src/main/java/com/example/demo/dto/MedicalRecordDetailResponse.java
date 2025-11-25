@@ -1,5 +1,6 @@
 package com.example.demo.dto;
 
+import com.example.demo.dto.prescription.PrescriptionResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

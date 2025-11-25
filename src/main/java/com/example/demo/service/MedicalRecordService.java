@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.*;
+import com.example.demo.dto.prescription.AddPrescriptionRequest;
+import com.example.demo.dto.prescription.PrescriptionResponse;
 import com.example.demo.entity.*;
 import com.example.demo.entity.MedicalRecordServiceEntity;
 import com.example.demo.entity.Patient;

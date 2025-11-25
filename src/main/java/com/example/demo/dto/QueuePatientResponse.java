@@ -1,31 +1,40 @@
 package com.example.demo.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class QueuePatientResponse {
 
-    // Queue info
+    // Queue information
     private UUID queueId;
-    private String queueNumber;
-    private String priority;
-    private String status;
-    private String checkInTime;
+    private String queueNumber;      // A001, A002...
+    private String priority;         // "Bình thường", "Ưu tiên", "Khẩn cấp"
+    private String status;           // "Đang chờ", "Đang khám", "Hoàn tất", "Hủy"
+    private String checkInTime;      // Thời gian check-in (ISO format)
 
-    // Patient info
+    // Patient information
     private UUID patientId;
     private String patientName;
     private String phone;
     private String email;
     private LocalDate dob;
-    private String gender;
+    private String gender;           // "Nam", "Nữ", "Khác"
     private String address;
-    private String idNumber;           // Số căn cước
-    private String insuranceNumber;    // Số thẻ bảo hiểm y tế
-    private String notes;              // Triệu chứng
+    private String idNumber;         // CCCD/CMND
+    private String insuranceNumber;  // Số bảo hiểm y tế
+    private String notes;            // Ghi chú
+
+    // Room information (nếu đã được phân phòng)
+    private UUID roomId;
+    private String roomName;         // Tên phòng khám
+    private String doctorName;       // Tên bác sĩ phụ trách phòng
 }

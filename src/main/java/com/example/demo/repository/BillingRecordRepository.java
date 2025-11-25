@@ -2,7 +2,7 @@
 package com.example.demo.repository;
 
 import com.example.demo.entity.BillingRecord;
-import com.example.demo.entity.PaymentStatus;
+import com.example.demo.enums.PaymentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

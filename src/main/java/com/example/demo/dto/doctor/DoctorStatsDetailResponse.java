@@ -1,5 +1,6 @@
-package com.example.demo.dto;
+package com.example.demo.dto.doctor;
 
+import com.example.demo.dto.doctor.DoctorStatsDetailItem;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

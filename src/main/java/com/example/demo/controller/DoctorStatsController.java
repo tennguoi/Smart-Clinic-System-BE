@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.DoctorStatsDetailResponse;
-import com.example.demo.dto.DoctorStatsResponse;
+import com.example.demo.dto.doctor.DoctorStatsDetailResponse;
+import com.example.demo.dto.doctor.DoctorStatsResponse;
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UserRoleRepository;

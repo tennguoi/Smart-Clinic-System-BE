@@ -1,9 +1,6 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.ApiResponse;
-import com.example.demo.dto.AssignRoomRequest;
-import com.example.demo.dto.QueuePatientResponse;
-import com.example.demo.dto.RoomResponse;
+import com.example.demo.dto.*;
 import com.example.demo.entity.ExaminationRoom;
 import com.example.demo.entity.Queue;
 import com.example.demo.entity.User;
@@ -16,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,43 +22,29 @@ public class RoomService {
     private final QueueRepository queueRepository;
     private final QueueService queueService;
 
-    /**
-     * Lấy danh sách tất cả phòng khám đang hoạt động
-     */
     public List<RoomResponse> getAllActiveRooms() {
         List<ExaminationRoom> rooms = roomRepository.findByIsActiveTrueOrderByRoomNameAsc();
         return rooms.stream()
                 .map(this::mapToRoomResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    /**
-     * Lấy danh sách phòng trống (Available)
-     */
     public List<RoomResponse> getAvailableRooms() {
-        List<ExaminationRoom> rooms = roomRepository.findByStatus(ExaminationRoom.RoomStatus.Available);
-        return rooms.stream()
-                .filter(room -> room.getIsActive())
+        return roomRepository.findByIsActiveTrue()
+                .stream()
+                .filter(r -> r.getDoctor() != null)
                 .map(this::mapToRoomResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    /**
-     * Lấy chi tiết một phòng khám
-     */
     public RoomResponse getRoomById(UUID roomId) {
         ExaminationRoom room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám"));
         return mapToRoomResponse(room);
     }
 
-    /**
-     * PHÂN BỆNH NHÂN VÀO PHÒNG KHÁM
-     * Nghiệp vụ chính: Lễ tân chọn phòng trống và phân bệnh nhân đang chờ vào phòng đó
-     */
     @Transactional
     public ApiResponse<RoomResponse> assignPatientToRoom(AssignRoomRequest request) {
-        // 1. Kiểm tra phòng khám có tồn tại và đang trống không
         ExaminationRoom room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám"));
 
@@ -70,70 +52,81 @@ public class RoomService {
             return ApiResponse.error("Phòng khám đang không hoạt động");
         }
 
-        if (room.getStatus() == ExaminationRoom.RoomStatus.Occupied) {
-            return ApiResponse.error("Phòng khám đang bận, vui lòng chọn phòng khác");
-        }
-
-        // 2. Kiểm tra bệnh nhân trong hàng đợi
         Queue queue = queueRepository.findById(request.getQueueId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân trong hàng đợi"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân"));
 
         if (queue.getStatus() != Queue.QueueStatus.Waiting) {
             return ApiResponse.error("Bệnh nhân không ở trạng thái chờ khám");
         }
 
-        // 3. Cập nhật QUEUE
         queue.setAssignedRoom(room);
-        queue.setStatus(Queue.QueueStatus.InProgress);
-        queue.setStartTime(LocalDateTime.now());
         queueRepository.save(queue);
 
-        // 4. Cập nhật EXAMINATION_ROOM
-        room.setCurrentQueueId(queue.getQueueId());
-        room.setStatus(ExaminationRoom.RoomStatus.Occupied);
-        ExaminationRoom savedRoom = roomRepository.save(room);
-
-        return ApiResponse.success(
-                "Đã phân bệnh nhân " + queue.getQueueNumber() + " vào phòng " + room.getRoomName(),
-                mapToRoomResponse(savedRoom)
-        );
+        return ApiResponse.success("Đã phân bệnh nhân vào phòng", mapToRoomResponse(room));
     }
 
-    /**
-     * HOÀN TẤT KHÁM - Giải phóng phòng
-     * Khi bác sĩ khám xong, đánh dấu hoàn tất và phòng trở về trạng thái Available
-     */
+    @Transactional
+    public ApiResponse<QueuePatientResponse> callNextPatient(UUID roomId) {
+        ExaminationRoom room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám"));
+
+        if (!room.getIsActive() || room.getDoctor() == null) {
+            return ApiResponse.error("Phòng khám không hoạt động hoặc chưa có bác sĩ");
+        }
+
+        List<Queue> waiting = queueRepository.findWaitingQueuesByRoomIdOrderedByPriority(roomId);
+
+        if (waiting.isEmpty()) {
+            return ApiResponse.error("Không còn bệnh nhân nào chờ trong phòng");
+        }
+
+        Queue next = waiting.get(0);
+
+        // Hoàn tất người đang khám (nếu có)
+        if (room.getCurrentQueueId() != null) {
+            queueRepository.findById(room.getCurrentQueueId())
+                    .ifPresent(current -> {
+                        current.setStatus(Queue.QueueStatus.Completed);
+                        current.setEndTime(LocalDateTime.now());
+                        queueRepository.save(current);
+                    });
+        }
+
+        // Gọi bệnh mới
+        next.setStatus(Queue.QueueStatus.InProgress);
+        next.setStartTime(LocalDateTime.now());
+        queueRepository.save(next);
+
+        room.setCurrentQueueId(next.getQueueId());
+        room.setStatus(ExaminationRoom.RoomStatus.Occupied);
+        roomRepository.save(room);
+
+        return ApiResponse.success("Đã gọi bệnh nhân: " + next.getQueueNumber(), queueService.mapToDto(next));
+    }
+
     @Transactional
     public ApiResponse<RoomResponse> completeExamination(UUID roomId) {
         ExaminationRoom room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám"));
 
         if (room.getCurrentQueueId() == null) {
-            return ApiResponse.error("Phòng không có bệnh nhân nào");
+            return ApiResponse.error("Phòng không có bệnh nhân đang khám");
         }
 
-        // Cập nhật Queue: đánh dấu hoàn tất
-        Queue queue = queueRepository.findById(room.getCurrentQueueId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin khám"));
+        Queue current = queueRepository.findById(room.getCurrentQueueId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân"));
 
-        queue.setStatus(Queue.QueueStatus.Completed);
-        queue.setEndTime(LocalDateTime.now());
-        queueRepository.save(queue);
+        current.setStatus(Queue.QueueStatus.Completed);
+        current.setEndTime(LocalDateTime.now());
+        queueRepository.save(current);
 
-        // Giải phóng phòng
         room.setCurrentQueueId(null);
         room.setStatus(ExaminationRoom.RoomStatus.Available);
-        ExaminationRoom savedRoom = roomRepository.save(room);
+        roomRepository.save(room);
 
-        return ApiResponse.success(
-                "Đã hoàn tất khám cho bệnh nhân " + queue.getQueueNumber(),
-                mapToRoomResponse(savedRoom)
-        );
+        return ApiResponse.success("Hoàn tất khám", mapToRoomResponse(room));
     }
 
-    /**
-     * HUỶ PHÂN PHÒNG - Đưa bệnh nhân về hàng đợi
-     */
     @Transactional
     public ApiResponse<RoomResponse> cancelRoomAssignment(UUID roomId) {
         ExaminationRoom room = roomRepository.findById(roomId)
@@ -143,7 +136,6 @@ public class RoomService {
             return ApiResponse.error("Phòng không có bệnh nhân nào");
         }
 
-        // Đưa bệnh nhân về trạng thái Waiting
         Queue queue = queueRepository.findById(room.getCurrentQueueId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin khám"));
 
@@ -152,85 +144,63 @@ public class RoomService {
         queue.setStartTime(null);
         queueRepository.save(queue);
 
-        // Giải phóng phòng
         room.setCurrentQueueId(null);
         room.setStatus(ExaminationRoom.RoomStatus.Available);
-        ExaminationRoom savedRoom = roomRepository.save(room);
+        roomRepository.save(room);
 
-        return ApiResponse.success(
-                "Đã hủy phân phòng cho bệnh nhân " + queue.getQueueNumber(),
-                mapToRoomResponse(savedRoom)
-        );
+        return ApiResponse.success("Đã hủy phân phòng", mapToRoomResponse(room));
     }
 
-    /**
-     * Lấy thông tin bệnh nhân hiện tại trong phòng
-     */
     public QueuePatientResponse getCurrentPatientInRoom(UUID roomId) {
         ExaminationRoom room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám"));
 
-        if (room.getCurrentQueueId() == null) {
-            return null;
-        }
+        if (room.getCurrentQueueId() == null) return null;
 
-        return queueService.getQueueById(room.getCurrentQueueId())
+        return queueRepository.findById(room.getCurrentQueueId())
+                .map(queueService::mapToDto)
                 .orElse(null);
     }
 
-    /**
-     * Lấy danh sách bệnh nhân đã khám trong phòng (hôm nay)
-     */
     public List<QueuePatientResponse> getRoomHistory(UUID roomId) {
-        List<Queue> queues = queueRepository.findByAssignedRoomRoomId(roomId);
-        return queues.stream()
+        return queueRepository.findByAssignedRoomRoomId(roomId)
+                .stream()
                 .filter(q -> q.getStatus() == Queue.QueueStatus.Completed)
                 .map(queueService::mapToDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    /**
-     * Thống kê phòng khám
-     */
     public RoomStatistics getRoomStatistics() {
         List<ExaminationRoom> allRooms = roomRepository.findByIsActiveTrue();
-        long availableCount = allRooms.stream()
+        long available = allRooms.stream()
                 .filter(r -> r.getStatus() == ExaminationRoom.RoomStatus.Available)
                 .count();
-        long occupiedCount = allRooms.stream()
-                .filter(r -> r.getStatus() == ExaminationRoom.RoomStatus.Occupied)
-                .count();
+        long occupied = allRooms.size() - available;
 
         return RoomStatistics.builder()
-                .totalRooms(allRooms.size())
-                .availableRooms((int) availableCount)
-                .occupiedRooms((int) occupiedCount)
+                .totalRooms((int) allRooms.size())
+                .availableRooms((int) available)
+                .occupiedRooms((int) occupied)
                 .build();
     }
 
-    // === HELPER METHODS ===
-
     private RoomResponse mapToRoomResponse(ExaminationRoom room) {
-        RoomResponse response = new RoomResponse();
-        response.setRoomId(room.getRoomId());
-        response.setRoomName(room.getRoomName());
-        response.setStatus(room.getStatus().name());
-        response.setIsActive(room.getIsActive());
-        response.setCurrentQueueId(room.getCurrentQueueId());
+        RoomResponse res = new RoomResponse();
+        res.setRoomId(room.getRoomId());
+        res.setRoomName(room.getRoomName());
+        res.setStatus(room.getStatus().name());
+        res.setIsActive(room.getIsActive());
+        res.setCurrentQueueId(room.getCurrentQueueId());
 
         if (room.getDoctor() != null) {
-            User doctor = room.getDoctor();
-            response.setDoctorId(doctor.getUserId());
-            response.setDoctorName(doctor.getFullName());
+            res.setDoctorId(room.getDoctor().getUserId());
+            res.setDoctorName(room.getDoctor().getFullName());
         }
-
-        return response;
+        return res;
     }
 
     @lombok.Data
     @lombok.Builder
-    @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
     public static class RoomStatistics {
         private int totalRooms;
         private int availableRooms;

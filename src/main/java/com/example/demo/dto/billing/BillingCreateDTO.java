@@ -1,7 +1,7 @@
 // src/main/java/com/example/demo/dto/billing/BillingCreateDTO.java
 package com.example.demo.dto.billing;
 
-import com.example.demo.entity.PaymentMethod;
+import com.example.demo.enums.PaymentMethod;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 

@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.*;
+import com.example.demo.dto.prescription.AddPrescriptionRequest;
 import com.example.demo.entity.MedicalRecord;
 import com.example.demo.repository.MedicalRecordRepository;
 import com.example.demo.service.MedicalRecordService;

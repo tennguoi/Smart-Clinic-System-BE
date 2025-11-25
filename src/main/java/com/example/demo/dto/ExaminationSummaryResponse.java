@@ -1,5 +1,7 @@
 // src/main/java/com/example/demo/dto/ExaminationSummaryResponse.java
 package com.example.demo.dto;
+import com.example.demo.dto.prescription.PrescriptionResponse;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;

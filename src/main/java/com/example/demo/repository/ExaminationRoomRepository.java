@@ -28,6 +28,14 @@ public interface ExaminationRoomRepository extends JpaRepository<ExaminationRoom
 
     List<ExaminationRoom> findByDoctorUserId(UUID doctorId);
 
+
+
+    // === METHOD MỚI MÀ SERVICE ĐANG GỌI ===
+    @Query("SELECT r FROM ExaminationRoom r WHERE r.isActive = true AND r.doctor IS NOT NULL ORDER BY r.roomName ASC")
+    List<ExaminationRoom> findByIsActiveTrueAndDoctorNotNullOrderByRoomNameAsc();
+
+    // Các method khác nếu có...
+
     /**
      * Tìm phòng active của một bác sĩ (để đảm bảo 1 bác sĩ chỉ ở 1 phòng)
      */

@@ -1,6 +1,6 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.DoctorResponse;
+import com.example.demo.dto.doctor.DoctorResponse;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRoleRepository;

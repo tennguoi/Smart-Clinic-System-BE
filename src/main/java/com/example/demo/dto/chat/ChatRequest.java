@@ -1,6 +1,7 @@
 // ChatRequest.java
-package com.example.demo.dto;
+package com.example.demo.dto.chat;
 
+import com.example.demo.dto.Message;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

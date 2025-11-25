@@ -100,11 +100,35 @@
 //            userRoleRepository.save(doctorUserRole);
 //            System.out.println("Created doctor user: doctor@clinic.com / doctor123");
 //        }
+//        if (!userRepository.existsByEmail("d")) {
+//            User doctor = User.builder()
+//                    .email("phamdanngu937@gmail.com")
+//                    .password(passwordEncoder.encode("doctor123"))
+//                    .fullName("Phạm Minh Đàn")
+//                    .phone("0987654321")
+//                    .dob(LocalDate.of(1990, 8, 20))
+//                    .gender(User.Gender.female)
+//                    .address("456 Đường XYZ, Quận 3, TP.HCM")
+//                    .experienceYears(5)
+//                    .photoUrl("https://tse3.mm.bing.net/th/id/OIP.HXWtzVpE_QndSbr-NaRPRAHaIp?cb=ucfimgc2&rs=1&pid=ImgDetMain&o=7&rm=3")
+//                    .bio("Bác sĩ chuyên khoa nội tổng quát ")
+//                    .isVerified(true)
+//                    .twoFactorEnabled(false)
+//                    .build();
+//            doctor = userRepository.save(doctor);
+//
+//            UserRole doctorUserRole = UserRole.builder()
+//                    .user(doctor)
+//                    .role(doctorRole)
+//                    .build();
+//            userRoleRepository.save(doctorUserRole);
+//            System.out.println("Created doctor user: doctor@clinic.com / doctor123");
+//        }
 //
 //        if (!userRepository.existsByEmail("receptionist@clinic.com")) {
 //            User receptionist = User.builder()
 //                    .email("danpham261005@gmail.com")
-//                    .password(passwordEncoder.encode("receptionist123"))
+//                    .password(passwordEncoder.encode("dan123"))
 //                    .fullName("Nguyễn Danh Hiếu")
 //                    .phone("0912345678")
 //                    .dob(LocalDate.of(1995, 3, 10))

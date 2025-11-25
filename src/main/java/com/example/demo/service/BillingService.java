@@ -4,6 +4,8 @@ package com.example.demo.service;
 import com.example.demo.dto.ExaminationSummaryResponse;
 import com.example.demo.dto.billing.*;
 import com.example.demo.entity.*;
+import com.example.demo.enums.PaymentMethod;
+import com.example.demo.enums.PaymentStatus;
 import com.example.demo.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
