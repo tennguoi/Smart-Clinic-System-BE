@@ -23,18 +23,13 @@ public class AdminUserController {
 
     @GetMapping
     public ResponseEntity<List<UserAdminResponse>> getAllUsers(
-            @RequestParam(required = false) String keyword, // Hứng tên
-            @RequestParam(required = false) String phone    // Hứng sđt
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String phone
     ) {
-        // Truyền vào Service
         List<UserAdminResponse> users = adminUserService.getAllUsers(keyword, phone);
         return ResponseEntity.ok(users);
     }
-    /**
-     * Tạo user mới
-     * @param req - Thông tin user (JSON)
-     * @param photo - File ảnh (optional)
-     */
+
     @PostMapping
     public ResponseEntity<UserAdminResponse> createUser(
             @RequestPart("data") CreateUserRequest req,
@@ -43,9 +38,7 @@ public class AdminUserController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Lấy thông tin user theo ID
-     */
+
     @GetMapping("/{userId}")
     public ResponseEntity<UserAdminResponse> getUserById(@PathVariable UUID userId) {
         UserAdminResponse user = adminUserService.getUserById(userId);
@@ -53,10 +46,10 @@ public class AdminUserController {
     }
 
     /**
-     * Cập nhật thông tin user
-     * @param userId - ID của user
-     * @param req - Thông tin cập nhật (JSON)
-     * @param photo - File ảnh mới (optional)
+
+     * @param userId
+     * @param req
+     * @param photo
      */
     @PutMapping("/{userId}")
     public ResponseEntity<UserAdminResponse> updateUser(
