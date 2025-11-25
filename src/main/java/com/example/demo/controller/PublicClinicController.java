@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
         "http://localhost:5174",
         "http://localhost:3000",
         "http://127.0.0.1:5173"
-}, allowCredentials = "true")
+})
 public class PublicClinicController {
     
     private final ClinicService clinicService;

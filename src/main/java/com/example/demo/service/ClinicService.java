@@ -4,6 +4,10 @@ import com.example.demo.dto.ClinicRequest;
 import com.example.demo.dto.ClinicResponse;
 import com.example.demo.entity.Clinic;
 import com.example.demo.repository.ClinicRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,7 +15,16 @@ import java.util.Optional;
 
 @Service
 public class ClinicService {
+    private static final Logger logger = LoggerFactory.getLogger(ClinicService.class);
+    private static final String EMAIL_REGEX = 
+        "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+    private static final String LOGO_URL_REGEX = 
+        "^/uploads/logo/[a-zA-Z0-9_-]+\\.(jpg|jpeg|png|gif|webp)$";
+    
     private final ClinicRepository clinicRepository;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
     
     public ClinicService(ClinicRepository clinicRepository) {
         this.clinicRepository = clinicRepository;
@@ -21,12 +34,21 @@ public class ClinicService {
      * Lấy thông tin phòng khám
      * Trả về null nếu chưa có dữ liệu
      */
+    @Transactional(readOnly = true)
     public ClinicResponse getClinicInfo() {
+        logger.debug("Đang lấy thông tin phòng khám từ database");
+        
+        // Clear cache để đảm bảo lấy dữ liệu mới nhất
+        entityManager.clear();
+        
         Optional<Clinic> clinicOpt = clinicRepository.findFirstByOrderByCreatedAtAsc();
         
         if (clinicOpt.isPresent()) {
-            return mapToResponse(clinicOpt.get());
+            Clinic clinic = clinicOpt.get();
+            logger.debug("Đã tìm thấy phòng khám với ID: {}, name: {}", clinic.getClinicId(), clinic.getName());
+            return mapToResponse(clinic);
         } else {
+            logger.debug("Không tìm thấy thông tin phòng khám trong database");
             return null; // Không tự động tạo dữ liệu mặc định
         }
     }
@@ -36,48 +58,86 @@ public class ClinicService {
      */
     @Transactional
     public ClinicResponse updateClinicInfo(ClinicRequest request) {
+        logger.info("Bắt đầu cập nhật thông tin phòng khám với request: {}", request);
+        
         Optional<Clinic> clinicOpt = clinicRepository.findFirstByOrderByCreatedAtAsc();
         
         Clinic clinic;
         boolean isNew = false;
         if (clinicOpt.isPresent()) {
             clinic = clinicOpt.get();
+            logger.info("Tìm thấy phòng khám hiện tại với ID: {}", clinic.getClinicId());
         } else {
             clinic = new Clinic();
             isNew = true;
+            logger.info("Không tìm thấy phòng khám, tạo mới");
         }
         
         // Validation: Nếu là tạo mới, name là bắt buộc
         if (isNew && (request.getName() == null || request.getName().trim().isEmpty())) {
+            logger.error("Lỗi: Tên phòng khám không được để trống khi tạo mới");
             throw new IllegalArgumentException("Tên phòng khám không được để trống");
         }
         
         // Cập nhật thông tin (chỉ update các field không null)
-        if (request.getName() != null && !request.getName().trim().isEmpty()) {
-            clinic.setName(request.getName().trim());
+        // Name: bắt buộc không được rỗng khi update
+        if (request.getName() != null) {
+            String name = request.getName().trim();
+            if (name.isEmpty()) {
+                throw new IllegalArgumentException("Tên phòng khám không được để trống");
+            }
+            clinic.setName(name);
         }
+        
+        // Address: cho phép rỗng (set null nếu empty)
         if (request.getAddress() != null) {
-            clinic.setAddress(request.getAddress().trim());
+            String address = request.getAddress().trim();
+            clinic.setAddress(address.isEmpty() ? null : address);
         }
+        
+        // Phone: cho phép rỗng (set null nếu empty)
         if (request.getPhone() != null) {
-            clinic.setPhone(request.getPhone().trim());
+            String phone = request.getPhone().trim();
+            clinic.setPhone(phone.isEmpty() ? null : phone);
         }
+        
+        // Email: validate nếu không rỗng, set null nếu empty
         if (request.getEmail() != null) {
             String email = request.getEmail().trim();
-            if (!email.isEmpty() && !email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            if (!email.isEmpty() && !email.matches(EMAIL_REGEX)) {
                 throw new IllegalArgumentException("Email không hợp lệ");
             }
             clinic.setEmail(email.isEmpty() ? null : email);
         }
+        
+        // Website: cho phép rỗng (set null nếu empty)
         if (request.getWebsite() != null) {
-            clinic.setWebsite(request.getWebsite().trim());
+            String website = request.getWebsite().trim();
+            clinic.setWebsite(website.isEmpty() ? null : website);
         }
+        
+        // LogoUrl: validate format và cho phép rỗng (set null nếu empty)
         if (request.getLogoUrl() != null) {
-            clinic.setLogoUrl(request.getLogoUrl().trim());
+            String logoUrl = request.getLogoUrl().trim();
+            if (!logoUrl.isEmpty() && !logoUrl.matches(LOGO_URL_REGEX)) {
+                throw new IllegalArgumentException("Logo URL không hợp lệ. URL phải có định dạng: /uploads/logo/filename.ext");
+            }
+            clinic.setLogoUrl(logoUrl.isEmpty() ? null : logoUrl);
         }
         
         Clinic saved = clinicRepository.save(clinic);
-        return mapToResponse(saved);
+        
+        // Force flush và refresh để đảm bảo dữ liệu được lưu vào database và đọc lại
+        entityManager.flush();
+        entityManager.refresh(saved);
+        
+        logger.info("Đã lưu và refresh thành công thông tin phòng khám với ID: {}", saved.getClinicId());
+        logger.info("Thông tin chi tiết sau khi lưu: name={}, address={}, phone={}, email={}, website={}, logoUrl={}", 
+                    saved.getName(), saved.getAddress(), saved.getPhone(), saved.getEmail(), saved.getWebsite(), saved.getLogoUrl());
+        
+        ClinicResponse response = mapToResponse(saved);
+        logger.info("Response trả về: {}", response);
+        return response;
     }
     
     /**

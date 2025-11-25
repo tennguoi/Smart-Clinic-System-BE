@@ -4,8 +4,11 @@ import com.example.demo.dto.ClinicRequest;
 import com.example.demo.dto.ClinicResponse;
 import com.example.demo.service.ClinicService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,6 +32,7 @@ import javax.imageio.ImageIO;
 @RequestMapping("/api/admin/clinic")
 public class AdminClinicController {
     
+    private static final Logger logger = LoggerFactory.getLogger(AdminClinicController.class);
     private final ClinicService clinicService;
     private static final String UPLOAD_DIR = "uploads/logo";
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -44,6 +48,7 @@ public class AdminClinicController {
      * Lấy thông tin phòng khám
      */
     @GetMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ClinicResponse> getClinicInfo() {
         ClinicResponse response = clinicService.getClinicInfo();
         if (response == null) {
@@ -61,14 +66,63 @@ public class AdminClinicController {
      * Cập nhật thông tin phòng khám
      */
     @PutMapping
-    public ResponseEntity<ClinicResponse> updateClinicInfo(@Valid @RequestBody ClinicRequest request) {
-        return ResponseEntity.ok(clinicService.updateClinicInfo(request));
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<?> updateClinicInfo(@Valid @RequestBody ClinicRequest request) {
+        logger.info("=== BẮT ĐẦU XỬ LÝ CẬP NHẬT THÔNG TIN PHÒNG KHÁM ===");
+        logger.info("Request nhận được: {}", request);
+        
+        try {
+            ClinicResponse response = clinicService.updateClinicInfo(request);
+            logger.info("Cập nhật thành công! Response: {}", response);
+            logger.info("=== KẾT THÚC XỬ LÝ CẬP NHẬT - THÀNH CÔNG ===");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            logger.error("Lỗi validation: {}", e.getMessage());
+            logger.info("=== KẾT THÚC XỬ LÝ CẬP NHẬT - LỖI VALIDATION ===");
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Lỗi hệ thống khi cập nhật: ", e);
+            logger.info("=== KẾT THÚC XỬ LÝ CẬP NHẬT - LỖI HỆ THỐNG ===");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi khi cập nhật thông tin phòng khám: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Endpoint debug - kiểm tra thông tin request
+     */
+    @PostMapping("/debug-update")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<?> debugUpdate(@RequestBody ClinicRequest request) {
+        Map<String, Object> debug = new HashMap<>();
+        debug.put("receivedRequest", request);
+        debug.put("currentClinicInfo", clinicService.getClinicInfo());
+        
+        try {
+            ClinicResponse updated = clinicService.updateClinicInfo(request);
+            debug.put("updateSuccess", true);
+            debug.put("updatedInfo", updated);
+            
+            // Đọc lại từ database để verify
+            ClinicResponse verified = clinicService.getClinicInfo();
+            debug.put("verifiedFromDB", verified);
+            debug.put("isDataPersisted", verified != null && verified.equals(updated));
+            
+            return ResponseEntity.ok(debug);
+        } catch (Exception e) {
+            debug.put("updateSuccess", false);
+            debug.put("error", e.getMessage());
+            debug.put("errorType", e.getClass().getSimpleName());
+            return ResponseEntity.badRequest().body(debug);
+        }
     }
     
     /**
      * Upload logo phòng khám
      */
     @PostMapping("/upload-logo")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<?> uploadLogo(@RequestParam("logo") MultipartFile logo) {
         if (logo.isEmpty()) {
             return ResponseEntity.badRequest()
@@ -114,7 +168,7 @@ public class AdminClinicController {
                     }
                 } catch (IOException e) {
                     // Log warning nhưng không fail upload mới
-                    System.err.println("Không thể xóa logo cũ: " + e.getMessage());
+                    logger.warn("Không thể xóa logo cũ: {}", e.getMessage());
                 }
             }
             
@@ -231,8 +285,13 @@ public class AdminClinicController {
             }
             
             // Tạo ảnh mới với kích thước đã resize
+            // Kiểm tra xem ảnh gốc có alpha channel (transparency) không
+            int imageType = originalImage.getTransparency() == BufferedImage.OPAQUE 
+                ? BufferedImage.TYPE_INT_RGB 
+                : BufferedImage.TYPE_INT_ARGB;
+            
             Image scaledImage = originalImage.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
-            BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+            BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, imageType);
             
             Graphics2D g2d = resizedImage.createGraphics();
             g2d.drawImage(scaledImage, 0, 0, null);
@@ -248,10 +307,13 @@ public class AdminClinicController {
                 // Với ảnh quá lớn, chuyển sang RGB và dùng JPEG
                 BufferedImage jpegImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
                 Graphics2D g2dJpeg = jpegImage.createGraphics();
-                g2dJpeg.drawImage(resizedImage, 0, 0, null);
-                g2dJpeg.dispose();
-                ImageIO.write(jpegImage, "jpg", baos);
-                format = "jpg";
+                try {
+                    g2dJpeg.drawImage(resizedImage, 0, 0, null);
+                    ImageIO.write(jpegImage, "jpg", baos);
+                    format = "jpg";
+                } finally {
+                    g2dJpeg.dispose(); // Đảm bảo dispose ngay cả khi có exception
+                }
             } else {
                 // Với ảnh nhỏ hơn, dùng PNG để giữ chất lượng
                 ImageIO.write(resizedImage, "png", baos);
