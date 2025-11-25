@@ -304,13 +304,32 @@ public class AdminUserService {
         return new PageImpl<>(responses, pageable, users.size());
     }
 
+    @Transactional(readOnly = true)
     public UserAdminResponse getUserById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
-        List<String> roleNames = userRoleRepository.findByUser_UserId(userId)
-                .stream()
-                .map(ur -> ur.getRole().getName())
-                .collect(Collectors.toList());
+        
+        List<String> roleNames = new ArrayList<>();
+        try {
+            // Fetch user roles with eager loading
+            List<UserRole> userRoles = userRoleRepository.findByUser_UserId(userId);
+            roleNames = userRoles.stream()
+                    .map(ur -> {
+                        try {
+                            return ur.getRole().getName();
+                        } catch (Exception e) {
+                            System.err.println("Error getting role name: " + e.getMessage());
+                            return null;
+                        }
+                    })
+                    .filter(name -> name != null)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            // If there's an error fetching roles, just return empty list
+            System.err.println("Error fetching roles for user " + userId + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return buildUserAdminResponse(user, roleNames);
     }
 

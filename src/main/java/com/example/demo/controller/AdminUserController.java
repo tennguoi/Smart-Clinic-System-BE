@@ -52,8 +52,14 @@ public class AdminUserController {
      */
     @GetMapping("/{userId}")
     public ResponseEntity<UserAdminResponse> getUserById(@PathVariable UUID userId) {
-        UserAdminResponse user = adminUserService.getUserById(userId);
-        return ResponseEntity.ok(user);
+        try {
+            UserAdminResponse user = adminUserService.getUserById(userId);
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            System.err.println("Error fetching user " + userId + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     /**

@@ -110,7 +110,9 @@ public class PdfExportService {
                 String logoUrlFromDb = null;
                 if (clinic != null && clinic.getLogoUrl() != null && !clinic.getLogoUrl().isEmpty()) {
                     logoUrlFromDb = clinic.getLogoUrl();
-                    logger.info("Logo URL from database: {}", logoUrlFromDb);
+                    logger.info("📸 Logo URL from database: {}", logoUrlFromDb);
+                } else {
+                    logger.warn("⚠️ No logo URL found in database, will try default paths");
                 }
 
                 // Danh sách các đường dẫn để thử load logo
@@ -119,6 +121,10 @@ public class PdfExportService {
                 // 1. Từ database (nếu có)
                 if (logoUrlFromDb != null) {
                     logoPaths.add(logoUrlFromDb);
+                    // Nếu logoUrl bắt đầu bằng "/uploads/", thêm biến thể không có dấu "/"
+                    if (logoUrlFromDb.startsWith("/uploads/")) {
+                        logoPaths.add(logoUrlFromDb.substring(1)); // Bỏ dấu "/" đầu tiên
+                    }
                 }
 
                 // 2. Các đường dẫn mặc định
@@ -126,7 +132,9 @@ public class PdfExportService {
                 logoPaths.add("static/logo.png");
                 logoPaths.add("uploads/logo.png");
                 logoPaths.add("./uploads/logo.png");
-
+                
+                logger.debug("📋 Will try loading logo from {} paths: {}", logoPaths.size(), logoPaths);
+                
                 // Thử load từ từng đường dẫn
                 for (String logoPath : logoPaths) {
                     if (logoLoaded) break;
@@ -182,21 +190,30 @@ public class PdfExportService {
                             }
                         }
                         // Nếu là đường dẫn file system (uploads folder)
-                        else if (logoPath.startsWith("uploads/") || logoPath.startsWith("./uploads/")) {
+                        else if (logoPath.startsWith("uploads/") || logoPath.startsWith("./uploads/") || logoPath.startsWith("/uploads/")) {
                             try {
-                                String filePath = logoPath.startsWith("./") ? logoPath.substring(2) : logoPath;
+                                // Xử lý path: bỏ "./" hoặc "/" ở đầu
+                                String filePath = logoPath;
+                                if (filePath.startsWith("./")) {
+                                    filePath = filePath.substring(2);
+                                } else if (filePath.startsWith("/")) {
+                                    filePath = filePath.substring(1);
+                                }
+                                
                                 logger.debug("Trying to load logo from file: {}", filePath);
                                 java.io.File logoFile = new java.io.File(filePath);
+                                
                                 if (logoFile.exists() && logoFile.isFile()) {
                                     Image logo = new Image(ImageDataFactory.create(logoFile.getAbsolutePath()));
                                     logo.setWidth(80);
                                     logo.setHeight(80);
                                     logoCell.add(logo);
                                     logoLoaded = true;
-                                    logger.info("Logo loaded successfully from file: {}", logoFile.getAbsolutePath());
+                                    logger.info("✅ Logo loaded successfully from file: {}", logoFile.getAbsolutePath());
                                     break;
                                 } else {
-                                    logger.debug("Logo file does not exist: {}", logoFile.getAbsolutePath());
+                                    logger.debug("❌ Logo file does not exist: {} (absolute: {})", 
+                                        filePath, logoFile.getAbsolutePath());
                                 }
                             } catch (Exception fileEx) {
                                 logger.debug("Failed to load logo from file {}: {}", logoPath, fileEx.getMessage());

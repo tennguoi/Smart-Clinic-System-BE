@@ -12,7 +12,7 @@ import java.util.UUID;
 @Repository
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
 
-    @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.user JOIN FETCH ur.role WHERE ur.user.userId = :userId")
+    @Query("SELECT ur FROM UserRole ur LEFT JOIN FETCH ur.role WHERE ur.user.userId = :userId")
     List<UserRole> findByUser_UserId(@Param("userId") UUID userId);
 
     @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.user JOIN FETCH ur.role WHERE ur.role.name = :roleName")
