@@ -160,36 +160,27 @@ public class MedicalRecordService {
             if (criteria.getKeyword() != null && !criteria.getKeyword().trim().isEmpty()) {
                 String key = criteria.getKeyword().trim().toLowerCase();
 
-                // Các mẫu tìm kiếm Tên (chính xác, đầu, cuối, giữa)
-                String exact = key;
-                String start = key + " %";
-                String end = "% " + key;
-                String middle = "% " + key + " %";
+                // ✅ SỬA LẠI: Dùng pattern đơn giản nhất bao bọc bởi 2 dấu %
+                // Ví dụ: Nhập "du" sẽ thành "%du%", tìm được "Dung", "Dieu", "Minh Du"...
+                String pattern = "%" + key + "%";
 
                 // --- KẾT NỐI VỚI BẢNG PATIENT (Dùng LEFT JOIN) ---
-                // JoinType.LEFT cực quan trọng: Giúp không bị mất hồ sơ khách vãng lai
                 Join<MedicalRecord, Patient> patientJoin = root.join("patient", JoinType.LEFT);
 
                 // A. TÌM KHÁCH VÃNG LAI (Tìm trong cột patientName của MedicalRecord)
+                // coalesce để tránh lỗi null, lower để không phân biệt hoa thường
                 var tempName = cb.lower(cb.coalesce(root.get("patientName"), ""));
-                Predicate matchTempName = cb.or(
-                        cb.equal(tempName, exact), cb.like(tempName, start),
-                        cb.like(tempName, end), cb.like(tempName, middle)
-                );
+                Predicate matchTempName = cb.like(tempName, pattern);
 
                 // B. TÌM KHÁCH HỆ THỐNG - TÊN (Tìm trong bảng Patient)
                 var realName = cb.lower(cb.coalesce(patientJoin.get("fullName"), ""));
-                Predicate matchRealName = cb.or(
-                        cb.equal(realName, exact), cb.like(realName, start),
-                        cb.like(realName, end), cb.like(realName, middle)
-                );
+                Predicate matchRealName = cb.like(realName, pattern);
 
                 // C. TÌM KHÁCH HỆ THỐNG - SĐT (Tìm trong bảng Patient)
                 var phone = cb.coalesce(patientJoin.get("phone"), "");
-                Predicate matchPhone = cb.like(phone, "%" + key + "%");
+                Predicate matchPhone = cb.like(phone, pattern);
 
                 // ===> GỘP TẤT CẢ LẠI BẰNG OR <===
-                // Chỉ cần khớp 1 trong 3 điều kiện trên là lấy
                 predicates.add(cb.or(matchTempName, matchRealName, matchPhone));
             }
 
