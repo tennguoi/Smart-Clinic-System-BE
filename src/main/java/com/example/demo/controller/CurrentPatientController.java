@@ -163,6 +163,7 @@ public class CurrentPatientController {
                 .priority(queue.getPriority() != null ? queue.getPriority().getLabel() : "Bình thường")
                 .checkInTime(queue.getCheckInTime())
                 .startTime(queue.getStartTime())
+                .notes(patient.getNotes())
                 .build();
         return ResponseEntity.ok(dto);
     }

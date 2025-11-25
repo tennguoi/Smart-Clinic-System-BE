@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID>, JpaSpecificationExecutor<MedicalRecord> {
@@ -46,4 +47,10 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
+    Optional<MedicalRecord> findFirstByPatient_PatientIdOrderByCreatedAtDesc(UUID patientId);
+
+    /**
+     * Kiểm tra bệnh nhân đã có hồ sơ khám chưa
+     */
+    boolean existsByPatient_PatientId(UUID patientId);
 }

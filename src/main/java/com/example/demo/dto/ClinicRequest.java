@@ -1,12 +1,12 @@
 package com.example.demo.dto;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
 public class ClinicRequest {
-    @NotBlank(message = "Tên phòng khám không được để trống")
+    // Không dùng @NotBlank để cho phép partial update
+    // Validation sẽ được kiểm tra trong service khi tạo mới
     private String name;
     
     private String address;

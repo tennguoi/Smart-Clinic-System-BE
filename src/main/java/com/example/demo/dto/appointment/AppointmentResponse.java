@@ -18,8 +18,8 @@ public record AppointmentResponse(
         String appointmentCode,
         String notes,
         Boolean quickBook,
-        List<String> serviceIds,                    // vẫn trả về list ID nếu cần
-        List<ServiceResponse> services,             // chi tiết dịch vụ
+        List<String> serviceIds,
+        List<ServiceResponse> services,
         LocalDateTime createdAt,
         LocalDateTime confirmedAt,
         String confirmedByName

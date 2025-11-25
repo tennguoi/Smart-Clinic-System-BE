@@ -1,24 +1,36 @@
+// src/main/java/com/example/demo/service/AppointmentService.java
 package com.example.demo.service;
 
 import com.example.demo.dto.appointment.AppointmentRequest;
 import com.example.demo.dto.appointment.AppointmentResponse;
 import com.example.demo.dto.ServiceResponse;
 import com.example.demo.entity.Appointment;
-import com.example.demo.entity.Appointment.Status;
-import com.example.demo.entity.Service;
+import com.example.demo.entity.Invoice;
+import com.example.demo.entity.InvoiceDetail;
+import com.example.demo.entity.Patient;
 import com.example.demo.entity.User;
+import com.example.demo.enums.InvoiceStatus;
 import com.example.demo.repository.AppointmentRepository;
+import com.example.demo.repository.InvoiceDetailRepository;
+import com.example.demo.repository.InvoiceRepository;
+import com.example.demo.repository.PatientRepository;
 import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.CodeGenerator;
 import com.example.demo.repository.PatientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,6 +39,8 @@ import java.util.UUID;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.time.LocalDate;
 @org.springframework.stereotype.Service
+
+@Service
 public class AppointmentService {
 
     private final AppointmentRepository repo;
@@ -150,8 +164,7 @@ public AppointmentResponse create(AppointmentRequest req) {
                 .toList();
     }
 
-    // Lọc danh sách & sắp xếp mới nhất lên đầu
-    public List<AppointmentResponse> listBy(Status status, String phone, String patientName) {
+    public List<AppointmentResponse> listBy(Appointment.Status status, String phone, String patientName) {
         var results = repo.findByStatus(status);
 
         if (phone != null && !phone.isBlank()) {
@@ -173,15 +186,45 @@ public AppointmentResponse create(AppointmentRequest req) {
                 .toList();
     }
 
-    // Phương thức cập nhật trạng thái
+    // =========================================================
+    // 4. TÌM KIẾM + PHÂN TRANG CHO LỄ TÂN
+    // =========================================================
+
+    public Page<AppointmentResponse> searchAppointments(String status, String keyword, int page, int size) {
+        Appointment.Status st;
+        try {
+            st = Appointment.Status.valueOf(status.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status);
+        }
+
+        // keyword rỗng => truyền null để repo bỏ filter LIKE
+        String kw = (keyword == null || keyword.trim().isEmpty())
+                ? null
+                : keyword.trim();
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("createdAt").descending()
+        );
+
+        Page<Appointment> data = repo.search(st, kw, pageable);
+        return data.map(this::toResponse);
+    }
+
+    // =========================================================
+    // 5. CẬP NHẬT TRẠNG THÁI
+    // =========================================================
+
     @Transactional
-    public AppointmentResponse updateStatus(UUID id, Status status) {
+    public AppointmentResponse updateStatus(UUID id, Appointment.Status status) {
         Appointment appt = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 
         appt.setStatus(status);
 
-        if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
+        if (status == Appointment.Status.Confirmed && appt.getConfirmedBy() == null) {
             var authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || authentication.getName() == null) {
                 throw new IllegalStateException("Authentication required to confirm appointment");
@@ -213,7 +256,10 @@ public AppointmentResponse create(AppointmentRequest req) {
         return toResponse(appt);
     }
 
-    // Chức năng sửa thông tin lịch hẹn (bây giờ cho sửa luôn dịch vụ)
+    // =========================================================
+    // 6. CẬP NHẬT THÔNG TIN LỊCH HẸN
+    // =========================================================
+
     @Transactional
     public AppointmentResponse updateInfo(UUID id, AppointmentRequest req) {
         if (req.appointmentTime().isBefore(LocalDateTime.now())) {
@@ -228,13 +274,16 @@ public AppointmentResponse create(AppointmentRequest req) {
         appt.setEmail(req.email());
         appt.setAppointmentTime(req.appointmentTime());
         appt.setNotes(req.notes());
-        appt.setServiceIds(joinServiceIds(req.serviceIds())); // ← ĐÃ THÊM DÒNG NÀY
+        appt.setServiceIds(joinServiceIds(req.serviceIds()));
 
         appt = repo.save(appt);
         return toResponse(appt);
     }
 
-    // Helper: chuyển List<String> → "id1,id2,id3"
+    // =========================================================
+    // 7. HELPERS
+    // =========================================================
+
     private String joinServiceIds(List<String> ids) {
         if (ids == null || ids.isEmpty()) return null;
         return String.join(",", ids);
@@ -254,13 +303,13 @@ public AppointmentResponse create(AppointmentRequest req) {
                     .toList();
 
             if (!serviceIdsList.isEmpty()) {
-                List<Service> services = serviceRepo.findAllById(serviceIdsList);
+                List<com.example.demo.entity.Service> services = serviceRepo.findAllById(serviceIdsList);
                 serviceResponses = services.stream()
                         .map(s -> new ServiceResponse(
                                 s.getServiceId(),
                                 s.getName(),
                                 s.getDescription(),
-                                s.getCategory().getDisplayName(), // ← tiếng Việt đẹp
+                                s.getCategory().getDisplayName(),
                                 s.getPrice(),
                                 s.getIsActive(),
                                 s.getPhotoUrl()
@@ -298,15 +347,15 @@ public AppointmentResponse create(AppointmentRequest req) {
         return code;
     }
 
-    private com.example.demo.entity.Patient findOrCreatePatient(AppointmentRequest req) {
+    private Patient findOrCreatePatient(AppointmentRequest req) {
         return patientRepo.findByPhone(req.phone())
                 .orElseGet(() -> {
-                    com.example.demo.entity.Patient newPatient = com.example.demo.entity.Patient.builder()
+                    Patient newPatient = Patient.builder()
                             .fullName(req.patientName())
                             .phone(req.phone())
                             .email(req.email())
-                            .dob(java.time.LocalDate.of(2000, 1, 1)) // Default DOB
-                            .gender(com.example.demo.entity.Patient.Gender.other) // Default Gender
+                            .dob(LocalDate.of(2000, 1, 1))
+                            .gender(Patient.Gender.other)
                             .address("Unknown")
                             .build();
                     return patientRepo.save(newPatient);

@@ -6,6 +6,7 @@ import com.example.demo.dto.UpdateUserRolesRequest;
 import com.example.demo.dto.UserAdminResponse;
 import com.example.demo.service.AdminUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,11 +36,14 @@ public class AdminUserController {
     }
 
     /**
-     * Lấy danh sách tất cả users
+     * Lấy danh sách tất cả users với phân trang
+     * GET /api/admin/users?page=0&size=8
      */
     @GetMapping
-    public ResponseEntity<List<UserAdminResponse>> getAllUsers() {
-        List<UserAdminResponse> users = adminUserService.getAllUsers();
+    public ResponseEntity<Page<UserAdminResponse>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        Page<UserAdminResponse> users = adminUserService.getAllUsers(page, size);
         return ResponseEntity.ok(users);
     }
 
@@ -104,5 +108,76 @@ public class AdminUserController {
     public ResponseEntity<Void> deleteUser(@PathVariable UUID userId) {
         adminUserService.deleteUser(userId);
         return ResponseEntity.noContent().build();
+    }
+
+    // ==================== CÁC ENDPOINT TÌM KIẾM CÓ PHÂN TRANG ====================
+
+    /**
+     * Tìm kiếm user theo tên hoặc số điện thoại với phân trang
+     * GET /api/admin/users/search/name-phone?keyword=...&page=0&size=8
+     */
+    @GetMapping("/search/name-phone")
+    public ResponseEntity<Page<UserAdminResponse>> searchByNameOrPhone(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        Page<UserAdminResponse> users = adminUserService.searchUsersByNameOrPhone(keyword, page, size);
+        return ResponseEntity.ok(users);
+    }
+
+    /**
+     * Tìm kiếm user theo vai trò với phân trang
+     * GET /api/admin/users/search/role?roleName=...&page=0&size=8
+     */
+    @GetMapping("/search/role")
+    public ResponseEntity<Page<UserAdminResponse>> searchByRole(
+            @RequestParam(required = false) String roleName,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        Page<UserAdminResponse> users = adminUserService.searchUsersByRole(roleName, page, size);
+        return ResponseEntity.ok(users);
+    }
+
+    /**
+     * Tìm kiếm user theo trạng thái hoạt động với phân trang
+     * GET /api/admin/users/search/verified?isVerified=true&page=0&size=8
+     */
+    @GetMapping("/search/verified")
+    public ResponseEntity<Page<UserAdminResponse>> searchByVerifiedStatus(
+            @RequestParam(required = false) Boolean isVerified,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        Page<UserAdminResponse> users = adminUserService.searchUsersByVerifiedStatus(isVerified, page, size);
+        return ResponseEntity.ok(users);
+    }
+
+    /**
+     * Tìm kiếm user theo giới tính với phân trang
+     * GET /api/admin/users/search/gender?gender=male&page=0&size=8
+     */
+    @GetMapping("/search/gender")
+    public ResponseEntity<Page<UserAdminResponse>> searchByGender(
+            @RequestParam(required = false) String gender,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        Page<UserAdminResponse> users = adminUserService.searchUsersByGender(gender, page, size);
+        return ResponseEntity.ok(users);
+    }
+
+    /**
+     * Tìm kiếm user với nhiều tiêu chí kết hợp và phân trang
+     * GET /api/admin/users/search?keyword=...&roleName=...&isVerified=...&gender=...&page=0&size=8
+     */
+    @GetMapping("/search")
+    public ResponseEntity<Page<UserAdminResponse>> searchUsers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String roleName,
+            @RequestParam(required = false) Boolean isVerified,
+            @RequestParam(required = false) String gender,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+
+        Page<UserAdminResponse> users = adminUserService.searchUsers(keyword, roleName, isVerified, gender, page, size);
+        return ResponseEntity.ok(users);
     }
 }
