@@ -39,9 +39,9 @@ import com.itextpdf.layout.borders.Border;
 
 @Service
 public class PdfExportService {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(PdfExportService.class);
-    
+
     private final PrescriptionRepository prescriptionRepository;
     private final ClinicService clinicService;
     private final MedicalRecordServiceRepository medicalRecordServiceRepository;
@@ -56,7 +56,7 @@ public class PdfExportService {
 
     public byte[] generateMedicalRecordPdf(MedicalRecord record) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        
+
         try {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdfDoc = new PdfDocument(writer);
@@ -79,10 +79,10 @@ public class PdfExportService {
             } catch (Exception fe) {
                 // If font loading fails, continue with default font (may not render Vietnamese correctly).
             }
-            
+
             // ========== 1. TÊN PHÒNG KHÁM (Căn giữa trang) ==========
             com.example.demo.entity.Clinic clinic = clinicService.getClinicEntity();
-            
+
             // Tên phòng khám căn giữa trang
             if (clinic != null && clinic.getName() != null && !clinic.getName().isEmpty()) {
                 Paragraph clinicNameCentered = new Paragraph(clinic.getName())
@@ -92,19 +92,19 @@ public class PdfExportService {
                         .setMarginBottom(10);
                 document.add(clinicNameCentered);
             }
-            
+
             // ========== 2. HEADER: Logo + Thông tin phòng khám ==========
             Table headerTable = new Table(UnitValue.createPercentArray(new float[]{20, 80}));
             headerTable.setWidth(UnitValue.createPercentValue(100));
             headerTable.setMarginBottom(15);
             headerTable.setBorder(Border.NO_BORDER); // Bỏ border cho toàn bộ bảng header
-            
+
             // Logo (80x80px) - ưu tiên từ database, sau đó từ static folder
             Cell logoCell = new Cell();
             logoCell.setPadding(5);
             logoCell.setBorder(Border.NO_BORDER); // Bỏ border cho logo cell
             boolean logoLoaded = false;
-            
+
             try {
                 // Thử load logo từ database hoặc static folder
                 String logoUrlFromDb = null;
@@ -112,25 +112,25 @@ public class PdfExportService {
                     logoUrlFromDb = clinic.getLogoUrl();
                     logger.info("Logo URL from database: {}", logoUrlFromDb);
                 }
-                
+
                 // Danh sách các đường dẫn để thử load logo
                 java.util.List<String> logoPaths = new java.util.ArrayList<>();
-                
+
                 // 1. Từ database (nếu có)
                 if (logoUrlFromDb != null) {
                     logoPaths.add(logoUrlFromDb);
                 }
-                
+
                 // 2. Các đường dẫn mặc định
                 logoPaths.add("/static/logo.png");
                 logoPaths.add("static/logo.png");
                 logoPaths.add("uploads/logo.png");
                 logoPaths.add("./uploads/logo.png");
-                
+
                 // Thử load từ từng đường dẫn
                 for (String logoPath : logoPaths) {
                     if (logoLoaded) break;
-                    
+
                     try {
                         // Nếu là URL đầy đủ (http/https)
                         if (logoPath.startsWith("http://") || logoPath.startsWith("https://")) {
@@ -153,11 +153,11 @@ public class PdfExportService {
                             String resourcePath = logoPath.startsWith("/") ? logoPath : "/" + logoPath;
                             // Thử nhiều biến thể
                             String[] resourceVariants = {
-                                resourcePath,
-                                resourcePath.replace("/static/", "/"),
-                                "static/" + logoPath.replace("/static/", "").replace("static/", "")
+                                    resourcePath,
+                                    resourcePath.replace("/static/", "/"),
+                                    "static/" + logoPath.replace("/static/", "").replace("static/", "")
                             };
-                            
+
                             for (String variant : resourceVariants) {
                                 if (logoLoaded) break;
                                 try {
@@ -224,7 +224,7 @@ public class PdfExportService {
                         logger.debug("Error trying to load logo from {}: {}", logoPath, e.getMessage());
                     }
                 }
-                
+
                 // Nếu vẫn chưa có logo, dùng placeholder
                 if (!logoLoaded) {
                     logger.warn("Logo not found after trying all paths. Using placeholder. Please ensure logo.png exists in src/main/resources/static/ or uploads/");
@@ -248,22 +248,22 @@ public class PdfExportService {
                 logoCell.setHeight(80);
             }
             headerTable.addCell(logoCell);
-            
+
             // Thông tin phòng khám (xử lý null-safe) - không bao gồm tên (đã tách ra ở trên)
             Cell infoCell = new Cell();
             infoCell.setPadding(5);
             infoCell.setBorder(Border.NO_BORDER); // Bỏ border cho info cell
-            
+
             if (clinic != null) {
                 // Không thêm tên phòng khám vào đây nữa vì đã tách ra căn giữa ở trên
-                
+
                 if (clinic.getAddress() != null && !clinic.getAddress().isEmpty()) {
                     Paragraph clinicAddress = new Paragraph("Địa chỉ: " + clinic.getAddress())
                             .setFontSize(12)
                             .setMarginBottom(2);
                     infoCell.add(clinicAddress);
                 }
-                
+
                 String contactInfo = "";
                 if (clinic.getPhone() != null && !clinic.getPhone().isEmpty()) {
                     contactInfo += "SĐT: " + clinic.getPhone();
@@ -278,7 +278,7 @@ public class PdfExportService {
                             .setMarginBottom(2);
                     infoCell.add(clinicContact);
                 }
-                
+
                 if (clinic.getWebsite() != null && !clinic.getWebsite().isEmpty()) {
                     Paragraph clinicWebsite = new Paragraph("Website: " + clinic.getWebsite())
                             .setFontSize(12);
@@ -296,10 +296,10 @@ public class PdfExportService {
                         .setItalic();
                 infoCell.add(notice);
             }
-            
+
             headerTable.addCell(infoCell);
             document.add(headerTable);
-            
+
             // ========== 2. TIÊU ĐỀ PHIẾU ==========
             Paragraph title = new Paragraph("PHIẾU KHÁM BỆNH")
                     .setFontSize(16)
@@ -308,18 +308,18 @@ public class PdfExportService {
                     .setMarginTop(20)
                     .setMarginBottom(20);
             document.add(title);
-            
+
             // ========== 3. THÔNG TIN CHUNG (Không có bảng) ==========
-            String visitDate = record.getCreatedAt() != null ? 
+            String visitDate = record.getCreatedAt() != null ?
                     record.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "Trống";
             String ticketNumber = "PK-" + record.getRecordId().toString().substring(0, 8).toUpperCase();
             String doctorName = record.getDoctor() != null ? record.getDoctor().getFullName() : "Trống";
-            
+
             Paragraph infoLine = new Paragraph("Ngày khám: " + visitDate + "     Số phiếu: " + ticketNumber + "     Bác sĩ khám: BS. " + doctorName)
                     .setFontSize(12)
                     .setMarginBottom(15);
             document.add(infoLine);
-            
+
             // Lấy thông tin bệnh nhân
             Patient patient = record.getPatient();
 
@@ -343,7 +343,7 @@ public class PdfExportService {
             if (patient != null && patient.getGender() != null) {
                 patientGender = patient.getGender().getLabel();  // tự động trả về "Nam", "Nữ", "Khác"
             }
-            
+
             // ========== 4. I. THÔNG TIN BỆNH NHÂN (Dạng gạch chấm) ==========
             Paragraph patientSection = new Paragraph("I. THÔNG TIN BỆNH NHÂN")
                     .setFontSize(12)
@@ -351,13 +351,13 @@ public class PdfExportService {
                     .setMarginTop(10)
                     .setMarginBottom(8);
             document.add(patientSection);
-            
+
             document.add(createDottedLine("Họ tên:", patientName, 12));
             document.add(createDottedLine("Giới tính:", patientGender, 12));
             document.add(createDottedLine("Ngày sinh:", patientDobStr, 12));
             document.add(createDottedLine("SĐT:", patientPhone, 12));
             document.add(createDottedLine("Địa chỉ:", patientAddress, 12));
-            
+
             // ========== 5. II. LÝ DO KHÁM / TRIỆU CHỨNG ==========
             Paragraph symptomSection = new Paragraph("II. LÝ DO KHÁM / TRIỆU CHỨNG")
                     .setFontSize(12)
@@ -365,11 +365,11 @@ public class PdfExportService {
                     .setMarginTop(15)
                     .setMarginBottom(8);
             document.add(symptomSection);
-            
+
             // Lấy từ treatmentNotes hoặc để trống
-            String symptoms = record.getTreatmentNotes() != null ? record.getTreatmentNotes() : null;
+            String symptoms = patient.getNotes() != null ? patient.getNotes() : null;
             document.add(createDottedLine("Triệu chứng:", symptoms, 12));
-            
+
             // ========== 6. III. CHẨN ĐOÁN ==========
             Paragraph diagnosisSection = new Paragraph("III. CHẨN ĐOÁN")
                     .setFontSize(12)
@@ -377,10 +377,10 @@ public class PdfExportService {
                     .setMarginTop(15)
                     .setMarginBottom(8);
             document.add(diagnosisSection);
-            
+
             String diagnosisText = record.getDiagnosis() != null ? record.getDiagnosis() : null;
             document.add(createDottedLine("Chẩn đoán:", diagnosisText, 12));
-            
+
             // ========== 7. IV. CHỈ ĐỊNH DỊCH VỤ (BẢNG 2 CỘT) ==========
             Paragraph serviceSection = new Paragraph("IV. CHỈ ĐỊNH DỊCH VỤ")
                     .setFontSize(12)
@@ -388,24 +388,24 @@ public class PdfExportService {
                     .setMarginTop(15)
                     .setMarginBottom(8);
             document.add(serviceSection);
-            
+
             Table serviceTable = new Table(UnitValue.createPercentArray(new float[]{66.67f, 33.33f}));
             serviceTable.setWidth(UnitValue.createPercentValue(100));
             serviceTable.setMarginBottom(15);
-            
+
             // Header
             Cell serviceHeader1 = new Cell();
             serviceHeader1.setPadding(5);
             serviceHeader1.add(new Paragraph("Dịch vụ").setBold().setFontSize(11));
             serviceHeader1.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
             serviceTable.addCell(serviceHeader1);
-            
+
             Cell serviceHeader2 = new Cell();
             serviceHeader2.setPadding(5);
             serviceHeader2.add(new Paragraph("Giá").setBold().setFontSize(11));
             serviceHeader2.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
             serviceTable.addCell(serviceHeader2);
-            
+
             List<MedicalRecordServiceEntity> serviceEntities =
                     medicalRecordServiceRepository.findAllByMedicalRecord_RecordId(record.getRecordId());
 
@@ -456,9 +456,9 @@ public class PdfExportService {
                     serviceTable.addCell(priceCell);
                 }
             }
-            
+
             document.add(serviceTable);
-            
+
             // ========== 8. V. ĐƠN THUỐC (Bảng 2 cột) ==========
             Paragraph prescriptionSection = new Paragraph("V. ĐƠN THUỐC")
                     .setFontSize(12)
@@ -466,39 +466,39 @@ public class PdfExportService {
                     .setMarginTop(15)
                     .setMarginBottom(8);
             document.add(prescriptionSection);
-            
+
             Optional<Prescription> prescription = prescriptionRepository.findByRecordId(record.getRecordId());
-            
+
             // Tạo bảng 2 cột: Thuốc và Hướng dẫn sử dụng
             Table prescriptionTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
             prescriptionTable.setWidth(UnitValue.createPercentValue(100));
             prescriptionTable.setMarginBottom(15);
-            
+
             // Header
             Cell drugHeader = new Cell();
             drugHeader.setPadding(5);
             drugHeader.add(new Paragraph("Thuốc").setBold().setFontSize(11));
             drugHeader.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
             prescriptionTable.addCell(drugHeader);
-            
+
             Cell instructionHeader = new Cell();
             instructionHeader.setPadding(5);
             instructionHeader.add(new Paragraph("Hướng dẫn sử dụng").setBold().setFontSize(11));
             instructionHeader.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
             prescriptionTable.addCell(instructionHeader);
-            
+
             if (prescription.isPresent()) {
                 Prescription rx = prescription.get();
                 String drugs = rx.getDrugs() != null ? rx.getDrugs() : "";
                 String instructions = rx.getInstructions() != null ? rx.getInstructions() : "";
-                
+
                 // Thêm dữ liệu vào bảng
                 Cell drugCell = new Cell();
                 drugCell.setPadding(5);
                 drugCell.add(new Paragraph(drugs.isEmpty() ? "" : drugs).setFontSize(11));
                 drugCell.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
                 prescriptionTable.addCell(drugCell);
-                
+
                 Cell instructionCell = new Cell();
                 instructionCell.setPadding(5);
                 instructionCell.add(new Paragraph(instructions.isEmpty() ? "" : instructions).setFontSize(11));
@@ -511,38 +511,38 @@ public class PdfExportService {
                 drugCell.add(new Paragraph("").setFontSize(11));
                 drugCell.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
                 prescriptionTable.addCell(drugCell);
-                
+
                 Cell instructionCell = new Cell();
                 instructionCell.setPadding(5);
                 instructionCell.add(new Paragraph("").setFontSize(11));
                 instructionCell.setBorder(new SolidBorder(new DeviceRgb(128, 128, 128), 0.5f));
                 prescriptionTable.addCell(instructionCell);
             }
-            
+
             document.add(prescriptionTable);
-            
+
             // ========== 9. CHỮ KÝ BÁC SĨ (Căn phải, không có bảng) ==========
             document.add(new Paragraph("\n\n"));
-            
+
             Paragraph doctorLabel = new Paragraph("Bác sĩ khám bệnh")
                     .setFontSize(11)
                     .setTextAlignment(TextAlignment.RIGHT)
                     .setMarginBottom(5);
             document.add(doctorLabel);
-            
+
             Paragraph doctorSubLabel = new Paragraph("(Ký và ghi rõ họ tên)")
                     .setFontSize(10)
                     .setTextAlignment(TextAlignment.RIGHT)
                     .setMarginBottom(50);
             document.add(doctorSubLabel);
-            
+
             Paragraph doctorNameLine = new Paragraph(".......................................................")
                     .setFontSize(11)
                     .setTextAlignment(TextAlignment.RIGHT);
             document.add(doctorNameLine);
-            
+
             document.close();
-            
+
             return baos.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi tạo PDF: " + e.getMessage(), e);
@@ -646,7 +646,7 @@ public class PdfExportService {
         Prescription rx = opt.orElseThrow(() -> new RuntimeException("Không tìm thấy đơn thuốc cho hồ sơ."));
         return generatePrescriptionPdf(rx);
     }
-    
+
     private Paragraph createDottedLine(String label, String value, float fontSize) {
         String safeLabel = label != null ? label.trim() : "";
         boolean hasValue = value != null && !value.trim().isEmpty();
