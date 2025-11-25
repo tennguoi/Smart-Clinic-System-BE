@@ -1,10 +1,18 @@
+
+// src/main/java/com/example/demo/service/DashboardService.java
 package com.example.demo.service;
 
 import com.example.demo.dto.DashboardKPIResponse;
+import com.example.demo.dto.DashboardStatsDTO;
 import com.example.demo.dto.TopServiceDTO;
 import com.example.demo.dto.TrendDataPoint;
 import com.example.demo.entity.Appointment;
+import com.example.demo.repository.AppointmentRepository;
 import com.example.demo.repository.InvoiceDetailRepository;
+import com.example.demo.repository.InvoiceRepository;
+import com.example.demo.repository.MedicalRecordRepository;
+import com.example.demo.repository.PatientRepository;
+import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,33 +29,40 @@ public class DashboardService {
     private InvoiceDetailRepository invoiceDetailRepository;
 
     @Autowired
-    private com.example.demo.repository.AppointmentRepository appointmentRepository;
+    private AppointmentRepository appointmentRepository;
 
     @Autowired
-    private com.example.demo.repository.PatientRepository patientRepository;
+    private PatientRepository patientRepository;
 
     @Autowired
-    private com.example.demo.repository.InvoiceRepository invoiceRepository;
+    private InvoiceRepository invoiceRepository;
 
     @Autowired
-    private com.example.demo.repository.UserRepository userRepository;
+    private UserRepository userRepository;
 
+    // NEW: sử dụng để đếm số hồ sơ bệnh án theo thời gian
+    @Autowired
+    private MedicalRecordRepository medicalRecordRepository;
+
+    /**
+     * Top 5 dịch vụ theo doanh thu/số lượng (tùy implement trong InvoiceDetailRepository)
+     */
     public List<TopServiceDTO> getTop5Services() {
-        // Lấy 5 kết quả đầu tiên (Top 5)
         Pageable topFive = PageRequest.of(0, 5);
         return invoiceDetailRepository.findTopServices(topFive);
     }
 
-    public com.example.demo.dto.DashboardStatsDTO getDashboardStats() {
-        // Deprecated or keep for backward compatibility if needed
+    /**
+     * Thống kê tổng quan (giữ nguyên, có thể xem là backward compatibility)
+     */
+    public DashboardStatsDTO getDashboardStats() {
         long totalAppointments = appointmentRepository.count();
         long totalPatients = patientRepository.count();
-        java.math.BigDecimal totalRevenue = invoiceRepository.sumTotalRevenue();
+        BigDecimal totalRevenue = invoiceRepository.sumTotalRevenue();
         long totalDoctors = userRepository.countByRoleName("ROLE_BAC_SI");
+        if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
 
-        if (totalRevenue == null) totalRevenue = java.math.BigDecimal.ZERO;
-
-        return com.example.demo.dto.DashboardStatsDTO.builder()
+        return DashboardStatsDTO.builder()
                 .totalAppointments(totalAppointments)
                 .totalPatients(totalPatients)
                 .totalRevenue(totalRevenue)
@@ -55,52 +70,74 @@ public class DashboardService {
                 .build();
     }
 
-    public com.example.demo.dto.DashboardKPIResponse getDashboardKPIs() {
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        java.time.LocalDateTime startOfToday = now.toLocalDate().atStartOfDay();
-        java.time.LocalDateTime endOfToday = now; // or end of day
+    /**
+     * KPI cho dashboard:
+     * - totalAppointmentsToday: số lịch hẹn hôm nay
+     * - appointmentsGrowth: % tăng/giảm so với hôm qua
+     * - totalPatientsToday: (ĐÃ ĐỔI Ý NGHĨA) số hồ sơ bệnh án hôm nay
+     * - patientsGrowth: (ĐÃ ĐỔI Ý NGHĨA) % tăng/giảm số hồ sơ bệnh án so với hôm qua
+     * - totalRevenueMonth: doanh thu tháng hiện tại
+     * - revenueGrowth: % tăng/giảm so với tháng trước
+     * - cancelRate: tỷ lệ hủy lịch trong tháng hiện tại
+     * - cancelRateGrowth: chênh lệch tỷ lệ hủy so với tháng trước (điểm phần trăm)
+     */
+    public DashboardKPIResponse getDashboardKPIs() {
+        LocalDateTime now = LocalDateTime.now();
 
-        java.time.LocalDateTime startOfYesterday = startOfToday.minusDays(1);
-        java.time.LocalDateTime endOfYesterday = startOfToday.minusSeconds(1);
+        // Mốc thời gian ngày
+        LocalDateTime startOfToday = now.toLocalDate().atStartOfDay();
+        LocalDateTime endOfToday = now; // có thể dùng end of day, nhưng để realtime thì dùng "now"
+        LocalDateTime startOfYesterday = startOfToday.minusDays(1);
+        LocalDateTime endOfYesterday = startOfToday.minusSeconds(1);
 
-        java.time.LocalDateTime startOfMonth = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
-        java.time.LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
-        java.time.LocalDateTime endOfLastMonth = startOfMonth.minusSeconds(1);
+        // Mốc thời gian tháng
+        LocalDateTime startOfMonth = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
+        LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
+        LocalDateTime endOfLastMonth = startOfMonth.minusSeconds(1);
 
-        // 1. Appointments Today
+        // 1) Appointments Today
         long appointmentsToday = appointmentRepository.countByCreatedAtBetween(startOfToday, endOfToday);
         long appointmentsYesterday = appointmentRepository.countByCreatedAtBetween(startOfYesterday, endOfYesterday);
         double appointmentsGrowth = calculateGrowth(appointmentsToday, appointmentsYesterday);
 
-        // 2. Patients (New) Today - assuming "Total Patients" means new registrations or active
-        // Let's use new registrations for "Today"
-        long patientsToday = patientRepository.countByCreatedAtBetween(startOfToday, endOfToday);
-        long patientsYesterday = patientRepository.countByCreatedAtBetween(startOfYesterday, endOfYesterday);
-        double patientsGrowth = calculateGrowth(patientsToday, patientsYesterday);
+        // 2) Medical Records Today (THAY CHO Patients Today)
+        long medicalRecordsToday = medicalRecordRepository.countByCreatedAtBetween(startOfToday, endOfToday);
+        long medicalRecordsYesterday = medicalRecordRepository.countByCreatedAtBetween(startOfYesterday, endOfYesterday);
+        double medicalRecordsGrowth = calculateGrowth(medicalRecordsToday, medicalRecordsYesterday);
 
-        // 3. Revenue Month
-        java.math.BigDecimal revenueMonth = invoiceRepository.sumTotalRevenueBetween(startOfMonth, now);
-        java.math.BigDecimal revenueLastMonth = invoiceRepository.sumTotalRevenueBetween(startOfLastMonth, endOfLastMonth);
-        if (revenueMonth == null) revenueMonth = java.math.BigDecimal.ZERO;
-        if (revenueLastMonth == null) revenueLastMonth = java.math.BigDecimal.ZERO;
+        // 3) Revenue Month
+        BigDecimal revenueMonth = invoiceRepository.sumTotalRevenueBetween(startOfMonth, now);
+        BigDecimal revenueLastMonth = invoiceRepository.sumTotalRevenueBetween(startOfLastMonth, endOfLastMonth);
+        if (revenueMonth == null) revenueMonth = BigDecimal.ZERO;
+        if (revenueLastMonth == null) revenueLastMonth = BigDecimal.ZERO;
         double revenueGrowth = calculateGrowth(revenueMonth.doubleValue(), revenueLastMonth.doubleValue());
 
-        // 4. Cancel Rate (Month)
+        // 4) Cancel Rate (Month)
         long totalAppointmentsMonth = appointmentRepository.countByCreatedAtBetween(startOfMonth, now);
-        long cancelledAppointmentsMonth = appointmentRepository.countByStatusAndCreatedAtBetween(Appointment.Status.Cancelled, startOfMonth, now);
-        
+        long cancelledAppointmentsMonth = appointmentRepository.countByStatusAndCreatedAtBetween(
+                Appointment.Status.Cancelled, startOfMonth, now
+        );
+
         long totalAppointmentsLastMonth = appointmentRepository.countByCreatedAtBetween(startOfLastMonth, endOfLastMonth);
-        long cancelledAppointmentsLastMonth = appointmentRepository.countByStatusAndCreatedAtBetween(Appointment.Status.Cancelled, startOfLastMonth, endOfLastMonth);
+        long cancelledAppointmentsLastMonth = appointmentRepository.countByStatusAndCreatedAtBetween(
+                Appointment.Status.Cancelled, startOfLastMonth, endOfLastMonth
+        );
 
-        double cancelRateMonth = totalAppointmentsMonth == 0 ? 0 : (double) cancelledAppointmentsMonth / totalAppointmentsMonth * 100;
-        double cancelRateLastMonth = totalAppointmentsLastMonth == 0 ? 0 : (double) cancelledAppointmentsLastMonth / totalAppointmentsLastMonth * 100;
-        double cancelRateGrowth = cancelRateMonth - cancelRateLastMonth; // Percentage point difference
+        double cancelRateMonth = totalAppointmentsMonth == 0 ? 0.0 :
+                (double) cancelledAppointmentsMonth / totalAppointmentsMonth * 100.0;
+        double cancelRateLastMonth = totalAppointmentsLastMonth == 0 ? 0.0 :
+                (double) cancelledAppointmentsLastMonth / totalAppointmentsLastMonth * 100.0;
+        double cancelRateGrowth = cancelRateMonth - cancelRateLastMonth; // chênh lệch điểm %
 
-        return com.example.demo.dto.DashboardKPIResponse.builder()
+        // Build response
+        return DashboardKPIResponse.builder()
                 .totalAppointmentsToday(appointmentsToday)
                 .appointmentsGrowth(appointmentsGrowth)
-                .totalPatientsToday(patientsToday)
-                .patientsGrowth(patientsGrowth)
+
+                // GIỮ NGUYÊN TÊN FIELD, NHƯNG GIÁ TRỊ = SỐ HỒ SƠ BỆNH ÁN
+                .totalPatientsToday(medicalRecordsToday)
+                .patientsGrowth(medicalRecordsGrowth)
+
                 .totalRevenueMonth(revenueMonth)
                 .revenueGrowth(revenueGrowth)
                 .cancelRate(cancelRateMonth)
@@ -108,18 +145,28 @@ public class DashboardService {
                 .build();
     }
 
-    public List<com.example.demo.dto.TrendDataPoint> getAppointmentTrend(int days) {
-        java.time.LocalDateTime end = java.time.LocalDateTime.now();
-        java.time.LocalDateTime start = end.minusDays(days);
+    /**
+     * Trend số lịch hẹn theo ngày (giữ nguyên)
+     */
+    public List<TrendDataPoint> getAppointmentTrend(int days) {
+        LocalDateTime end = LocalDateTime.now();
+        LocalDateTime start = end.minusDays(days);
         return appointmentRepository.findTrendBetween(start, end);
     }
 
-    public List<com.example.demo.dto.TrendDataPoint> getRevenueTrend(int days) {
-        java.time.LocalDateTime end = java.time.LocalDateTime.now();
-        java.time.LocalDateTime start = end.minusDays(days);
+    /**
+     * Trend doanh thu theo ngày (giữ nguyên)
+     */
+    public List<TrendDataPoint> getRevenueTrend(int days) {
+        LocalDateTime end = LocalDateTime.now();
+        LocalDateTime start = end.minusDays(days);
         return invoiceRepository.findRevenueTrendBetween(start, end);
     }
 
+    /**
+     * Helper: tính % tăng trưởng (current vs previous)
+     * Nếu previous = 0, trả về 100 khi current > 0, ngược lại 0.
+     */
     private double calculateGrowth(double current, double previous) {
         if (previous == 0) return current > 0 ? 100.0 : 0.0;
         return ((current - previous) / previous) * 100.0;

@@ -44,5 +44,6 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
     List<MedicalRecord> findByDoctor_UserIdAndPatient_PatientIdAndCreatedAtAfter(
             UUID doctorId, UUID patientId, LocalDateTime fromDate);
 
-    // KHÔNG CÒN METHOD findByPatient_UserId NỮA → KHÔNG CÒN LỖI!
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
 }
