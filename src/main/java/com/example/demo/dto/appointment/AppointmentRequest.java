@@ -1,5 +1,5 @@
 // src/main/java/com/example/demo/dto/AppointmentRequest.java
-package com.example.demo.dto;
+package com.example.demo.dto.appointment;
 
 import java.time.LocalDateTime;
 import java.util.List;

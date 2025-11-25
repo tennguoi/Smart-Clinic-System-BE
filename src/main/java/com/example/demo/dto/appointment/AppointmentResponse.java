@@ -1,6 +1,7 @@
 // src/main/java/com/example/demo/dto/AppointmentResponse.java
-package com.example.demo.dto;
+package com.example.demo.dto.appointment;
 
+import com.example.demo.dto.ServiceResponse;
 import com.example.demo.entity.Appointment.Status;
 
 import java.time.LocalDateTime;

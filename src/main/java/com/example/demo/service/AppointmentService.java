@@ -1,8 +1,8 @@
 // src/main/java/com/example/demo/service/AppointmentService.java
 package com.example.demo.service;
 
-import com.example.demo.dto.AppointmentRequest;
-import com.example.demo.dto.AppointmentResponse;
+import com.example.demo.dto.appointment.AppointmentRequest;
+import com.example.demo.dto.appointment.AppointmentResponse;
 import com.example.demo.dto.ServiceResponse;
 import com.example.demo.entity.Appointment;
 import com.example.demo.entity.Invoice;

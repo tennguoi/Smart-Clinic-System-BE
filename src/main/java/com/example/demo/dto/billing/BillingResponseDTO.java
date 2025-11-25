@@ -1,8 +1,8 @@
 // src/main/java/com/example/demo/dto/billing/BillingResponseDTO.java
 package com.example.demo.dto.billing;
 
-import com.example.demo.entity.PaymentMethod;
-import com.example.demo.entity.PaymentStatus;
+import com.example.demo.enums.PaymentMethod;
+import com.example.demo.enums.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

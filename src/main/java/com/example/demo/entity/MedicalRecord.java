@@ -10,10 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "medical_records", indexes = {
-        @Index(name = "idx_medical_records_patient", columnList = "patient_id"),
-        @Index(name = "idx_medical_records_doctor", columnList = "doctor_id")
-})
+@Table(name = "medical_records")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,21 +20,17 @@ public class MedicalRecord {
     @Column(name = "record_id", nullable = false, updatable = false)
     private UUID recordId;
 
-    @PrePersist
-    public void prePersist() {
-        if (recordId == null) recordId = UUID.randomUUID();
-        if (createdAt == null) createdAt = LocalDateTime.now();
-    }
-
+    // ✅ QUAN HỆ VỚI PATIENT (bảng patients)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id")
-    private User patient;
+    @JoinColumn(name = "patient_id", referencedColumnName = "patient_id")
+    private Patient patient;
 
     @Column(name = "patient_name", length = 255)
     private String patientName;
 
+    // ✅ QUAN HỆ VỚI DOCTOR (bảng users)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "doctor_id", nullable = false)
+    @JoinColumn(name = "doctor_id", referencedColumnName = "user_id", nullable = false)
     private User doctor;
 
     @Column(name = "diagnosis", columnDefinition = "TEXT")
@@ -48,4 +41,10 @@ public class MedicalRecord {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (recordId == null) recordId = UUID.randomUUID();
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
 }

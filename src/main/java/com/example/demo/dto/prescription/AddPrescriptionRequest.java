@@ -1,4 +1,4 @@
-package com.example.demo.dto; // (Đặt trong package DTO của bạn)
+package com.example.demo.dto.prescription; // (Đặt trong package DTO của bạn)
 
 import lombok.Data;
 import java.util.UUID;

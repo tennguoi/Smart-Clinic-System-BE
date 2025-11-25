@@ -1,4 +1,4 @@
-package com.example.demo.dto;
+package com.example.demo.dto.doctor;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;

@@ -1,10 +1,12 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.AssignRoomRequest;
-import com.example.demo.dto.DoctorSimpleResponse;
+import com.example.demo.dto.QueuePatientResponse;
+import com.example.demo.dto.doctor.DoctorSimpleResponse;
 import com.example.demo.dto.ExaminationRoomRequest;
 import com.example.demo.dto.ExaminationRoomResponse;
 import com.example.demo.service.ExaminationRoomService;
+import com.example.demo.service.QueueService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,8 @@ public class ReceptionistExaminationRoomController {
 
     @Autowired
     private ExaminationRoomService roomService;
+    @Autowired
+    private QueueService queueService;
 
     @GetMapping
     public ResponseEntity<List<ExaminationRoomResponse>> getAllRooms(
@@ -134,6 +138,14 @@ public class ReceptionistExaminationRoomController {
                         put("error", e.getMessage());
                     }});
         }
+    }
+    @GetMapping("/waiting")
+    public ResponseEntity<?> getWaitingPatients(
+            @RequestParam(required = false) UUID roomId) {  // Thêm filter theo phòng nếu cần
+        List<QueuePatientResponse> list = roomId != null
+                ? queueService.getWaitingPatientsByRoom(roomId)
+                : queueService.getAllWaitingPatients(); // hoặc chỉ trả về của các phòng active
+        return ResponseEntity.ok(list);
     }
 }
 

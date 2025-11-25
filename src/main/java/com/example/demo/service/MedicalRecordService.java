@@ -1,12 +1,23 @@
 package com.example.demo.service;
 
+import jakarta.persistence.criteria.Join;      // Mới
+import jakarta.persistence.criteria.JoinType;
+import com.example.demo.dto.MedicalRecordSearchCriteria; // Import DTO mới
+import org.springframework.data.jpa.domain.Specification; // Import Specification
+import jakarta.persistence.criteria.Predicate;// Import Predicate
+import java.util.ArrayList;                               // Import ArrayList
 import com.example.demo.dto.*;
+import com.example.demo.dto.prescription.AddPrescriptionRequest;
+import com.example.demo.dto.prescription.PrescriptionResponse;
 import com.example.demo.entity.*;
 import com.example.demo.entity.MedicalRecordServiceEntity;
+import com.example.demo.entity.Patient;
 import com.example.demo.repository.*;
+import com.example.demo.repository.PatientRepository;
 import com.example.demo.util.JwtUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,17 +32,16 @@ public class MedicalRecordService {
     private final MedicalRecordRepository medicalRecordRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final UserRepository userRepository;
+    private final PatientRepository patientRepository;
     private final JwtUtil jwtUtil;
-
-    // === THÊM MỚI ĐỂ HỖ TRỢ BỆNH NHÂN ĐANG KHÁM ===
     private final QueueRepository queueRepository;
     private final ServiceRepository serviceRepository;
     private final MedicalRecordServiceRepository medicalRecordServiceRepository;
 
-    // Constructor giữ nguyên + thêm 3 repo mới
     public MedicalRecordService(MedicalRecordRepository medicalRecordRepository,
                                 PrescriptionRepository prescriptionRepository,
                                 UserRepository userRepository,
+                                PatientRepository patientRepository,
                                 JwtUtil jwtUtil,
                                 QueueRepository queueRepository,
                                 ServiceRepository serviceRepository,
@@ -39,13 +49,13 @@ public class MedicalRecordService {
         this.medicalRecordRepository = medicalRecordRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.userRepository = userRepository;
+        this.patientRepository = patientRepository;
         this.jwtUtil = jwtUtil;
         this.queueRepository = queueRepository;
         this.serviceRepository = serviceRepository;
         this.medicalRecordServiceRepository = medicalRecordServiceRepository;
     }
 
-    // ============================== TẤT CẢ CÁC METHOD CŨ – GIỮ NGUYÊN 100% ==============================
     @Transactional
     public MedicalRecordResponse create(String bearerToken, MedicalRecordRequest request) {
         String token = extractToken(bearerToken);
@@ -53,16 +63,26 @@ public class MedicalRecordService {
         User doctor = userRepository.findById(doctorId)
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
 
-        String patientName = request.getPatientName() != null && !request.getPatientName().trim().isEmpty()
-                ? request.getPatientName().trim() : null;
+        Patient patient = null;
+        String patientName = null;
+
+        // Ưu tiên lấy từ patientId nếu có
+        if (request.getPatientId() != null) {
+            patient = patientRepository.findById(request.getPatientId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân với ID: " + request.getPatientId()));
+            patientName = patient.getFullName();
+        } else if (request.getPatientName() != null && !request.getPatientName().trim().isEmpty()) {
+            patientName = request.getPatientName().trim();
+        }
 
         MedicalRecord record = MedicalRecord.builder()
                 .doctor(doctor)
-                .patient(null)
+                .patient(patient)                  // Gán patient nếu có
                 .patientName(patientName)
                 .diagnosis(request.getDiagnosis())
                 .treatmentNotes(request.getTreatmentNotes())
                 .build();
+
         record = medicalRecordRepository.save(record);
         return toResponse(record);
     }
@@ -80,7 +100,7 @@ public class MedicalRecordService {
         }
 
         MedicalRecord record = medicalRecordRepository.findById(request.getRecordId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơổ bệnh án với ID: " + request.getRecordId()));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ bệnh án với ID: " + request.getRecordId()));
 
         Optional<Prescription> existingPrescriptionOpt = prescriptionRepository.findByRecordId(request.getRecordId());
 
@@ -109,7 +129,7 @@ public class MedicalRecordService {
 
     @Transactional(readOnly = true)
     public List<MedicalRecordResponse> listByPatient(UUID patientId) {
-        return medicalRecordRepository.findByPatient_UserIdOrderByCreatedAtDesc(patientId)
+        return medicalRecordRepository.findByPatient_PatientIdOrderByCreatedAtDesc(patientId)
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -125,13 +145,70 @@ public class MedicalRecordService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> searchMyRecords(MedicalRecordSearchCriteria criteria) {
+        Specification<MedicalRecord> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 1. Chỉ lấy hồ sơ của Bác sĩ đang request
+            if (criteria.getDoctorId() != null) {
+                // "doctor" vẫn là User, nên trỏ vào userId
+                predicates.add(cb.equal(root.get("doctor").get("userId"), criteria.getDoctorId()));
+            }
+
+            // 2. TÌM KIẾM THÔNG MINH (Bao gồm cả Vãng lai & Patient hệ thống)
+            if (criteria.getKeyword() != null && !criteria.getKeyword().trim().isEmpty()) {
+                String key = criteria.getKeyword().trim().toLowerCase();
+
+                // ✅ SỬA LẠI: Dùng pattern đơn giản nhất bao bọc bởi 2 dấu %
+                // Ví dụ: Nhập "du" sẽ thành "%du%", tìm được "Dung", "Dieu", "Minh Du"...
+                String pattern = "%" + key + "%";
+
+                // --- KẾT NỐI VỚI BẢNG PATIENT (Dùng LEFT JOIN) ---
+                Join<MedicalRecord, Patient> patientJoin = root.join("patient", JoinType.LEFT);
+
+                // A. TÌM KHÁCH VÃNG LAI (Tìm trong cột patientName của MedicalRecord)
+                // coalesce để tránh lỗi null, lower để không phân biệt hoa thường
+                var tempName = cb.lower(cb.coalesce(root.get("patientName"), ""));
+                Predicate matchTempName = cb.like(tempName, pattern);
+
+                // B. TÌM KHÁCH HỆ THỐNG - TÊN (Tìm trong bảng Patient)
+                var realName = cb.lower(cb.coalesce(patientJoin.get("fullName"), ""));
+                Predicate matchRealName = cb.like(realName, pattern);
+
+                // C. TÌM KHÁCH HỆ THỐNG - SĐT (Tìm trong bảng Patient)
+                var phone = cb.coalesce(patientJoin.get("phone"), "");
+                Predicate matchPhone = cb.like(phone, pattern);
+
+                // ===> GỘP TẤT CẢ LẠI BẰNG OR <===
+                predicates.add(cb.or(matchTempName, matchRealName, matchPhone));
+            }
+
+            // 3. Tìm theo ngày tháng
+            if (criteria.getStartDate() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), criteria.getStartDate().atStartOfDay()));
+            }
+            if (criteria.getEndDate() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), criteria.getEndDate().atTime(23, 59, 59)));
+            }
+
+            query.orderBy(cb.desc(root.get("createdAt")));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return medicalRecordRepository.findAll(spec)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public MedicalRecordDetailResponse updateRecord(UUID recordId, UpdateMedicalRecordRequest request) {
         MedicalRecord record = medicalRecordRepository.findById(recordId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ bệnh án với ID: " + recordId));
 
         if (request.getPatientId() != null) {
-            User patient = userRepository.findById(request.getPatientId())
+            Patient patient = patientRepository.findById(request.getPatientId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân với ID: " + request.getPatientId()));
             record.setPatient(patient);
             record.setPatientName(patient.getFullName());
@@ -201,7 +278,7 @@ public class MedicalRecordService {
 
         return MedicalRecordDetailResponse.builder()
                 .recordId(record.getRecordId())
-                .patientId(record.getPatient() != null ? record.getPatient().getUserId() : null)
+                .patientId(record.getPatient() != null ? record.getPatient().getPatientId() : null)
                 .patientName(finalPatientName)
                 .doctorId(record.getDoctor() != null ? record.getDoctor().getUserId() : null)
                 .doctorName(record.getDoctor() != null ? record.getDoctor().getFullName() : null)
@@ -223,7 +300,7 @@ public class MedicalRecordService {
         }
         return MedicalRecordResponse.builder()
                 .recordId(r.getRecordId())
-                .patientId(r.getPatient() != null ? r.getPatient().getUserId() : null)
+                .patientId(r.getPatient() != null ? r.getPatient().getPatientId() : null)
                 .patientName(finalPatientName)
                 .doctorId(r.getDoctor() != null ? r.getDoctor().getUserId() : null)
                 .doctorName(r.getDoctor() != null ? r.getDoctor().getFullName() : null)
@@ -252,20 +329,26 @@ public class MedicalRecordService {
         return bearerToken.substring(7);
     }
 
-    // ============================== MỚI: CHỨC NĂNG CHO BỆNH NHÂN ĐANG KHÁM ==============================
+    // ============================== CHỨC NĂNG CHO BỆNH NHÂN ĐANG KHÁM ==============================
 
     private MedicalRecord getOrCreateRecordForCurrentPatient(Queue queue, User doctor) {
-        String patientName = queue.getPatient().getFullName();
+        Patient patient = queue.getPatient(); // Đảm bảo queue có patient
+        String patientName = patient.getFullName();
         LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
 
-        return medicalRecordRepository.findByDoctor_UserIdAndPatientNameAndCreatedAtAfter(doctor.getUserId(), patientName, today)
+        return medicalRecordRepository
+                .findByDoctor_UserIdAndPatient_PatientIdAndCreatedAtAfter(
+                        doctor.getUserId(),
+                        patient.getPatientId(),
+                        today
+                )
                 .stream()
                 .findFirst()
                 .orElseGet(() -> {
                     MedicalRecord newRecord = MedicalRecord.builder()
                             .doctor(doctor)
-                            .patient(null)
-                            .patientName(patientName)
+                            .patient(patient)                    // Gán patient entity
+                            .patientName(patientName)             // Vẫn giữ tên để hiển thị nhanh
                             .diagnosis("")
                             .treatmentNotes("")
                             .createdAt(LocalDateTime.now())
@@ -357,7 +440,7 @@ public class MedicalRecordService {
 
         return new ExaminationSummaryResponse(
                 record.getRecordId(),
-                record.getPatient() != null ? record.getPatient().getUserId() : null,
+                record.getPatient() != null ? record.getPatient().getPatientId() : null,
                 record.getPatientName(),
                 record.getDiagnosis(),
                 record.getTreatmentNotes(),
@@ -367,5 +450,4 @@ public class MedicalRecordService {
                 total
         );
     }
-
 }

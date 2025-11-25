@@ -1,6 +1,8 @@
 // src/main/java/com/example/demo/entity/BillingRecord.java
 package com.example.demo.entity;
 
+import com.example.demo.enums.PaymentMethod;
+import com.example.demo.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
