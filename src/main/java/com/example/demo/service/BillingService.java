@@ -256,6 +256,7 @@ public class BillingService {
     private BillingResponseDTO toDto(BillingRecord b) {
         var items = b.getDetails().stream()
                 .map(d -> new BillingItemResponseDTO(
+                        d.getService().getServiceId().toString(),
                         d.getService().getName(),
                         d.getQuantity(),
                         d.getUnitPrice(),
