@@ -10,6 +10,6 @@ public record AppointmentRequest(
         String email,
         LocalDateTime appointmentTime,
         String notes,
-        Boolean quickBook,                   // Thêm để tránh lỗi
+        Boolean quickBook,
         List<String> serviceIds
 ) {}

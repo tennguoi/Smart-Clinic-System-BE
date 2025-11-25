@@ -1,27 +1,39 @@
+// src/main/java/com/example/demo/service/AppointmentService.java
 package com.example.demo.service;
 
 import com.example.demo.dto.AppointmentRequest;
 import com.example.demo.dto.AppointmentResponse;
 import com.example.demo.dto.ServiceResponse;
 import com.example.demo.entity.Appointment;
-import com.example.demo.entity.Appointment.Status;
-import com.example.demo.entity.Service;
+import com.example.demo.entity.Invoice;
+import com.example.demo.entity.InvoiceDetail;
+import com.example.demo.entity.Patient;
 import com.example.demo.entity.User;
+import com.example.demo.enums.InvoiceStatus;
 import com.example.demo.repository.AppointmentRepository;
+import com.example.demo.repository.InvoiceDetailRepository;
+import com.example.demo.repository.InvoiceRepository;
+import com.example.demo.repository.PatientRepository;
 import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.CodeGenerator;
-import com.example.demo.repository.PatientRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@org.springframework.stereotype.Service
+@Service
 public class AppointmentService {
 
     private final AppointmentRepository repo;
@@ -29,11 +41,16 @@ public class AppointmentService {
     private final ServiceRepository serviceRepo;
     private final EmailService emailService;
     private final PatientRepository patientRepo;
-    private final com.example.demo.repository.InvoiceRepository invoiceRepo;
-    private final com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo;
+    private final InvoiceRepository invoiceRepo;
+    private final InvoiceDetailRepository invoiceDetailRepo;
 
-    public AppointmentService(AppointmentRepository repo, UserRepository userRepo, ServiceRepository serviceRepo, EmailService emailService,
-                              PatientRepository patientRepo, com.example.demo.repository.InvoiceRepository invoiceRepo, com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo) {
+    public AppointmentService(AppointmentRepository repo,
+                              UserRepository userRepo,
+                              ServiceRepository serviceRepo,
+                              EmailService emailService,
+                              PatientRepository patientRepo,
+                              InvoiceRepository invoiceRepo,
+                              InvoiceDetailRepository invoiceDetailRepo) {
         this.repo = repo;
         this.userRepo = userRepo;
         this.serviceRepo = serviceRepo;
@@ -43,7 +60,10 @@ public class AppointmentService {
         this.invoiceDetailRepo = invoiceDetailRepo;
     }
 
-    // Phương thức đặt lịch nhanh (Khách đặt)
+    // =========================================================
+    // 1. KHÁCH TỰ ĐẶT LỊCH (QUICK BOOK)
+    // =========================================================
+
     @Transactional
     public AppointmentResponse quickBook(AppointmentRequest req) {
         if (req.appointmentTime().isBefore(LocalDateTime.now())) {
@@ -63,14 +83,14 @@ public class AppointmentService {
 
         entity = repo.save(entity);
 
+        // Gửi email pending nếu có email
         if (entity.getEmail() != null && !entity.getEmail().isBlank()) {
             try {
-                // Lấy tên các dịch vụ
                 String serviceNames = "";
                 if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
-                    List<Service> services = serviceRepo.findAllById(req.serviceIds());
+                    List<com.example.demo.entity.Service> services = serviceRepo.findAllById(req.serviceIds());
                     serviceNames = services.stream()
-                            .map(Service::getName)
+                            .map(com.example.demo.entity.Service::getName)
                             .reduce((a, b) -> a + ", " + b)
                             .orElse("");
                 }
@@ -89,10 +109,10 @@ public class AppointmentService {
             }
         }
 
-        // [NEW] Create Draft Invoice for Stats
+        // Tạo invoice nháp nếu có chọn dịch vụ
         if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
             try {
-                com.example.demo.entity.Patient patient = findOrCreatePatient(req);
+                Patient patient = findOrCreatePatient(req);
                 createDraftInvoice(patient, req.serviceIds());
             } catch (Exception e) {
                 System.err.println("Failed to create draft invoice: " + e.getMessage());
@@ -103,7 +123,10 @@ public class AppointmentService {
         return toResponse(entity);
     }
 
-    // Phương thức tạo lịch hẹn từ form quản lý (Lễ tân)
+    // =========================================================
+    // 2. LỄ TÂN TẠO LỊCH
+    // =========================================================
+
     @Transactional
     public AppointmentResponse create(AppointmentRequest req) {
         if (req.appointmentTime().isBefore(LocalDateTime.now())) {
@@ -123,10 +146,9 @@ public class AppointmentService {
 
         entity = repo.save(entity);
 
-        // [NEW] Create Draft Invoice for Stats
         if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
             try {
-                com.example.demo.entity.Patient patient = findOrCreatePatient(req);
+                Patient patient = findOrCreatePatient(req);
                 createDraftInvoice(patient, req.serviceIds());
             } catch (Exception e) {
                 System.err.println("Failed to create draft invoice: " + e.getMessage());
@@ -137,16 +159,18 @@ public class AppointmentService {
         return toResponse(entity);
     }
 
-    // Phương thức cũ (giữ nguyên)
-    public List<AppointmentResponse> listByStatus(Status status) {
+    // =========================================================
+    // 3. LIST CŨ (NẾU CÒN DÙNG)
+    // =========================================================
+
+    public List<AppointmentResponse> listByStatus(Appointment.Status status) {
         return repo.findByStatus(status).stream()
                 .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
                 .map(this::toResponse)
                 .toList();
     }
 
-    // Lọc danh sách & sắp xếp mới nhất lên đầu
-    public List<AppointmentResponse> listBy(Status status, String phone, String patientName) {
+    public List<AppointmentResponse> listBy(Appointment.Status status, String phone, String patientName) {
         var results = repo.findByStatus(status);
 
         if (phone != null && !phone.isBlank()) {
@@ -168,15 +192,45 @@ public class AppointmentService {
                 .toList();
     }
 
-    // Phương thức cập nhật trạng thái
+    // =========================================================
+    // 4. TÌM KIẾM + PHÂN TRANG CHO LỄ TÂN
+    // =========================================================
+
+    public Page<AppointmentResponse> searchAppointments(String status, String keyword, int page, int size) {
+        Appointment.Status st;
+        try {
+            st = Appointment.Status.valueOf(status.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status);
+        }
+
+        // keyword rỗng => truyền null để repo bỏ filter LIKE
+        String kw = (keyword == null || keyword.trim().isEmpty())
+                ? null
+                : keyword.trim();
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("createdAt").descending()
+        );
+
+        Page<Appointment> data = repo.search(st, kw, pageable);
+        return data.map(this::toResponse);
+    }
+
+    // =========================================================
+    // 5. CẬP NHẬT TRẠNG THÁI
+    // =========================================================
+
     @Transactional
-    public AppointmentResponse updateStatus(UUID id, Status status) {
+    public AppointmentResponse updateStatus(UUID id, Appointment.Status status) {
         Appointment appt = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 
         appt.setStatus(status);
 
-        if (status == Status.Confirmed && appt.getConfirmedBy() == null) {
+        if (status == Appointment.Status.Confirmed && appt.getConfirmedBy() == null) {
             var authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || authentication.getName() == null) {
                 throw new IllegalStateException("Authentication required to confirm appointment");
@@ -208,7 +262,10 @@ public class AppointmentService {
         return toResponse(appt);
     }
 
-    // Chức năng sửa thông tin lịch hẹn (bây giờ cho sửa luôn dịch vụ)
+    // =========================================================
+    // 6. CẬP NHẬT THÔNG TIN LỊCH HẸN
+    // =========================================================
+
     @Transactional
     public AppointmentResponse updateInfo(UUID id, AppointmentRequest req) {
         if (req.appointmentTime().isBefore(LocalDateTime.now())) {
@@ -223,13 +280,16 @@ public class AppointmentService {
         appt.setEmail(req.email());
         appt.setAppointmentTime(req.appointmentTime());
         appt.setNotes(req.notes());
-        appt.setServiceIds(joinServiceIds(req.serviceIds())); // ← ĐÃ THÊM DÒNG NÀY
+        appt.setServiceIds(joinServiceIds(req.serviceIds()));
 
         appt = repo.save(appt);
         return toResponse(appt);
     }
 
-    // Helper: chuyển List<String> → "id1,id2,id3"
+    // =========================================================
+    // 7. HELPERS
+    // =========================================================
+
     private String joinServiceIds(List<String> ids) {
         if (ids == null || ids.isEmpty()) return null;
         return String.join(",", ids);
@@ -249,13 +309,13 @@ public class AppointmentService {
                     .toList();
 
             if (!serviceIdsList.isEmpty()) {
-                List<Service> services = serviceRepo.findAllById(serviceIdsList);
+                List<com.example.demo.entity.Service> services = serviceRepo.findAllById(serviceIdsList);
                 serviceResponses = services.stream()
                         .map(s -> new ServiceResponse(
                                 s.getServiceId(),
                                 s.getName(),
                                 s.getDescription(),
-                                s.getCategory().getDisplayName(), // ← tiếng Việt đẹp
+                                s.getCategory().getDisplayName(),
                                 s.getPrice(),
                                 s.getIsActive(),
                                 s.getPhotoUrl()
@@ -293,50 +353,47 @@ public class AppointmentService {
         return code;
     }
 
-    private com.example.demo.entity.Patient findOrCreatePatient(AppointmentRequest req) {
+    private Patient findOrCreatePatient(AppointmentRequest req) {
         return patientRepo.findByPhone(req.phone())
                 .orElseGet(() -> {
-                    com.example.demo.entity.Patient newPatient = com.example.demo.entity.Patient.builder()
+                    Patient newPatient = Patient.builder()
                             .fullName(req.patientName())
                             .phone(req.phone())
                             .email(req.email())
-                            .dob(java.time.LocalDate.of(2000, 1, 1)) // Default DOB
-                            .gender(com.example.demo.entity.Patient.Gender.other) // Default Gender
+                            .dob(LocalDate.of(2000, 1, 1))
+                            .gender(Patient.Gender.other)
                             .address("Unknown")
                             .build();
                     return patientRepo.save(newPatient);
                 });
     }
 
-    private void createDraftInvoice(com.example.demo.entity.Patient patient, List<String> serviceIds) {
+    private void createDraftInvoice(Patient patient, List<String> serviceIds) {
         if (serviceIds == null || serviceIds.isEmpty()) return;
 
-        List<Service> services = serviceRepo.findAllById(serviceIds);
+        List<com.example.demo.entity.Service> services = serviceRepo.findAllById(serviceIds);
         if (services.isEmpty()) return;
 
-        // Tìm user hệ thống (Admin) để gán creator
         User systemUser = userRepo.findAll().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No users found"));
 
-        // Tạo Invoice Draft
-        com.example.demo.entity.Invoice invoice = new com.example.demo.entity.Invoice();
+        Invoice invoice = new Invoice();
         invoice.setInvoiceCode(generateUniqueInvoiceCode());
         invoice.setPatient(patient);
         invoice.setCreatedBy(systemUser);
-        invoice.setStatus(com.example.demo.enums.InvoiceStatus.DRAFT);
-        invoice.setTotalAmount(java.math.BigDecimal.ZERO);
-        invoice.setPaidAmount(java.math.BigDecimal.ZERO);
-        invoice.setRemainingAmount(java.math.BigDecimal.ZERO);
+        invoice.setStatus(InvoiceStatus.DRAFT);
+        invoice.setTotalAmount(BigDecimal.ZERO);
+        invoice.setPaidAmount(BigDecimal.ZERO);
+        invoice.setRemainingAmount(BigDecimal.ZERO);
 
-        invoice = invoiceRepo.save(invoice); // save trước để có invoice_id
+        invoice = invoiceRepo.save(invoice);
 
-        // Tạo InvoiceDetail liên kết với invoice đã lưu
-        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
-        List<com.example.demo.entity.InvoiceDetail> details = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        List<InvoiceDetail> details = new ArrayList<>();
 
-        for (Service s : services) {
-            com.example.demo.entity.InvoiceDetail detail = new com.example.demo.entity.InvoiceDetail();
-            detail.setInvoice(invoice); // quan trọng: phải set invoice đã save
+        for (com.example.demo.entity.Service s : services) {
+            InvoiceDetail detail = new InvoiceDetail();
+            detail.setInvoice(invoice);
             detail.setService(s);
             detail.setQuantity(1);
             detail.setUnitPrice(s.getPrice());
@@ -346,14 +403,12 @@ public class AppointmentService {
             total = total.add(s.getPrice());
         }
 
-        // Cập nhật tổng tiền vào invoice
         invoice.setTotalAmount(total);
         invoice.setRemainingAmount(total);
 
-        invoiceDetailRepo.saveAll(details); // lưu chi tiết
-        invoiceRepo.save(invoice); // cập nhật lại tổng tiền
+        invoiceDetailRepo.saveAll(details);
+        invoiceRepo.save(invoice);
     }
-
 
     private String generateUniqueInvoiceCode() {
         String code;
