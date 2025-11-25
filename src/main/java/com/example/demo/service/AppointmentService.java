@@ -65,11 +65,24 @@ public class AppointmentService {
 
         if (entity.getEmail() != null && !entity.getEmail().isBlank()) {
             try {
+                // Lấy tên các dịch vụ
+                String serviceNames = "";
+                if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
+                    List<Service> services = serviceRepo.findAllById(req.serviceIds());
+                    serviceNames = services.stream()
+                            .map(Service::getName)
+                            .reduce((a, b) -> a + ", " + b)
+                            .orElse("");
+                }
+
                 emailService.sendAppointmentPendingNotification(
                         entity.getEmail(),
                         entity.getPatientName(),
                         entity.getAppointmentCode(),
-                        entity.getAppointmentTime()
+                        entity.getAppointmentTime(),
+                        entity.getPhone(),
+                        entity.getNotes(),
+                        serviceNames
                 );
             } catch (Exception e) {
                 System.err.println("Failed to send pending appointment email: " + e.getMessage());
@@ -301,41 +314,46 @@ public class AppointmentService {
         List<Service> services = serviceRepo.findAllById(serviceIds);
         if (services.isEmpty()) return;
 
-        // Find a system user (Admin) to assign as creator
-        // In a real app, this should be the logged in user or a system bot
-        User systemUser = userRepo.findAll().stream().findFirst().orElseThrow(() -> new IllegalStateException("No users found"));
+        // Tìm user hệ thống (Admin) để gán creator
+        User systemUser = userRepo.findAll().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("No users found"));
 
-        // Create Invoice
-        com.example.demo.entity.Invoice invoice = com.example.demo.entity.Invoice.builder()
-                .invoiceCode(generateUniqueInvoiceCode())
-                .patient(patient)
-                .createdBy(systemUser)
-                .status(com.example.demo.enums.InvoiceStatus.DRAFT)
-                .totalAmount(java.math.BigDecimal.ZERO)
-                .build();
-        
-        // Calculate total & details
+        // Tạo Invoice Draft
+        com.example.demo.entity.Invoice invoice = new com.example.demo.entity.Invoice();
+        invoice.setInvoiceCode(generateUniqueInvoiceCode());
+        invoice.setPatient(patient);
+        invoice.setCreatedBy(systemUser);
+        invoice.setStatus(com.example.demo.enums.InvoiceStatus.DRAFT);
+        invoice.setTotalAmount(java.math.BigDecimal.ZERO);
+        invoice.setPaidAmount(java.math.BigDecimal.ZERO);
+        invoice.setRemainingAmount(java.math.BigDecimal.ZERO);
+
+        invoice = invoiceRepo.save(invoice); // save trước để có invoice_id
+
+        // Tạo InvoiceDetail liên kết với invoice đã lưu
         java.math.BigDecimal total = java.math.BigDecimal.ZERO;
-        List<com.example.demo.entity.InvoiceDetail> details = new java.util.ArrayList<>();
+        List<com.example.demo.entity.InvoiceDetail> details = new ArrayList<>();
 
         for (Service s : services) {
-            com.example.demo.entity.InvoiceDetail detail = com.example.demo.entity.InvoiceDetail.builder()
-                    .invoice(invoice)
-                    .service(s)
-                    .quantity(1)
-                    .unitPrice(s.getPrice())
-                    .amount(s.getPrice())
-                    .build();
+            com.example.demo.entity.InvoiceDetail detail = new com.example.demo.entity.InvoiceDetail();
+            detail.setInvoice(invoice); // quan trọng: phải set invoice đã save
+            detail.setService(s);
+            detail.setQuantity(1);
+            detail.setUnitPrice(s.getPrice());
+            detail.setAmount(s.getPrice());
             details.add(detail);
+
             total = total.add(s.getPrice());
         }
 
+        // Cập nhật tổng tiền vào invoice
         invoice.setTotalAmount(total);
         invoice.setRemainingAmount(total);
-        invoice.setDetails(details);
 
-        invoiceRepo.save(invoice);
+        invoiceDetailRepo.saveAll(details); // lưu chi tiết
+        invoiceRepo.save(invoice); // cập nhật lại tổng tiền
     }
+
 
     private String generateUniqueInvoiceCode() {
         String code;

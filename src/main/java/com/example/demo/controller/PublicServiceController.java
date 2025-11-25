@@ -30,12 +30,23 @@ public class PublicServiceController {
         return ResponseEntity.ok(serviceService.getServiceById(id));
     }
 
-    // Tìm kiếm theo category
+    // Tìm kiếm dịch vụ (name, category)
     @GetMapping("/search")
-    public ResponseEntity<Page<ServiceResponse>> searchByCategory(
-            @RequestParam String category,
+    public ResponseEntity<Page<ServiceResponse>> searchServices(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
-        return ResponseEntity.ok(serviceService.getActiveServicesByCategory(category, page, size));
+        
+        // Gọi service tìm kiếm với isActive = true (public chỉ xem active)
+        return ResponseEntity.ok(serviceService.searchServices(
+                name, 
+                category, 
+                true, // isActive
+                null, // minPrice
+                null, // maxPrice
+                page, 
+                size
+        ));
     }
 }

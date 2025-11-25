@@ -53,7 +53,7 @@ public class EmailService {
     }
 
     public void sendAppointmentPendingNotification(String toEmail, String patientName, String appointmentCode,
-                                                   LocalDateTime appointmentTime) {
+                                                   LocalDateTime appointmentTime, String phone, String notes, String serviceNames) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
@@ -61,18 +61,23 @@ public class EmailService {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
+        String services = (serviceNames != null && !serviceNames.isEmpty()) ? serviceNames : "Không có dịch vụ nào";
+        String userNotes = (notes != null && !notes.isEmpty()) ? notes : "Không có";
 
         String emailContent = String.format(
                 "Kính gửi %s,\n\n" +
                 "Chúng tôi đã nhận được yêu cầu đặt lịch khám của bạn.\n\n" +
-                "Thông tin lịch khám:\n" +
+                "Thông tin chi tiết:\n" +
                 "- Mã lịch khám: %s\n" +
-                "- Thời gian dự kiến: %s\n\n" +
+                "- Thời gian dự kiến: %s\n" +
+                "- Số điện thoại: %s\n" +
+                "- Dịch vụ đăng ký: %s\n" +
+                "- Triệu chứng/Ghi chú: %s\n\n" +
                 "Nhân viên phòng khám sẽ sớm liên hệ với bạn để xác nhận lịch.\n" +
                 "Nếu bạn cần thay đổi thông tin, vui lòng phản hồi email này.\n\n" +
                 "Trân trọng,\n" +
                 "Smart Clinic System",
-                patientName, appointmentCode, formattedTime
+                patientName, appointmentCode, formattedTime, phone, services, userNotes
         );
 
         message.setText(emailContent);
