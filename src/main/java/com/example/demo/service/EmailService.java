@@ -26,7 +26,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
-        message.setSubject("Mã OTP - Smart Clinic System");
+        message.setSubject("Mã OTP - Tai-Mũi-Họng 2CTW");
         
         String emailContent = String.format(
             "Kính gửi %s,\n\n" +
@@ -34,7 +34,7 @@ public class EmailService {
             "Vui lòng nhập mã này để tiếp tục. Mã OTP có hiệu lực trong vòng 5 phút.\n" +
             "Lưu ý: Không chia sẻ mã này với bất kỳ ai.\n\n" +
             "Trân trọng,\n" +
-            "Smart Clinic System",
+            "Tai-Mũi-Họng 2CTW",
             patientName, otp
         );
         
@@ -47,7 +47,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
-        message.setSubject("Xác nhận lịch khám - Smart Clinic System");
+        message.setSubject("Xác nhận lịch khám - Tai-Mũi-Họng 2CTW");
         
         String emailContent = String.format(
             "Kính gửi %s,\n\n" +
@@ -59,7 +59,7 @@ public class EmailService {
             "- Được xác nhận bởi: %s\n\n" +
             "Vui lòng đến đúng giờ. Nếu có thay đổi, vui lòng liên hệ phòng khám.\n\n" +
             "Trân trọng,\n" +
-            "Smart Clinic System",
+            "Tai-Mũi-Họng 2CTW",
             patientName, patientName, appointmentCode, appointmentTime, confirmedByName
         );
         
@@ -72,7 +72,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
-        message.setSubject("Yêu cầu đặt lịch đã được tiếp nhận - Smart Clinic System");
+        message.setSubject("Yêu cầu đặt lịch đã được tiếp nhận - Tai-Mũi-Họng 2CTW");
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
@@ -92,7 +92,7 @@ public class EmailService {
                 "Nhân viên phòng khám sẽ sớm liên hệ với bạn để xác nhận lịch.\n" +
                 "Nếu bạn cần thay đổi thông tin, vui lòng phản hồi email này.\n\n" +
                 "Trân trọng,\n" +
-                "Smart Clinic System",
+                "Tai-Mũi-Họng 2CTW",
                 patientName, patientName, appointmentCode, formattedTime, phone, services, userNotes
         );
 
@@ -104,7 +104,7 @@ public class EmailService {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(fromEmail);
     message.setTo(toEmail);
-    message.setSubject(" Nhắc nhở lịch khám ngày mai - Smart Clinic System");
+    message.setSubject(" Nhắc nhở lịch khám ngày mai - Tai-Mũi-Họng 2CTW");
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
@@ -129,7 +129,7 @@ public class EmailService {
         "- Hotline: [Số điện thoại phòng khám]\n" +
         "- Email: %s\n\n" +
         "Trân trọng,\n" +
-        "Smart Clinic System",
+        "Tai-Mũi-Họng 2CTW",
         patientName, patientName, appointmentCode, formattedTime, hoursUntilAppointment, fromEmail
     );
 
@@ -144,7 +144,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
-        message.setSubject("Đặt lịch khám thành công - Smart Clinic System");
+        message.setSubject("Đặt lịch khám thành công - Tai-Mũi-Họng 2CTW");
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         String formattedTime = appointmentTime != null ? appointmentTime.format(formatter) : "Chưa xác định";
@@ -164,7 +164,7 @@ public class EmailService {
             "Vui lòng đến đúng giờ để được phục vụ tốt nhất.\n" +
             "Nếu bạn cần thay đổi hoặc hủy lịch, vui lòng liên hệ với chúng tôi sớm nhất có thể.\n\n" +
             "Trân trọng,\n" +
-            "Smart Clinic System",
+            "Tai-Mũi-Họng 2CTW",
             patientName, appointmentCode, patientName, formattedTime, services, note
         );
 
