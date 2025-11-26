@@ -49,7 +49,7 @@ public class ChatbotController {
             );
 
             ResponseEntity<Map> res = rest.postForEntity(
-                    "https://n8n.quanliduan-pms.site/webhook-test/chat-update",
+                    "https://n8n.quanliduan-pms.site/webhook/chat",
                     body,
                     Map.class
             );
