@@ -703,4 +703,4 @@ public class PdfExportService {
             return amount.stripTrailingZeros().toPlainString();
         }
     }
-}
+} 
