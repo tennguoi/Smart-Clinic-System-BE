@@ -11,6 +11,7 @@ import com.example.demo.util.JwtUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/doctor/medical-records")
+@PreAuthorize("hasAnyRole('ADMIN', 'BAC_SI')")
 public class DoctorMedicalRecordController {
 
     private final MedicalRecordService medicalRecordService;
@@ -48,14 +50,22 @@ public class DoctorMedicalRecordController {
         String token = extractToken(authorization);
 
         // 2. Lấy ID bác sĩ từ token
-        UUID doctorId = jwtUtil.getUserIdFromToken(token);
+        UUID userId = jwtUtil.getUserIdFromToken(token);
+        
+        // 3. Lấy roles từ token
+        List<String> roles = jwtUtil.getRolesFromToken(token);
 
         // 3. Đóng gói dữ liệu vào SearchCriteria
         MedicalRecordSearchCriteria criteria = new MedicalRecordSearchCriteria();
         criteria.setKeyword(keyword);
         criteria.setStartDate(startDate);
         criteria.setEndDate(endDate);
-        criteria.setDoctorId(doctorId); // Quan trọng: Gán ID bác sĩ để chỉ tìm hồ sơ của họ
+        
+        // Nếu là Admin, không filter theo doctorId (xem tất cả)
+        // Nếu là Bác sĩ, chỉ xem hồ sơ của mình
+        if (!roles.contains("ROLE_ADMIN")) {
+            criteria.setDoctorId(userId);
+        }
 
         // 4. Gọi Service
         return ResponseEntity.ok(medicalRecordService.searchMyRecords(criteria));
@@ -86,6 +96,15 @@ public class DoctorMedicalRecordController {
     @GetMapping("/mine")
     public ResponseEntity<List<MedicalRecordResponse>> listMine(
             @RequestHeader("Authorization") String authorization) {
+        String token = extractToken(authorization);
+        List<String> roles = jwtUtil.getRolesFromToken(token);
+        
+        // Nếu là Admin, trả về tất cả records
+        if (roles.contains("ROLE_ADMIN")) {
+            return ResponseEntity.ok(medicalRecordService.listAll());
+        }
+        
+        // Nếu là Bác sĩ, chỉ trả về records của họ
         return ResponseEntity.ok(medicalRecordService.listMyCreated(authorization));
     }
 
