@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -41,6 +42,18 @@ public class Clinic {
     
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
+    
+    @Column(name = "morning_start_time")
+    private LocalTime morningStartTime;
+    
+    @Column(name = "morning_end_time")
+    private LocalTime morningEndTime;
+    
+    @Column(name = "afternoon_start_time")
+    private LocalTime afternoonStartTime;
+    
+    @Column(name = "afternoon_end_time")
+    private LocalTime afternoonEndTime;
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
