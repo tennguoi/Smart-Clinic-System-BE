@@ -49,11 +49,11 @@ public class ChatbotController {
             );
 
             ResponseEntity<Map> res = rest.postForEntity(
-                    "https://n8n.quanliduan-pms.site/webhook/chat",
+                    "https://n8n.quanliduan-pms.site/webhook/chat-update",
                     body,
                     Map.class
             );
-            return (String) res.getBody().get("output");
+            return (String) res.getBody().get("text");
         } catch (Exception e) {
             return "Xin lỗi, em đang gặp sự cố. Vui lòng thử lại sau!";
         }
