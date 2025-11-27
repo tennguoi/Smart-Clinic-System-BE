@@ -119,7 +119,7 @@ public class AdminUserController {
     // ==================== CÁC ENDPOINT TÌM KIẾM CÓ PHÂN TRANG ====================
 
     /**
-     * Tìm kiếm user theo tên hoặc số điện thoại với phân trang
+     * Tìm kiếm user theo tên, số điện thoại, hoặc email với phân trang
      * GET /api/admin/users/search/name-phone?keyword=...&page=0&size=8
      */
     @GetMapping("/search/name-phone")
@@ -172,6 +172,7 @@ public class AdminUserController {
 
     /**
      * Tìm kiếm user với nhiều tiêu chí kết hợp và phân trang
+     * keyword: tìm theo tên, số điện thoại, hoặc email
      * GET /api/admin/users/search?keyword=...&roleName=...&isVerified=...&gender=...&page=0&size=8
      */
     @GetMapping("/search")
