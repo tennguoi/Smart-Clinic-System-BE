@@ -363,7 +363,7 @@ public AppointmentResponse create(AppointmentRequest req) {
     }
 
     //@Scheduled(cron = "0 0 20 * * ?")  
-@Scheduled(cron = "0 */1 * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
 @Transactional
 public void sendDailyReminderEmails() {
     try {
