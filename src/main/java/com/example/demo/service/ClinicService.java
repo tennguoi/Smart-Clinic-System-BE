@@ -125,6 +125,24 @@ public class ClinicService {
             clinic.setLogoUrl(logoUrl.isEmpty() ? null : logoUrl);
         }
         
+        // Thời gian làm việc buổi sáng
+        if (request.getMorningStartTime() != null) {
+            clinic.setMorningStartTime(request.getMorningStartTime());
+        }
+        
+        if (request.getMorningEndTime() != null) {
+            clinic.setMorningEndTime(request.getMorningEndTime());
+        }
+        
+        // Thời gian làm việc buổi chiều
+        if (request.getAfternoonStartTime() != null) {
+            clinic.setAfternoonStartTime(request.getAfternoonStartTime());
+        }
+        
+        if (request.getAfternoonEndTime() != null) {
+            clinic.setAfternoonEndTime(request.getAfternoonEndTime());
+        }
+        
         Clinic saved = clinicRepository.save(clinic);
         
         // Force flush và refresh để đảm bảo dữ liệu được lưu vào database và đọc lại
@@ -158,6 +176,10 @@ public class ClinicService {
                 .email(clinic.getEmail())
                 .website(clinic.getWebsite())
                 .logoUrl(clinic.getLogoUrl())
+                .morningStartTime(clinic.getMorningStartTime())
+                .morningEndTime(clinic.getMorningEndTime())
+                .afternoonStartTime(clinic.getAfternoonStartTime())
+                .afternoonEndTime(clinic.getAfternoonEndTime())
                 .createdAt(clinic.getCreatedAt())
                 .updatedAt(clinic.getUpdatedAt())
                 .build();

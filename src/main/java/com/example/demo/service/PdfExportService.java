@@ -298,8 +298,24 @@ public class PdfExportService {
 
                 if (clinic.getWebsite() != null && !clinic.getWebsite().isEmpty()) {
                     Paragraph clinicWebsite = new Paragraph("Website: " + clinic.getWebsite())
-                            .setFontSize(12);
+                            .setFontSize(12)
+                            .setMarginBottom(2);
                     infoCell.add(clinicWebsite);
+                }
+
+                // Giờ làm việc
+                String workingHours = "";
+                if (clinic.getMorningStartTime() != null && clinic.getMorningEndTime() != null) {
+                    workingHours += "Sáng: " + clinic.getMorningStartTime().toString() + " - " + clinic.getMorningEndTime().toString();
+                }
+                if (clinic.getAfternoonStartTime() != null && clinic.getAfternoonEndTime() != null) {
+                    if (!workingHours.isEmpty()) workingHours += " | ";
+                    workingHours += "Chiều: " + clinic.getAfternoonStartTime().toString() + " - " + clinic.getAfternoonEndTime().toString();
+                }
+                if (!workingHours.isEmpty()) {
+                    Paragraph clinicWorkingHours = new Paragraph("Giờ làm việc: " + workingHours)
+                            .setFontSize(12);
+                    infoCell.add(clinicWorkingHours);
                 }
             } else {
                 // Nếu không có thông tin phòng khám, hiển thị thông báo
@@ -384,7 +400,7 @@ public class PdfExportService {
             document.add(symptomSection);
 
             // Lấy từ treatmentNotes hoặc để trống
-            String symptoms = patient.getNotes() != null ? patient.getNotes() : null;
+            String symptoms = (patient != null && patient.getNotes() != null) ? patient.getNotes() : null;
             document.add(createDottedLine("Triệu chứng:", symptoms, 12));
 
             // ========== 6. III. CHẨN ĐOÁN ==========

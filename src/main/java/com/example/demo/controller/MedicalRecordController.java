@@ -23,7 +23,7 @@ public class MedicalRecordController {
      * Endpoint: GET /api/medical-records/patient/{patientId}/latest
      */
     @GetMapping("/patient/{patientId}/latest")
-    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BAC_SI', 'TIEP_TAN')")
     public ResponseEntity<Map<String, Object>> getLatestRecordByPatient(@PathVariable UUID patientId) {
         MedicalRecord record = medicalRecordRepository
                 .findFirstByPatient_PatientIdOrderByCreatedAtDesc(patientId)
@@ -43,7 +43,7 @@ public class MedicalRecordController {
      * Kiểm tra xem bệnh nhân đã có hồ sơ khám chưa
      */
     @GetMapping("/patient/{patientId}/exists")
-    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN', 'Y_TA')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BAC_SI', 'TIEP_TAN', 'Y_TA')")
     public ResponseEntity<Map<String, Boolean>> checkPatientHasRecord(@PathVariable UUID patientId) {
         boolean hasRecord = medicalRecordRepository.existsByPatient_PatientId(patientId);
 

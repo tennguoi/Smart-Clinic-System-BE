@@ -147,6 +147,15 @@ public class MedicalRecordService {
     }
 
     @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> listAll() {
+        return medicalRecordRepository.findAll()
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<MedicalRecordResponse> searchMyRecords(MedicalRecordSearchCriteria criteria) {
         Specification<MedicalRecord> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
