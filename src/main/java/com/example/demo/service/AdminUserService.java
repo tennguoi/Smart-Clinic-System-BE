@@ -143,7 +143,7 @@ public class AdminUserService {
     }
 
     /**
-     * Tìm kiếm user theo tên hoặc số điện thoại với phân trang
+     * Tìm kiếm user theo tên, số điện thoại, hoặc email với phân trang
      * - Hỗ trợ tìm không dấu tiếng Việt cho tên
      */
     public Page<UserAdminResponse> searchUsersByNameOrPhone(String keyword, int page, int size) {
@@ -159,7 +159,9 @@ public class AdminUserService {
                             removeAccents(user.getFullName()).contains(normalizedKeyword);
                     boolean matchPhone = user.getPhone() != null &&
                             user.getPhone().contains(keyword.trim());
-                    return matchName || matchPhone;
+                    boolean matchEmail = user.getEmail() != null &&
+                            user.getEmail().toLowerCase().contains(keyword.trim().toLowerCase());
+                    return matchName || matchPhone || matchEmail;
                 })
                 .collect(Collectors.toList());
 
@@ -232,7 +234,7 @@ public class AdminUserService {
                                                int page, int size) {
         List<User> users = userRepository.findAll();
 
-        // Lọc theo keyword (tên hoặc số điện thoại)
+        // Lọc theo keyword (tên, số điện thoại, hoặc email)
         if (keyword != null && !keyword.trim().isEmpty()) {
             String normalizedKeyword = removeAccents(keyword.trim());
             users = users.stream()
@@ -241,7 +243,9 @@ public class AdminUserService {
                                 removeAccents(user.getFullName()).contains(normalizedKeyword);
                         boolean matchPhone = user.getPhone() != null &&
                                 user.getPhone().contains(keyword.trim());
-                        return matchName || matchPhone;
+                        boolean matchEmail = user.getEmail() != null &&
+                                user.getEmail().toLowerCase().contains(keyword.trim().toLowerCase());
+                        return matchName || matchPhone || matchEmail;
                     })
                     .collect(Collectors.toList());
         }

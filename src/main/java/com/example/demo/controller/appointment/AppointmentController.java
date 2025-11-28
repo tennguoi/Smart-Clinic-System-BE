@@ -1,5 +1,5 @@
 // src/main/java/com/example/demo/controller/AppointmentController.java
-package com.example.demo.controller;
+package com.example.demo.controller.appointment;
 
 import com.example.demo.dto.appointment.AppointmentRequest;
 import com.example.demo.dto.appointment.AppointmentResponse;
@@ -7,6 +7,7 @@ import com.example.demo.entity.Appointment.Status;
 import com.example.demo.service.AppointmentService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -25,6 +26,7 @@ public class AppointmentController {
      * Lấy danh sách lịch hẹn cho lễ tân (có lọc & phân trang)
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<Page<AppointmentResponse>> searchAppointments(
             @RequestParam(defaultValue = "Pending") String status,
             @RequestParam(defaultValue = "") String keyword,
@@ -38,6 +40,7 @@ public class AppointmentController {
      * Lễ tân tạo lịch hẹn
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<AppointmentResponse> create(@RequestBody AppointmentRequest req) {
         return ResponseEntity.ok(service.create(req));
     }
@@ -46,6 +49,7 @@ public class AppointmentController {
      * Lễ tân sửa thông tin lịch hẹn
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<AppointmentResponse> update(
             @PathVariable UUID id,
             @RequestBody AppointmentRequest req
@@ -57,6 +61,7 @@ public class AppointmentController {
      * Lễ tân cập nhật trạng thái lịch hẹn
      */
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<AppointmentResponse> updateStatus(
             @PathVariable UUID id,
             @RequestParam Status status

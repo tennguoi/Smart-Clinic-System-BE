@@ -23,7 +23,7 @@ public class InvoiceController {
 
     // XEM DANH SÁCH + TÌM KIẾM
     @GetMapping
-    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN')")   // ĐÃ SỬA
+    @PreAuthorize("hasAnyRole('ADMIN', 'BAC_SI', 'TIEP_TAN')")
     public ResponseEntity<Page<InvoiceResponseDTO>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -34,21 +34,21 @@ public class InvoiceController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN')")   // ĐÃ SỬA
+    @PreAuthorize("hasAnyRole('ADMIN', 'BAC_SI', 'TIEP_TAN')")
     public ResponseEntity<InvoiceResponseDTO> getDetail(@PathVariable UUID id) {
         return ResponseEntity.ok(invoiceService.getById(id));
     }
 
     // TẠO HÓA ĐƠN MỚI
     @PostMapping
-    @PreAuthorize("hasRole('TIEP_TAN')")               // ĐÃ SỬA
+    @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<InvoiceResponseDTO> create(@Valid @RequestBody InvoiceCreateDTO dto) {
         return ResponseEntity.ok(invoiceService.createInvoice(dto));
     }
 
     // THANH TOÁN HÓA ĐƠN
     @PutMapping("/{id}/pay")
-    @PreAuthorize("hasRole('TIEP_TAN')")               // ĐÃ SỬA
+    @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<InvoiceResponseDTO> pay(
             @PathVariable UUID id,
             @RequestBody Map<String, BigDecimal> request) {

@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.admin;
 
 import com.example.demo.dto.ArticleRequest;
 import com.example.demo.dto.ArticleResponse;

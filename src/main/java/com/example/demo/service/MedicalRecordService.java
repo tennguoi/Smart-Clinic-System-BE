@@ -2,8 +2,9 @@ package com.example.demo.service;
 
 import jakarta.persistence.criteria.Join;      
 import jakarta.persistence.criteria.JoinType;
-import com.example.demo.dto.MedicalRecordSearchCriteria; 
-import org.springframework.data.jpa.domain.Specification; 
+import com.example.demo.dto.MedicalRecordSearchCriteria;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;                               
 import com.example.demo.dto.*;
@@ -141,6 +142,15 @@ public class MedicalRecordService {
         UUID doctorId = jwtUtil.getUserIdFromToken(token);
         return medicalRecordRepository.findByDoctor_UserIdOrderByCreatedAtDesc(doctorId)
                 .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> listAll() {
+        return medicalRecordRepository.findAll()
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -449,5 +459,13 @@ public class MedicalRecordService {
                 serviceItems,
                 total
         );
+    }
+    // Trong MedicalRecordService.java
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> getAllRecords() {
+        return medicalRecordRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 }

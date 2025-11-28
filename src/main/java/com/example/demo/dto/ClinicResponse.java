@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Data
@@ -20,6 +21,10 @@ public class ClinicResponse {
     private String email;
     private String website;
     private String logoUrl;
+    private LocalTime morningStartTime;
+    private LocalTime morningEndTime;
+    private LocalTime afternoonStartTime;
+    private LocalTime afternoonEndTime;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

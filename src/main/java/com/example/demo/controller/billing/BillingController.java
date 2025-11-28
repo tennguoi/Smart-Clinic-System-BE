@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.billing;
 
 import com.example.demo.dto.billing.*;
 import com.example.demo.entity.BillingRecord;
@@ -37,7 +37,7 @@ public class BillingController {
 
     // ✅ LẤY HÓA ĐƠN CHỜ THANH TOÁN
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN')")
+    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN', 'ADMIN')")
     public ResponseEntity<Page<BillingResponseDTO>> getPendingBills(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -62,7 +62,7 @@ public class BillingController {
 
     // ✅ LẤY TẤT CẢ HÓA ĐƠN
     @GetMapping
-    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN')")
+    @PreAuthorize("hasAnyRole('TIEP_TAN', 'ADMIN')")
     public ResponseEntity<Page<BillingResponseDTO>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -74,7 +74,7 @@ public class BillingController {
 
     // ✅ CHI TIẾT HÓA ĐƠN
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN')")
+    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN', 'ADMIN')")
     public ResponseEntity<BillingResponseDTO> getDetail(@PathVariable UUID id) {
         return ResponseEntity.ok(billingService.getById(id));
     }
@@ -130,5 +130,15 @@ public class BillingController {
                             "billId", billId.toString()
                     ));
         }
+    }
+    @GetMapping("/my-bills")
+    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN', 'ADMIN')")
+    public ResponseEntity<Page<BillingResponseDTO>> getMyBills(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return ResponseEntity.ok(billingService.getMyBills(pageable, search));
     }
 }
