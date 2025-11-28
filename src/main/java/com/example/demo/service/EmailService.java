@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,7 @@ import java.util.List;
  * Service để gửi email
  */
 @Service
+
 public class EmailService {
 
     @Autowired
@@ -22,6 +24,7 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Async
     public void sendOtpEmail(String toEmail, String patientName, String otp) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
@@ -42,7 +45,8 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    public void sendAppointmentConfirmation(String toEmail, String patientName, String appointmentCode, 
+    @Async
+    public void sendAppointmentConfirmation(String toEmail, String patientName, String appointmentCode,
                                            String appointmentTime, String confirmedByName) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
@@ -67,6 +71,7 @@ public class EmailService {
         mailSender.send(message);
     }
 
+    @Async
     public void sendAppointmentPendingNotification(String toEmail, String patientName, String appointmentCode,
                                                    LocalDateTime appointmentTime, String phone, String notes, String serviceNames) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -100,6 +105,7 @@ public class EmailService {
         mailSender.send(message);
     }
 
+    @Async
     public void sendAppointmentReminder(String toEmail, String patientName, String appointmentCode, LocalDateTime appointmentTime) {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(fromEmail);
@@ -139,7 +145,8 @@ public class EmailService {
     /**
      * Gửi email thông báo khi tạo lịch hẹn mới
      */
-    public void sendNewAppointmentNotification(String toEmail, String patientName, String appointmentCode, 
+    @Async
+    public void sendNewAppointmentNotification(String toEmail, String patientName, String appointmentCode,
                                              LocalDateTime appointmentTime, String notes, List<String> serviceNames) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
