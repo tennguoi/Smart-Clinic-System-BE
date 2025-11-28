@@ -47,17 +47,21 @@ public class AppointmentService {
     private final UserRepository userRepo;
     private final ServiceRepository serviceRepo;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final PatientRepository patientRepo;
     private final com.example.demo.repository.InvoiceRepository invoiceRepo;
     private final com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo;
 
     @Autowired
-    public AppointmentService(AppointmentRepository repo, UserRepository userRepo, ServiceRepository serviceRepo, EmailService emailService,
-                              PatientRepository patientRepo, com.example.demo.repository.InvoiceRepository invoiceRepo, com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo) {
+    public AppointmentService(AppointmentRepository repo, UserRepository userRepo, ServiceRepository serviceRepo, 
+                              EmailService emailService, NotificationService notificationService,
+                              PatientRepository patientRepo, com.example.demo.repository.InvoiceRepository invoiceRepo, 
+                              com.example.demo.repository.InvoiceDetailRepository invoiceDetailRepo) {
         this.repo = repo;
         this.userRepo = userRepo;
         this.serviceRepo = serviceRepo;
         this.emailService = emailService;
+        this.notificationService = notificationService;
         this.patientRepo = patientRepo;
         this.invoiceRepo = invoiceRepo;
         this.invoiceDetailRepo = invoiceDetailRepo;
@@ -82,9 +86,10 @@ public AppointmentResponse quickBook(AppointmentRequest req) {
 
     entity = repo.save(entity);
 
-    // Send email notification for new appointment
+    // Send notification (SMS + Email)
     if (entity.getEmail() != null && !entity.getEmail().trim().isEmpty()) {
         try {
+            System.out.println("========== QUICK BOOK - PREPARING NOTIFICATION ==========");
             List<String> serviceNames = new ArrayList<>();
             if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
                 serviceNames = serviceRepo.findAllById(req.serviceIds())
@@ -93,18 +98,16 @@ public AppointmentResponse quickBook(AppointmentRequest req) {
                         .collect(Collectors.toList());
             }
             
-            emailService.sendNewAppointmentNotification(
-                entity.getEmail(),
-                entity.getPatientName(),
-                entity.getAppointmentCode(),
-                entity.getAppointmentTime(),
-                entity.getNotes(),
-                serviceNames
-            );
+            System.out.println("Calling notificationService.notifyBookingSuccess...");
+            notificationService.notifyBookingSuccess(entity, serviceNames);
+            System.out.println("notificationService.notifyBookingSuccess completed!");
         } catch (Exception e) {
-            System.err.println("Failed to send new appointment email: " + e.getMessage());
+            System.err.println("Failed to send notification: " + e.getMessage());
             e.printStackTrace();
         }
+    } else {
+        System.out.println("========== NO EMAIL - SKIPPING NOTIFICATION ==========");
+        System.out.println("Email: " + entity.getEmail());
     }
 
     return toResponse(entity);
@@ -128,7 +131,7 @@ public AppointmentResponse create(AppointmentRequest req) {
 
     entity = repo.save(entity);
 
-    // Send email notification for new appointment
+    // Send notification (SMS + Email)
     if (entity.getEmail() != null && !entity.getEmail().trim().isEmpty()) {
         try {
             List<String> serviceNames = new ArrayList<>();
@@ -139,16 +142,9 @@ public AppointmentResponse create(AppointmentRequest req) {
                         .collect(Collectors.toList());
             }
             
-            emailService.sendNewAppointmentNotification(
-                entity.getEmail(),
-                entity.getPatientName(),
-                entity.getAppointmentCode(),
-                entity.getAppointmentTime(),
-                entity.getNotes(),
-                serviceNames
-            );
+            notificationService.notifyBookingSuccess(entity, serviceNames);
         } catch (Exception e) {
-            System.err.println("Failed to send new appointment email: " + e.getMessage());
+            System.err.println("Failed to send notification: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -222,6 +218,7 @@ public AppointmentResponse create(AppointmentRequest req) {
         Appointment appt = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 
+        Appointment.Status oldStatus = appt.getStatus();
         appt.setStatus(status);
 
         if (status == Appointment.Status.Confirmed && appt.getConfirmedBy() == null) {
@@ -235,24 +232,23 @@ public AppointmentResponse create(AppointmentRequest req) {
 
             appt.setConfirmedBy(confirmedBy);
             appt.setConfirmedAt(LocalDateTime.now());
+        }
+        
+        appt = repo.save(appt);
 
-            if (appt.getEmail() != null && !appt.getEmail().isEmpty()) {
-                try {
-                    String formattedTime = appt.getAppointmentTime()
-                            .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-                    emailService.sendAppointmentConfirmation(
-                            appt.getEmail(),
-                            appt.getPatientName(),
-                            appt.getAppointmentCode(),
-                            formattedTime,
-                            confirmedBy.getFullName()
-                    );
-                } catch (Exception e) {
-                    System.err.println("Failed to send confirmation email: " + e.getMessage());
-                }
+        // Send notification for status change
+        if (oldStatus != status && appt.getEmail() != null && !appt.getEmail().isEmpty()) {
+            try {
+                notificationService.notifyStatusChange(
+                    appt,
+                    oldStatus.toString(),
+                    status.toString()
+                );
+            } catch (Exception e) {
+                System.err.println("Failed to send status change notification: " + e.getMessage());
             }
         }
-        appt = repo.save(appt);
+        
         return toResponse(appt);
     }
 
@@ -269,6 +265,8 @@ public AppointmentResponse create(AppointmentRequest req) {
         Appointment appt = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found with id: " + id));
 
+        LocalDateTime oldTime = appt.getAppointmentTime();
+
         appt.setPatientName(req.patientName());
         appt.setPhone(req.phone());
         appt.setEmail(req.email());
@@ -277,6 +275,20 @@ public AppointmentResponse create(AppointmentRequest req) {
         appt.setServiceIds(joinServiceIds(req.serviceIds()));
 
         appt = repo.save(appt);
+
+        // Send notification if appointment time changed
+        if (oldTime != null && !oldTime.isEqual(req.appointmentTime()) && appt.getEmail() != null && !appt.getEmail().isEmpty()) {
+            try {
+                notificationService.notifyAppointmentChange(
+                    appt,
+                    oldTime,
+                    appt.getAppointmentTime()
+                );
+            } catch (Exception e) {
+                System.err.println("Failed to send appointment update notification: " + e.getMessage());
+            }
+        }
+
         return toResponse(appt);
     }
 
@@ -363,7 +375,7 @@ public AppointmentResponse create(AppointmentRequest req) {
     }
 
     //@Scheduled(cron = "0 0 20 * * ?")  
-    @Scheduled(cron = "0/30 * * * * ?")
+    //@Scheduled(cron = "0/30 * * * * ?")
 @Transactional
 public void sendDailyReminderEmails() {
     try {
