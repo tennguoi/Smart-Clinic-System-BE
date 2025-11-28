@@ -27,12 +27,13 @@ public class QueueService {
     // =================================================================
 
     /**
-     * Tạo hàng chờ từ lịch hẹn - Tự động điền thông tin và ưu tiên
+     * Tạo hàng chờ từ lịch hẹn - Nhận thông tin bổ sung từ form
      * @param appointmentId ID của lịch hẹn
+     * @param additionalInfo Thông tin bổ sung từ form (dob, gender, address...)
      * @return Thông tin bệnh nhân trong hàng chờ
      */
     @Transactional
-    public QueuePatientResponse createQueueFromAppointment(UUID appointmentId) {
+    public QueuePatientResponse createQueueFromAppointment(UUID appointmentId, Map<String, Object> additionalInfo) {
         // 1. Lấy thông tin appointment
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lịch hẹn"));
@@ -45,32 +46,42 @@ public class QueueService {
         // 3. Kiểm tra xem đã tạo queue cho appointment này chưa
         Optional<Queue> existingQueue = queueRepository.findByAppointmentId(appointmentId);
         if (existingQueue.isPresent()) {
-            throw new RuntimeException("Lịch hẹn này đã được tạo hàng chờ");
+            throw new RuntimeException("Lịch hẹn này đã được thêm vào hàng chờ");
         }
 
-        // 4. Tìm hoặc tạo bệnh nhân từ thông tin appointment
+        // 4. Tìm hoặc tạo bệnh nhân từ thông tin appointment + additionalInfo
         Patient patient = patientRepository.findByPhone(appointment.getPhone())
-                .orElseGet(() -> createPatientFromAppointment(appointment));
+                .orElseGet(() -> createPatientFromAppointment(appointment, additionalInfo));
 
-        // 5. Tạo Queue với ưu tiên cao cho người đặt lịch
+        // Nếu bệnh nhân đã tồn tại, cập nhật thông tin bổ sung
+        if (additionalInfo != null && patientRepository.findByPhone(appointment.getPhone()).isPresent()) {
+            updatePatientFromAdditionalInfo(patient, additionalInfo);
+        }
+
+        // 5. Xác định mức độ ưu tiên
+        Queue.Priority priority = Queue.Priority.Normal;
+        if (additionalInfo != null && additionalInfo.containsKey("priority")) {
+            priority = determinePriority((String) additionalInfo.get("priority"));
+        }
+
+        // 6. Tạo Queue
         Queue queue = Queue.builder()
                 .queueNumber(generateNextQueueNumber())
                 .patient(patient)
                 .appointment(appointment)
-                .priority(Queue.Priority.Urgent)  // ✨ Ưu tiên cho người đặt lịch
+                .priority(priority)
                 .status(Queue.QueueStatus.Waiting)
                 .checkInTime(LocalDateTime.now())
                 .build();
 
         Queue savedQueue = queueRepository.save(queue);
 
-        // 6. Tự động phân phòng tốt nhất
+        // 7. Tự động phân phòng tốt nhất
         ExaminationRoom bestRoom = findBestRoomForAssignment();
         if (bestRoom != null) {
             savedQueue.setAssignedRoom(bestRoom);
             queueRepository.save(savedQueue);
 
-            // Nếu phòng trống hoàn toàn, bắt đầu khám luôn
             long waitingInRoom = queueRepository.countByAssignedRoomAndStatus(
                     bestRoom, Queue.QueueStatus.Waiting
             );
@@ -83,26 +94,61 @@ public class QueueService {
         return mapToDto(savedQueue);
     }
 
+
     /**
-     * Tạo bệnh nhân mới từ thông tin appointment
+     * Tạo bệnh nhân mới từ thông tin appointment + additionalInfo
      */
-    private Patient createPatientFromAppointment(Appointment appointment) {
+    private Patient createPatientFromAppointment(Appointment appointment, Map<String, Object> additionalInfo) {
         Patient patient = new Patient();
         patient.setFullName(appointment.getPatientName());
         patient.setPhone(appointment.getPhone());
         patient.setEmail(appointment.getEmail());
         patient.setNotes(appointment.getNotes());
 
-        // Giới tính và ngày sinh cần được bổ sung sau (hoặc yêu cầu nhập khi check-in)
-        patient.setGender(Patient.Gender.other);
-        patient.setDob(java.time.LocalDate.now().minusYears(30)); // Giá trị mặc định
+        // Lấy thông tin bổ sung từ form
+        if (additionalInfo != null) {
+            updatePatientFromAdditionalInfo(patient, additionalInfo);
+        } else {
+            // Giá trị mặc định nếu không có thông tin bổ sung
+            patient.setGender(Patient.Gender.other);
+            patient.setDob(java.time.LocalDate.now().minusYears(30));
+        }
 
         return patientRepository.save(patient);
     }
 
     /**
+     * Cập nhật thông tin bổ sung cho bệnh nhân
+     */
+    private void updatePatientFromAdditionalInfo(Patient patient, Map<String, Object> additionalInfo) {
+        if (additionalInfo.containsKey("dob")) {
+            String dobStr = (String) additionalInfo.get("dob");
+            patient.setDob(java.time.LocalDate.parse(dobStr));
+        }
+
+        if (additionalInfo.containsKey("gender")) {
+            String genderStr = (String) additionalInfo.get("gender");
+            patient.setGender(safeParseGender(genderStr));
+        }
+
+        if (additionalInfo.containsKey("address")) {
+            patient.setAddress((String) additionalInfo.get("address"));
+        }
+
+        if (additionalInfo.containsKey("idNumber")) {
+            patient.setIdNumber((String) additionalInfo.get("idNumber"));
+        }
+
+        if (additionalInfo.containsKey("insuranceNumber")) {
+            patient.setInsuranceNumber((String) additionalInfo.get("insuranceNumber"));
+        }
+
+        patientRepository.save(patient);
+    }
+
+    /**
      * Lấy danh sách lịch hẹn đã xác nhận trong ngày hôm nay
-     * Dùng để hiển thị cho lễ tân danh sách người cần check-in
+     * Dùng để hiển thị cho lễ tân danh sách người cần thêm vào hàng chờ
      */
     public List<AppointmentCheckInDTO> getTodayConfirmedAppointments() {
         LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
@@ -291,7 +337,7 @@ public class QueueService {
     }
 
     // =================================================================
-    // HELPER METHODS (GIỮ NGUYÊN)
+    // HELPER METHODS
     // =================================================================
 
     private Patient createNewPatient(QueuePatientResponse dto) {
@@ -382,7 +428,7 @@ public class QueueService {
                 .idNumber(p.getIdNumber())
                 .insuranceNumber(p.getInsuranceNumber())
                 .notes(p.getNotes())
-                .hasAppointment(appointment != null);  // ✨ Đánh dấu có đặt lịch
+                .hasAppointment(appointment != null);
 
         if (room != null) {
             builder.roomId(room.getRoomId())
@@ -397,7 +443,10 @@ public class QueueService {
         return builder.build();
     }
 
-    // Các phương thức khác giữ nguyên
+    // =================================================================
+    // CÁC PHƯƠNG THỨC KHÁC (API CŨ)
+    // =================================================================
+
     public Optional<QueuePatientResponse> getQueueById(UUID queueId) {
         return queueRepository.findById(queueId).map(this::mapToDto);
     }

@@ -2,7 +2,7 @@ package com.example.demo.controller.reception;
 
 import com.example.demo.dto.GenericResponse;
 import com.example.demo.dto.QueuePatientResponse;
-import com.example.demo.dto.appointment.AppointmentCheckInDTO; // ✅ IMPORT ĐÚNG
+import com.example.demo.dto.appointment.AppointmentCheckInDTO;
 import com.example.demo.service.QueueService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,11 +27,11 @@ public class ReceptionistQueueController {
     }
 
     // =================================================================
-    // ✨ API MỚI: CHECK-IN TỪ LỊCH HẸN
+    // ✨ API MỚI: THÊM BỆNH NHÂN TỪ LỊCH HẸN
     // =================================================================
 
     /**
-     * Lấy danh sách lịch hẹn đã xác nhận trong ngày để check-in
+     * Lấy danh sách lịch hẹn đã xác nhận trong ngày để thêm vào hàng chờ
      * GET /api/reception/queue/appointments/today
      */
     @GetMapping("/appointments/today")
@@ -46,13 +47,15 @@ public class ReceptionistQueueController {
     }
 
     /**
-     * Tạo hàng chờ từ lịch hẹn - Tự động điền form và ưu tiên
+     * Tạo hàng chờ từ lịch hẹn - Nhận thông tin bổ sung từ form
      * POST /api/reception/queue/check-in-appointment/{appointmentId}
      */
     @PostMapping("/check-in-appointment/{appointmentId}")
-    public ResponseEntity<?> checkInFromAppointment(@PathVariable UUID appointmentId) {
+    public ResponseEntity<?> checkInFromAppointment(
+            @PathVariable UUID appointmentId,
+            @RequestBody(required = false) Map<String, Object> additionalInfo) {
         try {
-            QueuePatientResponse result = queueService.createQueueFromAppointment(appointmentId);
+            QueuePatientResponse result = queueService.createQueueFromAppointment(appointmentId, additionalInfo);
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest()
