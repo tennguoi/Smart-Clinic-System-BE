@@ -20,6 +20,10 @@ public interface QueueRepository extends JpaRepository<Queue, UUID> {
     List<Queue> findByStatusOrderByCheckInTimeAsc(Queue.QueueStatus status);
     List<Queue> findByStatusOrderByEndTimeDesc(Queue.QueueStatus status);
 
+    // ✨ PHƯƠNG THỨC MỚI: Tìm queue theo appointment
+    @Query("SELECT q FROM Queue q WHERE q.appointment.appointmentId = :id")
+    Optional<Queue> findByAppointmentId(@Param("id") UUID appointmentId);
+
     // ============================= LỄ TÂN: XEM TẤT CẢ =============================
     @Query("""
             SELECT q FROM Queue q
