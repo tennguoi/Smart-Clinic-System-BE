@@ -362,49 +362,49 @@ public AppointmentResponse create(AppointmentRequest req) {
                 });
     }
 
-    //@Scheduled(cron = "0 0 20 * * ?")  
-    @Scheduled(cron = "0/30 * * * * ?")
-@Transactional
-public void sendDailyReminderEmails() {
-    try {
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
-        
-        // Sử dụng phương thức mới để tối ưu truy vấn
-        List<Appointment> tomorrowAppointments = repo.findByStatusAndAppointmentTimeDate(
-            Appointment.Status.Confirmed, tomorrow);
-        
-        int sentCount = 0;
-        int failedCount = 0;
-        
-        for (Appointment appointment : tomorrowAppointments) {
-            if (appointment.getEmail() != null && !appointment.getEmail().trim().isEmpty()) {
-                try {
-                    emailService.sendAppointmentReminder(
-                            appointment.getEmail(),
-                            appointment.getPatientName(),
-                            appointment.getAppointmentCode(),
-                            appointment.getAppointmentTime()
-                    );
-                    sentCount++;
-                    
-                    System.out.println("Đã gửi email nhắc nhở cho: " + appointment.getPatientName() + 
-                                     " - Email: " + appointment.getEmail() + 
-                                     " - Thời gian: " + appointment.getAppointmentTime());
-                    
-                } catch (Exception e) {
-                    failedCount++;
-                    System.err.println("Lỗi gửi email nhắc nhở cho: " + appointment.getPatientName() + 
-                                     " - Lỗi: " + e.getMessage());
-                }
-            }
-        }
-        
-        System.out.println("Kết quả gửi email nhắc nhở: " + 
-                         "Thành công: " + sentCount + ", Thất bại: " + failedCount +
-                         ", Tổng lịch hẹn: " + tomorrowAppointments.size());
-        
-    } catch (Exception e) {
-        System.err.println("Lỗi trong quá trình gửi email nhắc nhở hàng loạt: " + e.getMessage());
-    }
-}
+//    //@Scheduled(cron = "0 0 20 * * ?")
+//    @Scheduled(cron = "0/30 * * * * ?")
+//@Transactional
+//public void sendDailyReminderEmails() {
+//    try {
+//        LocalDate tomorrow = LocalDate.now().plusDays(1);
+//
+//        // Sử dụng phương thức mới để tối ưu truy vấn
+//        List<Appointment> tomorrowAppointments = repo.findByStatusAndAppointmentTimeDate(
+//            Appointment.Status.Confirmed, tomorrow);
+//
+//        int sentCount = 0;
+//        int failedCount = 0;
+//
+//        for (Appointment appointment : tomorrowAppointments) {
+//            if (appointment.getEmail() != null && !appointment.getEmail().trim().isEmpty()) {
+//                try {
+//                    emailService.sendAppointmentReminder(
+//                            appointment.getEmail(),
+//                            appointment.getPatientName(),
+//                            appointment.getAppointmentCode(),
+//                            appointment.getAppointmentTime()
+//                    );
+//                    sentCount++;
+//
+//                    System.out.println("Đã gửi email nhắc nhở cho: " + appointment.getPatientName() +
+//                                     " - Email: " + appointment.getEmail() +
+//                                     " - Thời gian: " + appointment.getAppointmentTime());
+//
+//                } catch (Exception e) {
+//                    failedCount++;
+//                    System.err.println("Lỗi gửi email nhắc nhở cho: " + appointment.getPatientName() +
+//                                     " - Lỗi: " + e.getMessage());
+//                }
+//            }
+//        }
+//
+//        System.out.println("Kết quả gửi email nhắc nhở: " +
+//                         "Thành công: " + sentCount + ", Thất bại: " + failedCount +
+//                         ", Tổng lịch hẹn: " + tomorrowAppointments.size());
+//
+//    } catch (Exception e) {
+//        System.err.println("Lỗi trong quá trình gửi email nhắc nhở hàng loạt: " + e.getMessage());
+//    }
+//}
 }

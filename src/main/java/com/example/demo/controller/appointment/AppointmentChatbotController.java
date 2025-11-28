@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.appointment;
 
 import com.example.demo.dto.appointment.AppointmentChatbotRequest;
 import com.example.demo.dto.appointment.AppointmentChatbotResponse;

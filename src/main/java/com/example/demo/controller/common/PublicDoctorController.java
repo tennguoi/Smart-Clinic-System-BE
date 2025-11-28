@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.common;
 
 import com.example.demo.dto.doctor.DoctorResponse;
 import com.example.demo.dto.GenericResponse;

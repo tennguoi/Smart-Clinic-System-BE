@@ -1,5 +1,5 @@
 // src/main/java/com/example/demo/controller/AppointmentController.java
-package com.example.demo.controller;
+package com.example.demo.controller.appointment;
 
 import com.example.demo.dto.appointment.AppointmentRequest;
 import com.example.demo.dto.appointment.AppointmentResponse;

@@ -82,7 +82,7 @@ public class DoctorMedicalRecordController {
         return ResponseEntity.ok(medicalRecordService.listByPatient(patientId));
     }
 
-    // GIỮ NGUYÊN TÊN CŨ – ĐÚNG NHƯ FILE CỦA BỐ
+    // GIỮ NGUYÊN TÊN CŨ
     @GetMapping("/mine")
     public ResponseEntity<List<MedicalRecordResponse>> listMine(
             @RequestHeader("Authorization") String authorization) {

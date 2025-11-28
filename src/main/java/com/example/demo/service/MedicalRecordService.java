@@ -2,8 +2,9 @@ package com.example.demo.service;
 
 import jakarta.persistence.criteria.Join;      
 import jakarta.persistence.criteria.JoinType;
-import com.example.demo.dto.MedicalRecordSearchCriteria; 
-import org.springframework.data.jpa.domain.Specification; 
+import com.example.demo.dto.MedicalRecordSearchCriteria;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;                               
 import com.example.demo.dto.*;
@@ -449,5 +450,13 @@ public class MedicalRecordService {
                 serviceItems,
                 total
         );
+    }
+    // Trong MedicalRecordService.java
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> getAllRecords() {
+        return medicalRecordRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 }

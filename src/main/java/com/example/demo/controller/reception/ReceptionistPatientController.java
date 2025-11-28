@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.reception;
 
 import com.example.demo.dto.GenericResponse;
 import com.example.demo.dto.PatientResponse;
