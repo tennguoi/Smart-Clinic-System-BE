@@ -86,27 +86,40 @@ public AppointmentResponse quickBook(AppointmentRequest req) {
 
     entity = repo.save(entity);
 
-    // Send notification (SMS + Email)
+    // Send notifications (Email and SMS independently)
     if (entity.getEmail() != null && !entity.getEmail().trim().isEmpty()) {
+        System.out.println("========== QUICK BOOK - PREPARING NOTIFICATIONS ==========");
+        List<String> serviceNames = new ArrayList<>();
+        if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
+            serviceNames = serviceRepo.findAllById(req.serviceIds())
+                    .stream()
+                    .map(com.example.demo.entity.Service::getName)
+                    .collect(Collectors.toList());
+        }
+        
+        // Send email notification
         try {
-            System.out.println("========== QUICK BOOK - PREPARING NOTIFICATION ==========");
-            List<String> serviceNames = new ArrayList<>();
-            if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
-                serviceNames = serviceRepo.findAllById(req.serviceIds())
-                        .stream()
-                        .map(com.example.demo.entity.Service::getName)
-                        .collect(Collectors.toList());
-            }
-            
-            System.out.println("Calling notificationService.notifyBookingSuccess...");
-            notificationService.notifyBookingSuccess(entity, serviceNames);
-            System.out.println("notificationService.notifyBookingSuccess completed!");
+            System.out.println("Sending email notification...");
+            notificationService.sendBookingEmail(entity, serviceNames);
+            System.out.println("Email notification sent successfully!");
         } catch (Exception e) {
-            System.err.println("Failed to send notification: " + e.getMessage());
+            System.err.println("Failed to send email notification: " + e.getMessage());
             e.printStackTrace();
+            // Continue to try sending SMS even if email fails
+        }
+        
+        // Send SMS notification
+        try {
+            System.out.println("Sending SMS notification...");
+            notificationService.sendBookingSms(entity, serviceNames);
+            System.out.println("SMS notification sent successfully!");
+        } catch (Exception e) {
+            System.err.println("Failed to send SMS notification: " + e.getMessage());
+            e.printStackTrace();
+            // Continue even if SMS fails
         }
     } else {
-        System.out.println("========== NO EMAIL - SKIPPING NOTIFICATION ==========");
+        System.out.println("========== NO EMAIL - SKIPPING NOTIFICATIONS ==========");
         System.out.println("Email: " + entity.getEmail());
     }
 
@@ -131,21 +144,32 @@ public AppointmentResponse create(AppointmentRequest req) {
 
     entity = repo.save(entity);
 
-    // Send notification (SMS + Email)
+    // Send notifications (Email and SMS independently)
     if (entity.getEmail() != null && !entity.getEmail().trim().isEmpty()) {
+        List<String> serviceNames = new ArrayList<>();
+        if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
+            serviceNames = serviceRepo.findAllById(req.serviceIds())
+                    .stream()
+                    .map(com.example.demo.entity.Service::getName)
+                    .collect(Collectors.toList());
+        }
+        
+        // Send email notification
         try {
-            List<String> serviceNames = new ArrayList<>();
-            if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
-                serviceNames = serviceRepo.findAllById(req.serviceIds())
-                        .stream()
-                        .map(com.example.demo.entity.Service::getName)
-                        .collect(Collectors.toList());
-            }
-            
-            notificationService.notifyBookingSuccess(entity, serviceNames);
+            notificationService.sendBookingEmail(entity, serviceNames);
         } catch (Exception e) {
-            System.err.println("Failed to send notification: " + e.getMessage());
+            System.err.println("Failed to send email notification: " + e.getMessage());
             e.printStackTrace();
+            // Continue to try sending SMS even if email fails
+        }
+        
+        // Send SMS notification
+        try {
+            notificationService.sendBookingSms(entity, serviceNames);
+        } catch (Exception e) {
+            System.err.println("Failed to send SMS notification: " + e.getMessage());
+            e.printStackTrace();
+            // Continue even if SMS fails
         }
     }
 

@@ -152,4 +152,52 @@ public class NotificationService {
             System.err.println("Delayed email interrupted: " + e.getMessage());
         }
     }
+    
+    /**
+     * Send booking email notification only
+     */
+    public void sendBookingEmail(Appointment appointment, List<String> serviceNames) {
+        System.out.println("========== SENDING BOOKING EMAIL ==========");
+        System.out.println("Appointment Code: " + appointment.getAppointmentCode());
+        System.out.println("Email: " + appointment.getEmail());
+        
+        String magicLink = "http://localhost:5173/appointments/tracking?code=" + appointment.getAppointmentCode();
+        
+        try {
+            emailService.sendNewAppointmentNotification(
+                appointment.getEmail(),
+                appointment.getPatientName(),
+                appointment.getAppointmentCode(),
+                appointment.getAppointmentTime(),
+                appointment.getNotes(),
+                serviceNames,
+                magicLink
+            );
+            System.out.println("Email sent successfully!");
+        } catch (Exception e) {
+            System.err.println("ERROR sending email: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to be handled by the caller
+        }
+        System.out.println("========================================");
+    }
+    
+    /**
+     * Send booking SMS notification only
+     */
+    public void sendBookingSms(Appointment appointment, List<String> serviceNames) {
+        System.out.println("========== SENDING BOOKING SMS ==========");
+        System.out.println("Appointment Code: " + appointment.getAppointmentCode());
+        System.out.println("Phone: " + appointment.getPhone());
+        
+        String magicLink = "http://localhost:5173/appointments/tracking?code=" + appointment.getAppointmentCode();
+        
+        // SMS
+        String smsContent = "Dat lich thanh cong! Ma: " + appointment.getAppointmentCode() + 
+                          ". Xem chi tiet: " + magicLink;
+        smsService.sendSms(appointment.getPhone(), smsContent);
+        
+        System.out.println("SMS sent successfully!");
+        System.out.println("========================================");
+    }
 }
