@@ -2,20 +2,20 @@ package com.example.demo.service;
 
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.demo.config.TwilioConfig;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SmsService {
 
-    @Value("${twilio.fromNumber}")
-    private String fromNumber;
+    private final TwilioConfig twilioConfig;
 
-    @Value("${twilio.enabled:true}")
-    private boolean twilioEnabled;
+    public SmsService(TwilioConfig twilioConfig) {
+        this.twilioConfig = twilioConfig;
+    }
 
     public String sendSms(String phoneNumber, String message) {
-        if (!twilioEnabled) {
+        if (!twilioConfig.isEnabled()) {
             System.out.println("================= SMS MOCK (disabled) =================");
             System.out.println("To: " + phoneNumber);
             System.out.println("Message: " + message);
@@ -34,7 +34,7 @@ public class SmsService {
             // Send via Twilio
             Message twilioMsg = Message.creator(
                     new PhoneNumber(validatedPhone),   // Recipient
-                    new PhoneNumber(fromNumber),        // Your Twilio number
+                    new PhoneNumber(twilioConfig.getFromNumber()),  // ← SỬ DỤNG TwilioConfig
                     message
             ).create();
 
