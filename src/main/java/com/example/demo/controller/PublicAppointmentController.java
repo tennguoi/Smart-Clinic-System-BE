@@ -7,9 +7,6 @@ import com.example.demo.service.AppointmentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 @RestController
 @RequestMapping("/api/public/appointments")
 public class PublicAppointmentController {
@@ -55,15 +52,7 @@ public class PublicAppointmentController {
         Appointment appointment = repository.findByAppointmentCode(code)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lịch hẹn với mã: " + code));
         
-        // Use reflection to call toResponse since it's private
-        try {
-            Method toResponse = service.getClass().getDeclaredMethod("toResponse", Appointment.class);
-            toResponse.setAccessible(true);            
-            AppointmentResponse response = (AppointmentResponse) toResponse.invoke(service, appointment);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            throw new RuntimeException("Error converting appointment to response", e);
-        }
+        AppointmentResponse response = service.toResponse(appointment);
+        return ResponseEntity.ok(response);
     }
 }

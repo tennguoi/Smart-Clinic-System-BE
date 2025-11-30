@@ -31,27 +31,42 @@ public class NotificationService {
         
         String magicLink = "http://localhost:5173/appointments/tracking?code=" + appointment.getAppointmentCode();
         
-        // SMS
-        String smsContent = "Dat lich thanh cong! Ma: " + appointment.getAppointmentCode() + 
-                          ". Xem chi tiet: " + magicLink;
-        smsService.sendSms(appointment.getPhone(), smsContent);
+        // SMS - ALWAYS try to send if phone exists
+        if (appointment.getPhone() != null && !appointment.getPhone().trim().isEmpty()) {
+            try {
+                String smsContent = "Dat lich thanh cong! Ma: " + appointment.getAppointmentCode() + 
+                                  ". Xem chi tiet: " + magicLink;
+                smsService.sendSms(appointment.getPhone(), smsContent);
+                System.out.println("✓ SMS sent successfully to: " + appointment.getPhone());
+            } catch (Exception e) {
+                System.err.println("✗ ERROR sending SMS to " + appointment.getPhone() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("⚠ No phone number - skipping SMS");
+        }
 
         // Email
-        try {
-            emailService.sendNewAppointmentNotification(
-                appointment.getEmail(),
-                appointment.getPatientName(),
-                appointment.getAppointmentCode(),
-                appointment.getAppointmentTime(),
-                appointment.getNotes(),
-                serviceNames,
-                magicLink
-            );
-            System.out.println("Email sent successfully!");
-        } catch (Exception e) {
-            System.err.println("ERROR sending email: " + e.getMessage());
-            e.printStackTrace();
+        if (appointment.getEmail() != null && !appointment.getEmail().trim().isEmpty()) {
+            try {
+                emailService.sendNewAppointmentNotification(
+                    appointment.getEmail(),
+                    appointment.getPatientName(),
+                    appointment.getAppointmentCode(),
+                    appointment.getAppointmentTime(),
+                    appointment.getNotes(),
+                    serviceNames,
+                    magicLink
+                );
+                System.out.println("✓ Email sent successfully to: " + appointment.getEmail());
+            } catch (Exception e) {
+                System.err.println("✗ ERROR sending email to " + appointment.getEmail() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("⚠ No email - skipping email");
         }
+        
         System.out.println("===================================================");
     }
 
@@ -59,15 +74,38 @@ public class NotificationService {
      * Notify when appointment changes: SMS immediately, Email after 30s.
      */
     public void notifyAppointmentChange(Appointment appointment, LocalDateTime oldTime, LocalDateTime newTime) {
+        System.out.println("========== NOTIFY APPOINTMENT CHANGE CALLED ==========");
+        System.out.println("Appointment Code: " + appointment.getAppointmentCode());
+        System.out.println("Old Time: " + oldTime + " -> New Time: " + newTime);
+        System.out.println("Phone: " + appointment.getPhone());
+        System.out.println("Email: " + appointment.getEmail());
+        
         String magicLink = "http://localhost:5173/appointments/tracking?code=" + appointment.getAppointmentCode();
 
-        // SMS Immediate
-        String smsContent = "Lich kham thay doi! Ma: " + appointment.getAppointmentCode() + 
-                          ". Gio moi: " + newTime + ". Chi tiet: " + magicLink;
-        smsService.sendSms(appointment.getPhone(), smsContent);
+        // SMS Immediate - ALWAYS try to send if phone exists
+        if (appointment.getPhone() != null && !appointment.getPhone().trim().isEmpty()) {
+            try {
+                String smsContent = "Lich kham thay doi! Ma: " + appointment.getAppointmentCode() + 
+                                  ". Gio moi: " + newTime + ". Chi tiet: " + magicLink;
+                smsService.sendSms(appointment.getPhone(), smsContent);
+                System.out.println("✓ SMS sent successfully to: " + appointment.getPhone());
+            } catch (Exception e) {
+                System.err.println("✗ ERROR sending SMS to " + appointment.getPhone() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("⚠ No phone number - skipping SMS");
+        }
 
         // Email Delayed
-        sendDelayedEmail(appointment, oldTime, newTime, magicLink);
+        if (appointment.getEmail() != null && !appointment.getEmail().trim().isEmpty()) {
+            System.out.println("Scheduling delayed email in 30 seconds...");
+            sendDelayedEmail(appointment, oldTime, newTime, magicLink);
+        } else {
+            System.out.println("⚠ No email - skipping email");
+        }
+        
+        System.out.println("======================================================");
     }
 
     /**
@@ -82,14 +120,29 @@ public class NotificationService {
         
         String magicLink = "http://localhost:5173/appointments/tracking?code=" + appointment.getAppointmentCode();
 
-        // SMS Immediate
-        String smsContent = "Trang thai lich kham thay doi! Ma: " + appointment.getAppointmentCode() + 
-                          ". Trang thai moi: " + newStatus + ". Chi tiet: " + magicLink;
-        smsService.sendSms(appointment.getPhone(), smsContent);
+        // SMS Immediate - ALWAYS try to send if phone exists
+        if (appointment.getPhone() != null && !appointment.getPhone().trim().isEmpty()) {
+            try {
+                String smsContent = "Trang thai lich kham thay doi! Ma: " + appointment.getAppointmentCode() + 
+                                  ". Trang thai moi: " + newStatus + ". Chi tiet: " + magicLink;
+                smsService.sendSms(appointment.getPhone(), smsContent);
+                System.out.println("✓ SMS sent successfully to: " + appointment.getPhone());
+            } catch (Exception e) {
+                System.err.println("✗ ERROR sending SMS to " + appointment.getPhone() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("⚠ No phone number - skipping SMS");
+        }
 
         // Email Delayed
-        System.out.println("Scheduling delayed email in 30 seconds...");
-        sendDelayedStatusEmail(appointment, newStatus, magicLink);
+        if (appointment.getEmail() != null && !appointment.getEmail().trim().isEmpty()) {
+            System.out.println("Scheduling delayed email in 30 seconds...");
+            sendDelayedStatusEmail(appointment, newStatus, magicLink);
+        } else {
+            System.out.println("⚠ No email - skipping email");
+        }
+        
         System.out.println("=================================================");
     }
 
@@ -105,9 +158,13 @@ public class NotificationService {
                 newTime,
                 magicLink
             );
+            System.out.println("✓ Delayed email sent successfully to: " + appointment.getEmail());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             System.err.println("Delayed email interrupted: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("✗ ERROR sending delayed email: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -124,14 +181,7 @@ public class NotificationService {
                     magicLink
                 );
             } else if ("Confirmed".equalsIgnoreCase(newStatus)) {
-                 // For Confirmed, we might want to use the specific confirmation email, 
-                 // but that one requires 'confirmedBy'. 
-                 // For now, let's use the generic status change or the confirmation one if we have info.
-                 // But sendAppointmentConfirmation needs 'confirmedByName'.
-                 // Let's use sendAppointmentStatusChangeNotification for simplicity unless it's a new booking confirmation which is handled by notifyBookingSuccess.
-                 // Actually, updateStatus is often used for confirmation.
-                 // Let's use sendAppointmentStatusChangeNotification for now to be safe and consistent.
-                 emailService.sendAppointmentStatusChangeNotification(
+                emailService.sendAppointmentStatusChangeNotification(
                     appointment.getEmail(),
                     appointment.getPatientName(),
                     appointment.getAppointmentCode(),
@@ -147,9 +197,13 @@ public class NotificationService {
                     magicLink
                 );
             }
+            System.out.println("✓ Delayed status email sent successfully to: " + appointment.getEmail());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             System.err.println("Delayed email interrupted: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("✗ ERROR sending delayed status email: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -160,6 +214,12 @@ public class NotificationService {
         System.out.println("========== SENDING BOOKING EMAIL ==========");
         System.out.println("Appointment Code: " + appointment.getAppointmentCode());
         System.out.println("Email: " + appointment.getEmail());
+        
+        if (appointment.getEmail() == null || appointment.getEmail().trim().isEmpty()) {
+            System.out.println("⚠ Email is empty - SKIPPING");
+            System.out.println("===========================================");
+            return;
+        }
         
         String magicLink = "http://localhost:5173/appointments/tracking?code=" + appointment.getAppointmentCode();
         
@@ -173,13 +233,13 @@ public class NotificationService {
                 serviceNames,
                 magicLink
             );
-            System.out.println("Email sent successfully!");
+            System.out.println("✓ Email sent successfully!");
         } catch (Exception e) {
-            System.err.println("ERROR sending email: " + e.getMessage());
+            System.err.println("✗ ERROR sending email: " + e.getMessage());
             e.printStackTrace();
-            throw e; // Re-throw to be handled by the caller
+            throw new RuntimeException("Failed to send booking email", e);
         }
-        System.out.println("========================================");
+        System.out.println("===========================================");
     }
     
     /**
@@ -190,14 +250,31 @@ public class NotificationService {
         System.out.println("Appointment Code: " + appointment.getAppointmentCode());
         System.out.println("Phone: " + appointment.getPhone());
         
+        if (appointment.getPhone() == null || appointment.getPhone().trim().isEmpty()) {
+            System.out.println("⚠ Phone is empty - SKIPPING");
+            System.out.println("=========================================");
+            return;
+        }
+        
         String magicLink = "http://localhost:5173/appointments/tracking?code=" + appointment.getAppointmentCode();
         
-        // SMS
-        String smsContent = "Dat lich thanh cong! Ma: " + appointment.getAppointmentCode() + 
-                          ". Xem chi tiet: " + magicLink;
-        smsService.sendSms(appointment.getPhone(), smsContent);
+        // Build service names string for SMS
+        String servicesText = "";
+        if (serviceNames != null && !serviceNames.isEmpty()) {
+            servicesText = " Dich vu: " + String.join(", ", serviceNames) + ".";
+        }
         
-        System.out.println("SMS sent successfully!");
-        System.out.println("========================================");
+        String smsContent = "Dat lich thanh cong! Ma: " + appointment.getAppointmentCode() + 
+                          "." + servicesText + " Xem chi tiet: " + magicLink;
+        
+        try {
+            String result = smsService.sendSms(appointment.getPhone(), smsContent);
+            System.out.println("✓ SMS sent successfully! SID: " + result);
+        } catch (Exception e) {
+            System.err.println("✗ ERROR sending SMS: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to send booking SMS to " + appointment.getPhone(), e);
+        }
+        System.out.println("=========================================");
     }
 }
