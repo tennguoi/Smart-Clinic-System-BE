@@ -36,7 +36,8 @@ import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.borders.Border;
-
+import com.example.demo.entity.BillingRecord;
+import com.example.demo.entity.BillingDetail;
 @Service
 public class PdfExportService {
 
@@ -717,6 +718,133 @@ public class PdfExportService {
             return formatter.format(amount);
         } catch (Exception e) {
             return amount.stripTrailingZeros().toPlainString();
+        }
+    }
+    public byte[] generateInvoicePdf(BillingRecord bill) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            document.setMargins(20, 40, 20, 40); // Căn lề
+
+            // 1. Cài đặt Font (Tái sử dụng logic cũ để hỗ trợ tiếng Việt)
+            try {
+                PdfFont font = null;
+                try (java.io.InputStream is = getClass().getResourceAsStream("/static/NotoSans-Regular.ttf")) {
+                    if (is != null) {
+                        byte[] fontBytes = is.readAllBytes();
+                        font = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                    }
+                }
+                if (font == null) {
+                    font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+                }
+                document.setFont(font);
+            } catch (Exception fe) {
+                // Fallback font
+            }
+
+            // 2. Header (Thông tin phòng khám)
+            com.example.demo.entity.Clinic clinic = clinicService.getClinicEntity();
+            String clinicName = (clinic != null && clinic.getName() != null) ? clinic.getName() : "PHÒNG KHÁM ĐA KHOA";
+            String clinicAddress = (clinic != null && clinic.getAddress() != null) ? clinic.getAddress() : "Địa chỉ: ...";
+            String clinicPhone = (clinic != null && clinic.getPhone() != null) ? clinic.getPhone() : "...";
+
+            Table headerTable = new Table(UnitValue.createPercentArray(new float[]{1}));
+            headerTable.setWidth(UnitValue.createPercentValue(100));
+            headerTable.addCell(new Cell().add(new Paragraph(clinicName).setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER)).setBorder(Border.NO_BORDER));
+            headerTable.addCell(new Cell().add(new Paragraph(clinicAddress).setFontSize(10).setTextAlignment(TextAlignment.CENTER)).setBorder(Border.NO_BORDER));
+            headerTable.addCell(new Cell().add(new Paragraph("Hotline: " + clinicPhone).setFontSize(10).setTextAlignment(TextAlignment.CENTER)).setBorder(Border.NO_BORDER));
+            document.add(headerTable);
+
+            document.add(new Paragraph("\n")); // Khoảng trắng
+
+            // 3. Tiêu đề Hóa đơn
+            Paragraph title = new Paragraph("HÓA ĐƠN THANH TOÁN")
+                    .setFontSize(18)
+                    .setBold()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(10);
+            document.add(title);
+
+            // 4. Thông tin chung (2 cột)
+            Table infoTable = new Table(UnitValue.createPercentArray(new float[]{1, 1}));
+            infoTable.setWidth(UnitValue.createPercentValue(100));
+            infoTable.setMarginBottom(15);
+
+            // Cột trái: Thông tin hóa đơn
+            Cell leftInfo = new Cell().setBorder(Border.NO_BORDER);
+            leftInfo.add(new Paragraph("Mã hóa đơn: #" + bill.getBillId().toString().substring(0, 8).toUpperCase()).setBold());
+            leftInfo.add(new Paragraph("Ngày lập: " + bill.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
+            leftInfo.add(new Paragraph("Thu ngân: " + bill.getUsers().getFullName()));
+
+            // Cột phải: Thông tin bệnh nhân
+            Cell rightInfo = new Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT);
+            rightInfo.add(new Paragraph("Khách hàng: " + bill.getMedicalRecord().getPatientName()).setBold());
+            String phone = bill.getMedicalRecord().getPatient().getPhone();
+            rightInfo.add(new Paragraph("SĐT: " + (phone != null ? phone : "Trống")));
+
+            infoTable.addCell(leftInfo);
+            infoTable.addCell(rightInfo);
+            document.add(infoTable);
+
+            // 5. Bảng dịch vụ
+            // Cột: STT, Tên dịch vụ, SL, Đơn giá, Thành tiền
+            float[] columnWidths = {5, 45, 10, 20, 20};
+            Table table = new Table(UnitValue.createPercentArray(columnWidths));
+            table.setWidth(UnitValue.createPercentValue(100));
+
+            // Header Bảng
+            String[] headers = {"STT", "Tên dịch vụ", "SL", "Đơn giá", "Thành tiền"};
+            for (String header : headers) {
+                table.addHeaderCell(new Cell().add(new Paragraph(header).setBold().setFontSize(10))
+                        .setBackgroundColor(new DeviceRgb(240, 240, 240))
+                        .setTextAlignment(TextAlignment.CENTER));
+            }
+
+            // Body Bảng
+            int index = 1;
+            for (BillingDetail item : bill.getDetails()) {
+                table.addCell(new Cell().add(new Paragraph(String.valueOf(index++)).setFontSize(10)).setTextAlignment(TextAlignment.CENTER));
+                table.addCell(new Cell().add(new Paragraph(item.getService().getName()).setFontSize(10)));
+                table.addCell(new Cell().add(new Paragraph(String.valueOf(item.getQuantity())).setFontSize(10)).setTextAlignment(TextAlignment.CENTER));
+                table.addCell(new Cell().add(new Paragraph(formatCurrency(item.getUnitPrice())).setFontSize(10)).setTextAlignment(TextAlignment.RIGHT));
+                table.addCell(new Cell().add(new Paragraph(formatCurrency(item.getSubTotal())).setFontSize(10)).setTextAlignment(TextAlignment.RIGHT));
+            }
+            document.add(table);
+
+            // 6. Tổng tiền
+            Table totalTable = new Table(UnitValue.createPercentArray(new float[]{3, 1}));
+            totalTable.setWidth(UnitValue.createPercentValue(100));
+            totalTable.setMarginTop(10);
+
+            totalTable.addCell(new Cell().add(new Paragraph("Tổng tiền:").setBold().setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+            totalTable.addCell(new Cell().add(new Paragraph(formatCurrency(bill.getTotalAmount())).setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+
+            totalTable.addCell(new Cell().add(new Paragraph("Đã thanh toán:").setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+            totalTable.addCell(new Cell().add(new Paragraph(formatCurrency(bill.getAmountPaid())).setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+
+            BigDecimal remaining = bill.getFinalAmount().subtract(bill.getAmountPaid());
+            if (remaining.compareTo(BigDecimal.ZERO) < 0) remaining = BigDecimal.ZERO;
+
+            totalTable.addCell(new Cell().add(new Paragraph("Còn lại:").setBold().setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+            totalTable.addCell(new Cell().add(new Paragraph(formatCurrency(remaining)).setBold().setTextAlignment(TextAlignment.RIGHT).setFontColor(new DeviceRgb(255, 0, 0))).setBorder(Border.NO_BORDER));
+
+            document.add(totalTable);
+
+            // 7. Footer
+            document.add(new Paragraph("\n\n"));
+            Paragraph footer = new Paragraph("Cảm ơn quý khách đã sử dụng dịch vụ!")
+                    .setItalic()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setFontSize(10);
+            document.add(footer);
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi tạo PDF hóa đơn: " + e.getMessage(), e);
         }
     }
 } 

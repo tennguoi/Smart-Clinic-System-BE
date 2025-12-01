@@ -28,6 +28,7 @@ public class BillingService {
     private final MedicalRecordRepository medicalRecordRepo;
     private final ServiceRepository serviceRepo;
     private final UserRepository userRepo;
+    private final PdfExportService pdfExportService;
 
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -298,5 +299,15 @@ public class BillingService {
             return page.map(this::toDto);
         }
         return getAll(pageable, search);
+    }
+    public byte[] getInvoicePdf(UUID billId) {
+        // Chỉ cho phép bác sĩ, lễ tân, admin
+        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN") && !hasRole("ADMIN"))
+            throw new AccessDeniedException("Không có quyền xuất hóa đơn");
+
+        BillingRecord billing = billingRepo.findById(billId)
+                .orElseThrow(() -> new RuntimeException("Hóa đơn không tồn tại"));
+
+        return pdfExportService.generateInvoicePdf(billing);
     }
 }
