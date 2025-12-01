@@ -1,95 +1,101 @@
-// File: src/main/java/com/example/demo/service/ReviewService.java
-package com.example.demo.service;
+// src/main/java/com/example/demo/service/ReviewService.java
 
-import com.example.demo.dto.ReviewSummary;
-import com.example.demo.entity.Review;
-import com.example.demo.repository.ReviewRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
+package com.example.demo.service;
 
 import com.example.demo.dto.ReviewRequest;
 import com.example.demo.dto.ReviewResponse;
-
+import com.example.demo.entity.Review;
+import com.example.demo.repository.ReviewRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ReviewService {
+
     private final ReviewRepository reviewRepository;
 
-    public ReviewService(ReviewRepository reviewRepository) {
-        this.reviewRepository = reviewRepository;
-    }
+    // ============================= PUBLIC API =============================
 
-    // Public methods - User không cần đăng nhập có thể submit review
     @Transactional
     public ReviewResponse createReview(ReviewRequest request) {
-        // Validate rating
-        if (request.rating() == null || request.rating() < 1 || request.rating() > 5) {
-            throw new IllegalArgumentException("Rating must be between 1 and 5");
-        }
-
-        Review review = new Review();
-        review.setRating(request.rating());
-        review.setComment(request.comment());
-        review.setReviewerName(request.reviewerName());
-        review.setReviewerEmail(request.reviewerEmail());
-        
-        Review saved = reviewRepository.save(review);
-        return toResponse(saved);
+        validateRating(request.rating());
+        Review review = mapToEntity(request);
+        return toResponse(reviewRepository.save(review));
     }
 
     public List<ReviewResponse> getAllReviews() {
         return reviewRepository.findAll().stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    public java.util.Map<String, Object> getReviewSummary() {
-        List<Review> allReviews = reviewRepository.findAll();
-        
-        if (allReviews.isEmpty()) {
-            return java.util.Map.of(
-                "reviews", java.util.Collections.emptyList(),
-                "averageRating", 0.0,
-                "totalReviews", 0
-            );
+    public Map<String, Object> getReviewSummary() {
+        List<Review> all = reviewRepository.findAll();
+        if (all.isEmpty()) {
+            return Map.of("reviews", Collections.emptyList(), "averageRating", 0.0, "totalReviews", 0);
         }
-        
-        double avgRating = allReviews.stream()
-                .mapToInt(Review::getRating)
-                .average()
-                .orElse(0.0);
-        
-        List<ReviewResponse> reviewResponses = allReviews.stream()
-                .sorted((r1, r2) -> r2.getCreatedAt().compareTo(r1.getCreatedAt()))
+        double avg = all.stream().mapToInt(Review::getRating).average().orElse(0.0);
+        List<ReviewResponse> latest = all.stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .limit(20)
                 .map(this::toResponse)
-                .collect(Collectors.toList());
-        
-        return java.util.Map.of(
-            "reviews", reviewResponses,
-            "averageRating", Math.round(avgRating * 10.0) / 10.0,
-            "totalReviews", allReviews.size()
-        );
+                .toList();
+        return Map.of("reviews", latest, "averageRating", Math.round(avg * 10.0) / 10.0, "totalReviews", all.size());
     }
 
     public ReviewResponse getReviewById(Long id) {
-        Review review = reviewRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Review not found with id: " + id));
-        return toResponse(review);
+        return toResponse(findEntityById(id));
     }
 
     public List<ReviewResponse> getReviewsByRating(Integer rating) {
         return reviewRepository.findByRating(rating).stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    // Admin method - Xóa review nếu cần
+    // ============================= ADMIN API =============================
+
+    public Page<ReviewResponse> findAllPagedResponse(Pageable pageable, String search) {
+        Page<Review> page;
+        if (search == null || search.trim().isEmpty()) {
+            page = reviewRepository.findAll(pageable);
+        } else {
+            String term = "%" + search.toLowerCase() + "%";
+            page = reviewRepository.search(term, pageable);
+        }
+        return page.map(this::toResponse);
+    }
+
+    public ReviewResponse getReviewResponseById(Long id) {
+        return toResponse(findEntityById(id));
+    }
+
+    @Transactional
+    public ReviewResponse createByAdmin(ReviewRequest request) {
+        validateRating(request.rating());
+        Review review = mapToEntity(request);
+        return toResponse(reviewRepository.save(review));
+    }
+
+    @Transactional
+    public ReviewResponse updateByAdmin(Long id, ReviewRequest request) {
+        validateRating(request.rating());
+        Review review = findEntityById(id);
+        review.setRating(request.rating());
+        review.setComment(request.comment());
+        review.setReviewerName(request.reviewerName());
+        review.setReviewerEmail(request.reviewerEmail());
+        return toResponse(reviewRepository.save(review));
+    }
+
     @Transactional
     public void deleteReview(Long id) {
         if (!reviewRepository.existsById(id)) {
@@ -98,14 +104,36 @@ public class ReviewService {
         reviewRepository.deleteById(id);
     }
 
-    private ReviewResponse toResponse(Review review) {
+    // ============================= PRIVATE =============================
+
+    private Review findEntityById(Long id) {
+        return reviewRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Review not found: " + id));
+    }
+
+    private void validateRating(Integer rating) {
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+    }
+
+    private Review mapToEntity(ReviewRequest req) {
+        return Review.builder()
+                .rating(req.rating())
+                .comment(req.comment())
+                .reviewerName(req.reviewerName())
+                .reviewerEmail(req.reviewerEmail())
+                .build();
+    }
+
+    private ReviewResponse toResponse(Review entity) {
         return new ReviewResponse(
-                review.getId(),
-                review.getRating(),
-                review.getComment(),
-                review.getReviewerName(),
-                review.getReviewerEmail(),
-                review.getCreatedAt()
+                entity.getId(),
+                entity.getRating(),
+                entity.getComment(),
+                entity.getReviewerName(),
+                entity.getReviewerEmail(),
+                entity.getCreatedAt()
         );
     }
 }

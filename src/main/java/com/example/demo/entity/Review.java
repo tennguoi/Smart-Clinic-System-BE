@@ -1,60 +1,70 @@
-// File: src/main/java/com/example/demo/entity/Review.java
+// src/main/java/com/example/demo/entity/Review.java
 package com.example.demo.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-
-
 @Entity
-
-@Table(name = "reviews")
+@Table(name = "reviews",
+        indexes = {
+                @Index(name = "idx_review_rating", columnList = "rating"),
+                @Index(name = "idx_review_email", columnList = "reviewerEmail"),
+                @Index(name = "idx_review_created", columnList = "createdAt")
+        })
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString
 public class Review {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Min(1) @Max(5)
+    @NotNull(message = "Rating không được để trống")
+    @Min(value = 1, message = "Rating tối thiểu là 1")
+    @Max(value = 5, message = "Rating tối đa là 5")
+    @Column(nullable = false)
     private Integer rating;
 
     @Lob
+    @Basic(fetch = FetchType.LAZY) // tiết kiệm bộ nhớ khi không cần comment
+    @Size(max = 2000, message = "Bình luận không quá 2000 ký tự")
     private String comment;
 
+    @NotBlank(message = "Tên không được để trống")
+    @Size(min = 2, max = 100, message = "Tên từ 2-100 ký tự")
+    @Column(nullable = false, length = 100)
     private String reviewerName;
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    @Size(max = 150)
+    @Column(nullable = false, length = 150)
     private String reviewerEmail;
 
     @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Constructors
-    public Review() {}
+    @UpdateTimestamp
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
 
-    // Getters & Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    // Optional: nếu bạn muốn ẩn/hiện review trên web
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean published = true;
 
-    public Integer getRating() { return rating; }
-    public void setRating(Integer rating) { this.rating = rating; }
-
-    public String getComment() { return comment; }
-    public void setComment(String comment) { this.comment = comment; }
-
-    public String getReviewerName() { return reviewerName; }
-    public void setReviewerName(String reviewerName) { this.reviewerName = reviewerName; }
-
-    public String getReviewerEmail() { return reviewerEmail; }
-    public void setReviewerEmail(String reviewerEmail) { this.reviewerEmail = reviewerEmail; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    // Optional: cho admin đánh dấu spam
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean spam = false;
 }

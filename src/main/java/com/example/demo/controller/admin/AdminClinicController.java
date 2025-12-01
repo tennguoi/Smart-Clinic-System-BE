@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.admin;
 
 import com.example.demo.dto.ClinicRequest;
 import com.example.demo.dto.ClinicResponse;

@@ -1,5 +1,8 @@
+// src/main/java/com/example/demo/config/SecurityConfig.java
+
 package com.example.demo.config;
 
+import com.example.demo.service.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,8 +18,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.example.demo.service.UserDetailsServiceImpl;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -50,30 +56,46 @@ public class SecurityConfig {
         return authConfig.getAuthenticationManager();
     }
 
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of("http://localhost:3000", "http://localhost:5173", "http://localhost:5174"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {})   // <---- THÊM DÒNG NÀY
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint))
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // SỬA Ở ĐÂY
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/**").permitAll()
+
+                        // PUBLIC ENDPOINTS
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/chatbot/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/api/invoices/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_TIEP_TAN")
-                        .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
-                        .requestMatchers("/api/doctors/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
-                        .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
-                        .requestMatchers("/api/reception/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
-                        .requestMatchers("/api/receptionist/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
                         .requestMatchers("/webhook/**").permitAll()
+
+                        // ADMIN ENDPOINTS
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // DOCTOR & RECEPTION
+                        .requestMatchers("/api/invoices/**").hasAnyRole("BAC_SI", "TIEP_TAN")
+                        .requestMatchers("/api/doctor/**", "/api/doctors/**").hasAnyRole("BAC_SI", "ADMIN")
+                        .requestMatchers("/api/appointments/**", "/api/reception/**", "/api/receptionist/**")
+                        .hasAnyRole("TIEP_TAN", "ADMIN")
+
+                        // XÓA DÒNG NÀY ĐI: .requestMatchers("/**").permitAll() → NGUY HIỂM!
+
                         .anyRequest().authenticated()
                 );
 

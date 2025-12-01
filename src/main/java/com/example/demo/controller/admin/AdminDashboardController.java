@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.admin;
 
 import com.example.demo.dto.TopServiceDTO;
 import com.example.demo.service.DashboardService;
