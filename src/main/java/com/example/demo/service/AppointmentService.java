@@ -526,6 +526,7 @@ public class AppointmentService {
                 });
     }
 
+
     //@Scheduled(cron = "0 0 20 * * ?")  
     //@Scheduled(cron = "0/30 * * * * ?")
     @Transactional

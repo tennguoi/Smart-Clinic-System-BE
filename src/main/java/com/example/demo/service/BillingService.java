@@ -169,7 +169,7 @@ public class BillingService {
 
     // ==================== LẤY HÓA ĐƠN CHỜ THANH TOÁN ====================
     public Page<BillingResponseDTO> getPendingBills(Pageable pageable, String search) {
-        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN"))
+        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN") && !hasRole("ADMIN"))
             throw new AccessDeniedException("Không có quyền");
 
         Page<BillingRecord> page;
@@ -185,7 +185,7 @@ public class BillingService {
 
     // ==================== LẤY TẤT CẢ HÓA ĐƠN ====================
     public Page<BillingResponseDTO> getAll(Pageable pageable, String search) {
-        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN"))
+        if (!hasRole("TIEP_TAN") && !hasRole("ADMIN"))
             throw new AccessDeniedException("Không có quyền");
 
         Page<BillingRecord> page = (search == null || search.isBlank())
@@ -197,7 +197,7 @@ public class BillingService {
 
     // ==================== LẤY CHI TIẾT HÓA ĐƠN ====================
     public BillingResponseDTO getById(UUID id) {
-        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN"))
+        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN") && !hasRole("ADMIN"))
             throw new AccessDeniedException("Không có quyền");
 
         return toDto(billingRepo.findById(id)
@@ -281,5 +281,22 @@ public class BillingService {
                 b.getPaidAt(),
                 items
         );
+    }
+
+    // Bác sĩ chỉ xem hóa đơn của mình, lễ tân & admin xem tất cả
+    public Page<BillingResponseDTO> getMyBills(Pageable pageable, String search) {
+        User currentUser = getCurrentUser();
+
+        // Nếu là bác sĩ (không phải lễ tân hoặc admin) → chỉ lấy hóa đơn của mình
+        if (hasRole("BAC_SI") && !hasRole("TIEP_TAN") && !hasRole("ADMIN")) {
+            Page<BillingRecord> page;
+            if (search == null || search.isBlank()) {
+                page = billingRepo.findByUsers_UserId(currentUser.getUserId(), pageable);
+            } else {
+                page = billingRepo.searchByDoctorId(currentUser.getUserId(), search, pageable);
+            }
+            return page.map(this::toDto);
+        }
+        return getAll(pageable, search);
     }
 }

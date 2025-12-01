@@ -71,4 +71,16 @@ public interface BillingRecordRepository extends JpaRepository<BillingRecord, UU
 
     // Đếm số lượng hóa đơn trong khoảng thời gian
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    Page<BillingRecord> findByUsers_UserId(UUID doctorId, Pageable pageable);
+
+    // Tìm kiếm hóa đơn theo bác sĩ + từ khóa
+    @Query("SELECT b FROM BillingRecord b " +
+            "WHERE b.users.userId = :doctorId " +
+            "AND (LOWER(b.medicalRecord.patient.fullName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "   OR LOWER(b.medicalRecord.patient.phone) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "   OR CAST(b.billId AS string) LIKE LOWER(CONCAT('%', :search, '%'))) ")
+    Page<BillingRecord> searchByDoctorId(@Param("doctorId") UUID doctorId,
+                                         @Param("search") String search,
+                                         Pageable pageable);
 }

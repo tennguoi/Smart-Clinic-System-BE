@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.common;
 
 import com.example.demo.dto.ArticleResponse;
 import com.example.demo.service.ArticleService;

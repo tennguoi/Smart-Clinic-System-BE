@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.common;
 
 import com.example.demo.dto.appointment.AppointmentResponse;
 import com.example.demo.entity.Appointment;
