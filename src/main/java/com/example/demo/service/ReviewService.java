@@ -37,7 +37,7 @@ public class ReviewService {
         review.setComment(request.comment());
         review.setReviewerName(request.reviewerName());
         review.setReviewerEmail(request.reviewerEmail());
-        
+
         Review saved = reviewRepository.save(review);
         return toResponse(saved);
     }
@@ -50,31 +50,29 @@ public class ReviewService {
 
     public java.util.Map<String, Object> getReviewSummary() {
         List<Review> allReviews = reviewRepository.findAll();
-        
+
         if (allReviews.isEmpty()) {
             return java.util.Map.of(
-                "reviews", java.util.Collections.emptyList(),
-                "averageRating", 0.0,
-                "totalReviews", 0
-            );
+                    "reviews", java.util.Collections.emptyList(),
+                    "averageRating", 0.0,
+                    "totalReviews", 0);
         }
-        
+
         double avgRating = allReviews.stream()
                 .mapToInt(Review::getRating)
                 .average()
                 .orElse(0.0);
-        
+
         List<ReviewResponse> reviewResponses = allReviews.stream()
                 .sorted((r1, r2) -> r2.getCreatedAt().compareTo(r1.getCreatedAt()))
                 .limit(20)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
-        
+
         return java.util.Map.of(
-            "reviews", reviewResponses,
-            "averageRating", Math.round(avgRating * 10.0) / 10.0,
-            "totalReviews", allReviews.size()
-        );
+                "reviews", reviewResponses,
+                "averageRating", Math.round(avgRating * 10.0) / 10.0,
+                "totalReviews", allReviews.size());
     }
 
     public ReviewResponse getReviewById(Long id) {
@@ -98,6 +96,27 @@ public class ReviewService {
         reviewRepository.deleteById(id);
     }
 
+    @Transactional
+    public ReviewResponse updateReview(Long id, ReviewRequest request) {
+        // Validate rating
+        if (request.rating() == null || request.rating() < 1 || request.rating() > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+
+        // Tìm review cần update
+        Review review = reviewRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Review not found with id: " + id));
+
+        // Cập nhật thông tin
+        review.setRating(request.rating());
+        review.setComment(request.comment());
+        review.setReviewerName(request.reviewerName());
+        review.setReviewerEmail(request.reviewerEmail());
+
+        Review updated = reviewRepository.save(review);
+        return toResponse(updated);
+    }
+
     private ReviewResponse toResponse(Review review) {
         return new ReviewResponse(
                 review.getId(),
@@ -105,7 +124,6 @@ public class ReviewService {
                 review.getComment(),
                 review.getReviewerName(),
                 review.getReviewerEmail(),
-                review.getCreatedAt()
-        );
+                review.getCreatedAt());
     }
 }

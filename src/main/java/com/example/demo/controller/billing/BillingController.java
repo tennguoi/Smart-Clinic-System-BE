@@ -9,7 +9,8 @@ import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
@@ -88,5 +89,15 @@ public class BillingController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(billingService.getMyBills(pageable, search));
+    }
+    @GetMapping("/{id}/pdf")
+    @PreAuthorize("hasAnyRole('BAC_SI', 'TIEP_TAN', 'ADMIN')")
+    public ResponseEntity<byte[]> getInvoicePdf(@PathVariable UUID id) {
+        byte[] pdfBytes = billingService.getInvoicePdf(id);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=invoice_" + id + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 }
