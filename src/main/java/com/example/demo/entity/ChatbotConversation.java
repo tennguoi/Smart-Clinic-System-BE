@@ -36,5 +36,12 @@ public class ChatbotConversation {
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL)
     private List<ChatbotMessage> messages;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "user_id",
+            referencedColumnName = "user_id",
+            nullable = true  // Cho phép NULL trong DB
+    )
+    private User user;
     // Đã loại bỏ @PrePersist vì việc tạo ID và mặc định thời gian đã được xử lý bằng @GeneratedValue và @Builder.Default
 }
