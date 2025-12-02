@@ -1,22 +1,17 @@
-// TmhAssistantController.java - HOÀN CHỈNH
+// src/main/java/com/example/demo/controller/chatbot/TmhAssistantController.java
 
 package com.example.demo.controller.chatbot;
 
-import com.example.demo.dto.chat.ChatResponse;
-import com.example.demo.dto.chat.DoctorQueryRequest;
 import com.example.demo.entity.ChatbotConversation;
 import com.example.demo.entity.ChatbotMessage;
 import com.example.demo.entity.ChatbotMessage.SenderType;
 import com.example.demo.service.TmhAssistantService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,53 +20,91 @@ import java.util.stream.Collectors;
 public class TmhAssistantController {
 
     private final TmhAssistantService tmhService;
-    private final RestTemplate restTemplate;
 
-    // n8n webhook URL - ĐỔI THÀNH URL ĐÚNG CỦA BẠN
-    private static final String N8N_TMH_WEBHOOK = "https://n8n.quanliduan-pms.site/webhook/ai-support";
-
-    @PostMapping("/ask")
-    public ResponseEntity<ChatResponse> askAssistant(
-            @RequestHeader("X-Doctor-Id") UUID doctorId,
-            @Valid @RequestBody DoctorQueryRequest request) {
-
-        String doctorMessage = request.getText();
-        String sessionId = "DOCTOR_" + doctorId.toString();
-
-        log.info("👨‍⚕️ Bác sĩ {} hỏi: {}", doctorId, doctorMessage);
+    // ========================================
+    // 1. TẠO CUỘC TRÒ CHUYỆN MỚI
+    // ========================================
+    @PostMapping("/new-conversation")
+    public ResponseEntity<Map<String, Object>> createNewConversation(
+            @RequestHeader("X-Doctor-Id") UUID doctorId) {
 
         try {
-            ChatbotConversation conversation = tmhService.getOrCreateConversation(sessionId, doctorId);
-            tmhService.saveMessage(conversation, doctorMessage, SenderType.User);
-            String aiResponse = callTmhN8nAgent(sessionId, doctorMessage);
-            tmhService.saveMessage(conversation, aiResponse, SenderType.Bot);
+            String newSessionId = "DOCTOR_" + doctorId + "_" + UUID.randomUUID();
 
-            log.info("✅ AI trả lời và đã lưu DB: {}",
-                    aiResponse.substring(0, Math.min(100, aiResponse.length())));
+            log.info("🆕 Tạo cuộc trò chuyện mới cho bác sĩ {}", doctorId);
 
-            return ResponseEntity.ok(
-                    new ChatResponse(aiResponse, conversation.getConversationId().toString())
-            );
+            ChatbotConversation conv = tmhService.getOrCreateConversation(newSessionId, doctorId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("conversationId", conv.getConversationId().toString());
+            response.put("sessionId", newSessionId);
+            response.put("startedAt", conv.getStartedAt().toString());
+            response.put("message", "Tạo cuộc trò chuyện mới thành công");
+
+            log.info("✅ Tạo thành công sessionId: {}", newSessionId);
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            log.error("❌ Lỗi trợ lý AI - Bác sĩ ID: {}", doctorId, e);
-            String errorMsg = "AI đang bận, vui lòng thử lại sau ít phút.";
-
-            try {
-                ChatbotConversation conv = tmhService.getOrCreateConversation(sessionId, doctorId);
-                tmhService.saveMessage(conv, errorMsg, SenderType.Bot);
-            } catch (Exception ex) {
-                log.error("Không lưu được lỗi", ex);
-            }
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ChatResponse(errorMsg, null));
+            log.error("❌ Lỗi tạo cuộc trò chuyện", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Không thể tạo cuộc trò chuyện: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
-    /**
-     * Lấy lịch sử hỏi đáp của bác sĩ (danh sách conversations)
-     */
+    // ========================================
+    // 2. LƯU TIN NHẮN SAU KHI FRONTEND ĐÃ GỌI n8n
+    // ========================================
+    @PostMapping("/save-message")
+    public ResponseEntity<Map<String, Object>> saveMessage(
+            @RequestHeader("X-Doctor-Id") UUID doctorId,
+            @RequestBody Map<String, String> payload) {
+
+        String sessionId = payload.get("sessionId");
+        String userMessage = payload.get("userMessage");
+        String aiMessage = payload.get("aiMessage");
+
+        log.info("💾 Lưu tin nhắn - sessionId: {}, doctorId: {}", sessionId, doctorId);
+
+        if (sessionId == null || sessionId.isBlank()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Thiếu sessionId");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            ChatbotConversation conv = tmhService.getOrCreateConversation(sessionId, doctorId);
+
+            // Lưu tin nhắn của bác sĩ
+            if (userMessage != null && !userMessage.isBlank()) {
+                tmhService.saveMessage(conv, userMessage, SenderType.User);
+                log.debug("✅ Đã lưu tin nhắn bác sĩ");
+            }
+
+            // Lưu tin nhắn của AI
+            if (aiMessage != null && !aiMessage.isBlank()) {
+                tmhService.saveMessage(conv, aiMessage, SenderType.Bot);
+                log.debug("✅ Đã lưu tin nhắn AI");
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("conversationId", conv.getConversationId().toString());
+            response.put("saved", true);
+            response.put("messageCount", conv.getMessages() != null ? conv.getMessages().size() : 0);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("❌ Lỗi lưu tin nhắn", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Lưu tin nhắn thất bại: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    // ========================================
+    // 3. LẤY LỊCH SỬ TẤT CẢ CUỘC TRÒ CHUYỆN CỦA BÁC SĨ
+    // ========================================
     @GetMapping("/history")
     public ResponseEntity<?> getDoctorHistory(@RequestHeader("X-Doctor-Id") UUID doctorId) {
         try {
@@ -79,7 +112,6 @@ public class TmhAssistantController {
 
             List<ChatbotConversation> conversations = tmhService.getAllConversationsByDoctor(doctorId);
 
-            // Convert sang DTO để trả về frontend - SỬA LỖI TYPE
             List<Map<String, Object>> response = new ArrayList<>();
 
             for (ChatbotConversation conv : conversations) {
@@ -88,14 +120,15 @@ public class TmhAssistantController {
                 convMap.put("sessionId", conv.getSessionId());
                 convMap.put("startedAt", conv.getStartedAt().toString());
 
-                // Đếm số tin nhắn
                 int messageCount = (conv.getMessages() != null) ? conv.getMessages().size() : 0;
                 convMap.put("messageCount", messageCount);
 
-                // Lấy tin nhắn đầu tiên
                 String firstMessage = "Cuộc trò chuyện mới";
                 if (conv.getMessages() != null && !conv.getMessages().isEmpty()) {
                     firstMessage = conv.getMessages().get(0).getMessage();
+                    if (firstMessage.length() > 80) {
+                        firstMessage = firstMessage.substring(0, 80) + "...";
+                    }
                 }
                 convMap.put("firstMessage", firstMessage);
 
@@ -108,14 +141,15 @@ public class TmhAssistantController {
 
         } catch (Exception e) {
             log.error("❌ Lỗi lấy lịch sử bác sĩ {}", doctorId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Không thể lấy lịch sử: " + e.getMessage()));
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Không thể lấy lịch sử: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
-    /**
-     * Lấy chi tiết 1 cuộc trò chuyện (kèm toàn bộ tin nhắn)
-     */
+    // ========================================
+    // 4. LẤY CHI TIẾT 1 CUỘC TRÒ CHUYỆN (KÈM TIN NHẮN)
+    // ========================================
     @GetMapping("/conversation/{conversationId}")
     public ResponseEntity<?> getConversationDetail(
             @PathVariable UUID conversationId,
@@ -125,14 +159,15 @@ public class TmhAssistantController {
 
             ChatbotConversation conversation = tmhService.getConversationWithMessages(conversationId);
 
-            // Kiểm tra bác sĩ có quyền xem không
+            // Kiểm tra quyền truy cập
             if (conversation.getUser() != null &&
                     !conversation.getUser().getUserId().equals(doctorId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Bạn không có quyền xem cuộc trò chuyện này"));
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Bạn không có quyền xem cuộc trò chuyện này");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
             }
 
-            // Convert messages sang DTO - SỬA LỖI TYPE
+            // Convert messages sang DTO
             List<Map<String, Object>> messages = new ArrayList<>();
 
             if (conversation.getMessages() != null) {
@@ -146,7 +181,7 @@ public class TmhAssistantController {
                 }
             }
 
-            // Tạo response object
+            // Tạo response
             Map<String, Object> response = new HashMap<>();
             response.put("conversationId", conversation.getConversationId().toString());
             response.put("sessionId", conversation.getSessionId());
@@ -159,53 +194,46 @@ public class TmhAssistantController {
 
         } catch (Exception e) {
             log.error("❌ Lỗi lấy conversation {}", conversationId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Không thể lấy chi tiết: " + e.getMessage()));
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Không thể lấy chi tiết: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
-    private String callTmhN8nAgent(String sessionId, String message) {
-        RestTemplate rest = new RestTemplate();
-
+    // ========================================
+    // 5. XÓA 1 CUỘC TRÒ CHUYỆN (BONUS)
+    // ========================================
+    @DeleteMapping("/conversation/{conversationId}")
+    public ResponseEntity<Map<String, Object>> deleteConversation(
+            @PathVariable UUID conversationId,
+            @RequestHeader("X-Doctor-Id") UUID doctorId) {
         try {
-            Map<String, Object> body = Map.of(
-                    "sessionId", sessionId,
-                    "chatInput", message
-            );
+            log.info("🗑️ Xóa conversation: {}", conversationId);
 
-            log.debug("🚀 Gọi n8n với payload: {}", body);
+            ChatbotConversation conv = tmhService.getConversationWithMessages(conversationId);
 
-            // Thử parse JSON trước
-            try {
-                ResponseEntity<Map> res = rest.postForEntity(N8N_TMH_WEBHOOK, body, Map.class);
-                Map<String, Object> responseBody = res.getBody();
-
-                if (responseBody != null && responseBody.containsKey("output")) {
-                    return (String) responseBody.get("output");
-                } else if (responseBody != null && responseBody.containsKey("text")) {
-                    return (String) responseBody.get("text");
-                } else {
-                    log.warn("n8n response không có field 'output' hoặc 'text': {}", responseBody);
-                    return "AI trả lời không đúng định dạng.";
-                }
-
-            } catch (Exception jsonEx) {
-                // Nếu không parse được JSON, thử plain text
-                log.debug("Không parse được JSON, thử plain text...");
-                ResponseEntity<String> res = rest.postForEntity(N8N_TMH_WEBHOOK, body, String.class);
-                String plainText = res.getBody();
-                return plainText != null ? plainText.trim() : "AI không phản hồi.";
+            // Kiểm tra quyền
+            if (conv.getUser() != null && !conv.getUser().getUserId().equals(doctorId)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Bạn không có quyền xóa cuộc trò chuyện này");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
             }
 
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
-            log.error("❌ n8n HTTP Error {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
-            return "AI gặp lỗi kỹ thuật. Vui lòng liên hệ admin.";
-        } catch (org.springframework.web.client.ResourceAccessException e) {
-            log.error("❌ Không kết nối được n8n: {}", e.getMessage());
-            return "Không kết nối được AI. Vui lòng kiểm tra mạng.";
+            tmhService.deleteConversation(conversationId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("deleted", true);
+            response.put("conversationId", conversationId.toString());
+
+            log.info("✅ Đã xóa conversation {}", conversationId);
+
+            return ResponseEntity.ok(response);
+
         } catch (Exception e) {
-            log.error("❌ Lỗi gọi n8n AI TMH", e);
-            return "AI tạm thời không phản hồi. Vui lòng thử lại.";
+            log.error("❌ Lỗi xóa conversation {}", conversationId, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Không thể xóa: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 }
