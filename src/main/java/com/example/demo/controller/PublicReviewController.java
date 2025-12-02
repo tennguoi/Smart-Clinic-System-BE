@@ -50,4 +50,20 @@ public class PublicReviewController {
     public ResponseEntity<java.util.Map<String, Object>> getReviewSummary() {
         return ResponseEntity.ok(reviewService.getReviewSummary());
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ReviewResponse> updateReview(
+            @PathVariable Long id,
+            @Valid @RequestBody ReviewRequest request) {
+        ReviewResponse updated = reviewService.updateByAdmin(id, request);
+        return ResponseEntity.ok(updated);
+    }
+
+    // Xóa review theo ID
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
+        reviewService.deleteReview(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }
