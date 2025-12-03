@@ -98,16 +98,16 @@ public class EmailTemplateDefaults {
         return getEmailHeader() +
                 "<div class=\"header\">" +
                 "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>✅ Xác Nhận Lịch Khám</h2>" +
+                "<h2>Xác Nhận Lịch Khám</h2>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
                 "<p>Lịch khám của bạn đã được <strong style=\"color:#28a745;\">XÁC NHẬN</strong>!</p>" +
                 "<div class=\"info-box\">" +
-                "<p><strong>📋 Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>👤 Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>🕐 Thời gian:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>👨‍⚕️ Được xác nhận bởi:</strong> {{confirmedByName}}</p>" +
+                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
+                "<p><strong>Được xác nhận bởi:</strong> {{confirmedByName}}</p>" +
                 "</div>" +
                 "<p>Vui lòng đến <strong>đúng giờ</strong>. Nếu có thay đổi, vui lòng liên hệ phòng khám.</p>" +
                 "</div>" +
@@ -118,18 +118,18 @@ public class EmailTemplateDefaults {
         return getEmailHeader() +
                 "<div class=\"header\">" +
                 "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>📨 Yêu Cầu Đặt Lịch Đã Nhận</h2>" +
+                "<h2>Yêu Cầu Đặt Lịch Đã Nhận</h2>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
                 "<p>Chúng tôi đã nhận được yêu cầu đặt lịch khám của bạn.</p>" +
                 "<div class=\"info-box\">" +
-                "<p><strong>📋 Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>👤 Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>🕐 Thời gian dự kiến:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>📞 Số điện thoại:</strong> {{phone}}</p>" +
-                "<p><strong>🏥 Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
-                "<p><strong>📝 Triệu chứng/Ghi chú:</strong> {{notes}}</p>" +
+                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p><strong>Thời gian dự kiến:</strong> {{appointmentTime}}</p>" +
+                "<p><strong>Số điện thoại:</strong> {{phone}}</p>" +
+                "<p><strong>Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
+                "<p><strong>Triệu chứng/Ghi chú:</strong> {{notes}}</p>" +
                 "</div>" +
                 "<p>Nhân viên phòng khám sẽ sớm liên hệ với bạn để xác nhận lịch.</p>" +
                 "</div>" +
@@ -140,26 +140,26 @@ public class EmailTemplateDefaults {
         return getEmailHeader() +
                 "<div class=\"header\">" +
                 "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>🔔 Nhắc Nhở Lịch Khám</h2>" +
+                "<h2>Nhắc Nhở Lịch Khám</h2>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
                 "<p>Đây là email nhắc nhở lịch khám của bạn vào <strong>NGÀY MAI</strong>.</p>" +
                 "<div class=\"info-box\">" +
-                "<p><strong>📋 Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>👤 Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>🕐 Thời gian:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>⏰ Còn lại:</strong> Khoảng {{hoursUntilAppointment}} giờ nữa</p>" +
+                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
+                "<p><strong>Thời gian còn lại:</strong> Khoảng {{hoursUntilAppointment}} giờ nữa</p>" +
                 "</div>" +
                 "<div class=\"info-box\" style=\"border-left-color:#ffc107;\">" +
-                "<p><strong>📌 Lưu ý quan trọng:</strong></p>" +
+                "<p><strong>Lưu ý quan trọng:</strong></p>" +
                 "<ul>" +
                 "<li>Đến sớm 15 phút trước giờ hẹn</li>" +
                 "<li>Mang theo giấy tờ tùy thân (CMND/CCCD)</li>" +
                 "<li>Nếu không thể đến, vui lòng liên hệ sớm nhất</li>" +
                 "</ul>" +
                 "</div>" +
-                "<p>📧 Email: {{clinicEmail}}</p>" +
+                "<p>Email: {{clinicEmail}}</p>" +
                 "</div>" +
                 getEmailFooter();
     }
@@ -168,17 +168,17 @@ public class EmailTemplateDefaults {
         return getEmailHeader() +
                 "<div class=\"header\">" +
                 "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>✅ Đặt Lịch Thành Công</h2>" +
+                "<h2>Đặt Lịch Thành Công</h2>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
                 "<p>Cảm ơn bạn đã đặt lịch khám tại phòng khám của chúng tôi.</p>" +
                 "<div class=\"info-box\">" +
-                "<p><strong>📋 Mã lịch hẹn:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>👤 Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>🕐 Thời gian:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>🏥 Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
-                "<p><strong>📝 Ghi chú:</strong> {{notes}}</p>" +
+                "<p><strong>Mã lịch hẹn:</strong> {{appointmentCode}}</p>" +
+                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
+                "<p><strong>Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
+                "<p><strong>Ghi chú:</strong> {{notes}}</p>" +
                 "</div>" +
                 "<a href=\"{{magicLink}}\" class=\"button\">Theo Dõi Lịch Khám</a>" +
                 "<p>Vui lòng đến đúng giờ để được phục vụ tốt nhất.</p>" +
@@ -190,15 +190,15 @@ public class EmailTemplateDefaults {
         return getEmailHeader() +
                 "<div class=\"header\">" +
                 "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>🔄 Thay Đổi Lịch Khám</h2>" +
+                "<h2>Thay Đổi Lịch Khám</h2>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
                 "<p>Lịch khám của bạn đã được <strong style=\"color:#ffc107;\">THAY ĐỔI</strong>.</p>" +
                 "<div class=\"info-box\">" +
-                "<p><strong>📋 Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>⏰ Thời gian cũ:</strong> <del>{{oldTime}}</del></p>" +
-                "<p><strong style=\"color:#0056b3;\">🕐 Thời gian MỚI:</strong> {{newTime}}</p>" +
+                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p><strong>Thời gian cũ:</strong> <del>{{oldTime}}</del></p>" +
+                "<p><strong style=\"color:#0056b3;\"> Thời gian MỚI:</strong> {{newTime}}</p>" +
                 "</div>" +
                 "<a href=\"{{magicLink}}\" class=\"button\">Xem Chi Tiết</a>" +
                 "<p>Nếu bạn có thắc mắc về sự thay đổi này, vui lòng liên hệ với phòng khám.</p>" +
@@ -210,7 +210,7 @@ public class EmailTemplateDefaults {
         return getEmailHeader() +
                 "<div class=\"header\" style=\"background:#d9534f;\">" +
                 "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>❌ Hủy Lịch Khám</h2>" +
+                "<h2>Hủy Lịch Khám</h2>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
@@ -226,7 +226,7 @@ public class EmailTemplateDefaults {
         return getEmailHeader() +
                 "<div class=\"header\">" +
                 "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>📢 Cập Nhật Trạng Thái</h2>" +
+                "<h2> Cập Nhật Trạng Thái</h2>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
