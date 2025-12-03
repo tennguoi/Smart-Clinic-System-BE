@@ -1,5 +1,3 @@
-// src/main/java/com/example/demo/controller/chatbot/TmhAssistantController.java
-
 package com.example.demo.controller.chatbot;
 
 import com.example.demo.entity.ChatbotConversation;
