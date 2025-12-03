@@ -36,5 +36,8 @@ public class QueuePatientResponse {
     // Room information (nếu đã được phân phòng)
     private UUID roomId;
     private String roomName;         // Tên phòng khám
-    private String doctorName;       // Tên bác sĩ phụ trách phòng
+    private String doctorName;
+    // ✨ Appointment info - MỚI
+    private boolean hasAppointment;  // Đánh dấu có đặt lịch hay không
+    private String appointmentCode;  // Tên bác sĩ phụ trách phòng
 }

@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.QueuePatientResponse;
+import com.example.demo.dto.appointment.AppointmentCheckInDTO; // ✅ IMPORT ĐÚNG
 import com.example.demo.entity.*;
 import com.example.demo.entity.Queue;
 import com.example.demo.repository.*;
@@ -19,46 +20,169 @@ public class QueueService {
     private final QueueRepository queueRepository;
     private final PatientRepository patientRepository;
     private final ExaminationRoomRepository examinationRoomRepository;
+    private final AppointmentRepository appointmentRepository;
 
     // =================================================================
-    // LẤY DỮ LIỆU
+    // ✨ TÍNH NĂNG MỚI: TẠO HÀNG CHỜ TỪ LỊCH HẸN
     // =================================================================
 
-    public Optional<QueuePatientResponse> getQueueById(UUID queueId) {
-        return queueRepository.findById(queueId).map(this::mapToDto);
+    /**
+     * Tạo hàng chờ từ lịch hẹn - Nhận thông tin bổ sung từ form
+     * @param appointmentId ID của lịch hẹn
+     * @param additionalInfo Thông tin bổ sung từ form (dob, gender, address...)
+     * @return Thông tin bệnh nhân trong hàng chờ
+     */
+    @Transactional
+    public QueuePatientResponse createQueueFromAppointment(UUID appointmentId, Map<String, Object> additionalInfo) {
+        // 1. Lấy thông tin appointment
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lịch hẹn"));
+
+        // 2. Kiểm tra trạng thái appointment
+        if (appointment.getStatus() != Appointment.Status.Confirmed) {
+            throw new RuntimeException("Lịch hẹn chưa được xác nhận");
+        }
+
+        // 3. Kiểm tra xem đã tạo queue cho appointment này chưa
+        Optional<Queue> existingQueue = queueRepository.findByAppointmentId(appointmentId);
+        if (existingQueue.isPresent()) {
+            throw new RuntimeException("Lịch hẹn này đã được thêm vào hàng chờ");
+        }
+
+        // 4. Tìm hoặc tạo bệnh nhân từ thông tin appointment + additionalInfo
+        Patient patient = patientRepository.findByPhone(appointment.getPhone())
+                .orElseGet(() -> createPatientFromAppointment(appointment, additionalInfo));
+
+        // Nếu bệnh nhân đã tồn tại, cập nhật thông tin bổ sung
+        if (additionalInfo != null && patientRepository.findByPhone(appointment.getPhone()).isPresent()) {
+            updatePatientFromAdditionalInfo(patient, additionalInfo);
+        }
+
+        // 5. Xác định mức độ ưu tiên
+        Queue.Priority priority = Queue.Priority.Normal;
+        if (additionalInfo != null && additionalInfo.containsKey("priority")) {
+            priority = determinePriority((String) additionalInfo.get("priority"));
+        }
+
+        // 6. Tạo Queue
+        Queue queue = Queue.builder()
+                .queueNumber(generateNextQueueNumber())
+                .patient(patient)
+                .appointment(appointment)
+                .priority(priority)
+                .status(Queue.QueueStatus.Waiting)
+                .checkInTime(LocalDateTime.now())
+                .build();
+
+        Queue savedQueue = queueRepository.save(queue);
+
+        // 7. Tự động phân phòng tốt nhất
+        ExaminationRoom bestRoom = findBestRoomForAssignment();
+        if (bestRoom != null) {
+            savedQueue.setAssignedRoom(bestRoom);
+            queueRepository.save(savedQueue);
+
+            long waitingInRoom = queueRepository.countByAssignedRoomAndStatus(
+                    bestRoom, Queue.QueueStatus.Waiting
+            );
+
+            if (bestRoom.getCurrentQueueId() == null && waitingInRoom == 0) {
+                startExamination(savedQueue, bestRoom);
+            }
+        }
+
+        return mapToDto(savedQueue);
     }
 
-    /** Danh sách chờ chung – lễ tân thấy tất cả (tương thích controller cũ) */
-    public List<QueuePatientResponse> getWaitingPatients() {
-        return getAllWaitingPatients();
+
+    /**
+     * Tạo bệnh nhân mới từ thông tin appointment + additionalInfo
+     */
+    private Patient createPatientFromAppointment(Appointment appointment, Map<String, Object> additionalInfo) {
+        Patient patient = new Patient();
+        patient.setFullName(appointment.getPatientName());
+        patient.setPhone(appointment.getPhone());
+        patient.setEmail(appointment.getEmail());
+        patient.setNotes(appointment.getNotes());
+
+        // Lấy thông tin bổ sung từ form
+        if (additionalInfo != null) {
+            updatePatientFromAdditionalInfo(patient, additionalInfo);
+        } else {
+            // Giá trị mặc định nếu không có thông tin bổ sung
+            patient.setGender(Patient.Gender.other);
+            patient.setDob(java.time.LocalDate.now().minusYears(30));
+        }
+
+        return patientRepository.save(patient);
     }
 
-    /** Danh sách chờ theo phòng – bác sĩ chỉ thấy bệnh nhân của mình */
-    public List<QueuePatientResponse> getWaitingPatientsByRoom(UUID roomId) {
-        return queueRepository.findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
-                roomId, Queue.QueueStatus.Waiting
-        ).stream().map(this::mapToDto).toList();
+    /**
+     * Cập nhật thông tin bổ sung cho bệnh nhân
+     */
+    private void updatePatientFromAdditionalInfo(Patient patient, Map<String, Object> additionalInfo) {
+        if (additionalInfo.containsKey("dob")) {
+            String dobStr = (String) additionalInfo.get("dob");
+            patient.setDob(java.time.LocalDate.parse(dobStr));
+        }
+
+        if (additionalInfo.containsKey("gender")) {
+            String genderStr = (String) additionalInfo.get("gender");
+            patient.setGender(safeParseGender(genderStr));
+        }
+
+        if (additionalInfo.containsKey("address")) {
+            patient.setAddress((String) additionalInfo.get("address"));
+        }
+
+        if (additionalInfo.containsKey("idNumber")) {
+            patient.setIdNumber((String) additionalInfo.get("idNumber"));
+        }
+
+        if (additionalInfo.containsKey("insuranceNumber")) {
+            patient.setInsuranceNumber((String) additionalInfo.get("insuranceNumber"));
+        }
+
+        patientRepository.save(patient);
     }
 
-    /** Danh sách chờ chung – lễ tân thấy tất cả (method chính) */
-    public List<QueuePatientResponse> getAllWaitingPatients() {
-        return queueRepository.findByStatusInOrderByPriorityAscCheckInTimeAsc(
-                List.of(Queue.QueueStatus.Waiting, Queue.QueueStatus.InProgress)
-        ).stream().map(this::mapToDto).toList();
-    }
+    /**
+     * Lấy danh sách lịch hẹn đã xác nhận trong ngày hôm nay
+     * Dùng để hiển thị cho lễ tân danh sách người cần thêm vào hàng chờ
+     */
+    public List<AppointmentCheckInDTO> getTodayConfirmedAppointments() {
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59);
 
-    /** Danh sách unassigned (giữ lại cho tương thích, nhưng trả về rỗng vì logic mới không có unassigned) */
-    public List<QueuePatientResponse> getUnassignedWaitingPatients() {
-        return List.of(); // Không còn unassigned queues
-    }
+        List<Appointment> appointments = appointmentRepository
+                .findByStatusAndAppointmentTimeBetween(
+                        Appointment.Status.Confirmed,
+                        startOfDay,
+                        endOfDay
+                );
 
-    public List<QueuePatientResponse> getCompletedQueues() {
-        return queueRepository.findByStatusOrderByEndTimeDesc(Queue.QueueStatus.Completed)
-                .stream().map(this::mapToDto).toList();
+        return appointments.stream()
+                .map(apt -> {
+                    // Kiểm tra xem đã tạo queue chưa
+                    boolean hasQueue = queueRepository.findByAppointmentId(apt.getAppointmentId()).isPresent();
+
+                    return AppointmentCheckInDTO.builder()
+                            .appointmentId(apt.getAppointmentId())
+                            .appointmentCode(apt.getAppointmentCode())
+                            .patientName(apt.getPatientName())
+                            .phone(apt.getPhone())
+                            .email(apt.getEmail())
+                            .appointmentTime(apt.getAppointmentTime())
+                            .notes(apt.getNotes())
+                            .hasCheckedIn(hasQueue)
+                            .build();
+                })
+                .sorted(Comparator.comparing(AppointmentCheckInDTO::getAppointmentTime))
+                .collect(Collectors.toList());
     }
 
     // =================================================================
-    // THÊM BỆNH NHÂN MỚI – TỰ ĐỘNG PHÂN PHÒNG
+    // THÊM BỆNH NHÂN MỚI - CẢI TIẾN
     // =================================================================
 
     @Transactional
@@ -67,34 +191,154 @@ public class QueueService {
         Patient patient = patientRepository.findByPhone(dto.getPhone())
                 .orElseGet(() -> createNewPatient(dto));
 
-        // 2. Tạo Queue
+        // 2. Xác định mức độ ưu tiên
+        Queue.Priority priority = determinePriority(dto.getPriority());
+
+        // 3. Tạo Queue
         Queue queue = Queue.builder()
                 .queueNumber(generateNextQueueNumber())
                 .patient(patient)
-                .priority(Queue.Priority.valueOf(dto.getPriority() != null ? dto.getPriority() : "Normal"))
+                .priority(priority)
                 .status(Queue.QueueStatus.Waiting)
                 .checkInTime(LocalDateTime.now())
                 .build();
 
         Queue savedQueue = queueRepository.save(queue);
 
-        // 3. TỰ ĐỘNG GÁN VÀO PHÒNG TỐT NHẤT
+        // 4. Tự động phân phòng tốt nhất
         ExaminationRoom bestRoom = findBestRoomForAssignment();
         if (bestRoom != null) {
             savedQueue.setAssignedRoom(bestRoom);
             queueRepository.save(savedQueue);
 
-            // CHỈ GỌI LUÔN KHI PHÒNG TRỐNG HOÀN TOÀN
-            long waitingInRoom = queueRepository.countByAssignedRoomAndStatus(bestRoom, Queue.QueueStatus.Waiting);
+            long waitingInRoom = queueRepository.countByAssignedRoomAndStatus(
+                    bestRoom, Queue.QueueStatus.Waiting
+            );
 
             if (bestRoom.getCurrentQueueId() == null && waitingInRoom == 0) {
                 startExamination(savedQueue, bestRoom);
             }
-            // Ngược lại: đã có người chờ → để vào hàng chờ bình thường
         }
 
         return mapToDto(savedQueue);
     }
+
+    /**
+     * Xác định mức độ ưu tiên dựa trên input
+     */
+    private Queue.Priority determinePriority(String priorityStr) {
+        if (priorityStr == null || priorityStr.isBlank()) {
+            return Queue.Priority.Normal;
+        }
+
+        try {
+            return Queue.Priority.valueOf(priorityStr);
+        } catch (Exception e) {
+            return Queue.Priority.Normal;
+        }
+    }
+
+    // =================================================================
+    // LẤY DỮ LIỆU - CẢI TIẾN XẾP HÀNG
+    // =================================================================
+
+    /**
+     * Danh sách chờ - ƯU TIÊN người đặt lịch trước
+     * Sắp xếp theo: Priority (Emergency > Urgent > Normal) → Thời gian check-in
+     */
+    public List<QueuePatientResponse> getAllWaitingPatients() {
+        List<Queue> queues = queueRepository.findByStatusInOrderByPriorityAscCheckInTimeAsc(
+                List.of(Queue.QueueStatus.Waiting, Queue.QueueStatus.InProgress)
+        );
+
+        // Sắp xếp lại: Urgent (đặt lịch) lên trước Normal (walk-in) cùng thời điểm
+        return queues.stream()
+                .sorted(this::compareQueuePriority)
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    /**
+     * Comparator ưu tiên người đặt lịch
+     * Emergency > Urgent (có appointment) > Urgent (không có appointment) > Normal
+     */
+    private int compareQueuePriority(Queue q1, Queue q2) {
+        // 1. So sánh Emergency trước
+        if (q1.getPriority() == Queue.Priority.Emergency && q2.getPriority() != Queue.Priority.Emergency) {
+            return -1;
+        }
+        if (q2.getPriority() == Queue.Priority.Emergency && q1.getPriority() != Queue.Priority.Emergency) {
+            return 1;
+        }
+
+        // 2. Cùng Urgent: có appointment lên trước
+        if (q1.getPriority() == Queue.Priority.Urgent && q2.getPriority() == Queue.Priority.Urgent) {
+            boolean q1HasAppointment = q1.getAppointment() != null;
+            boolean q2HasAppointment = q2.getAppointment() != null;
+
+            if (q1HasAppointment && !q2HasAppointment) return -1;
+            if (q2HasAppointment && !q1HasAppointment) return 1;
+        }
+
+        // 3. Urgent lên trước Normal
+        if (q1.getPriority() == Queue.Priority.Urgent && q2.getPriority() == Queue.Priority.Normal) {
+            return -1;
+        }
+        if (q2.getPriority() == Queue.Priority.Urgent && q1.getPriority() == Queue.Priority.Normal) {
+            return 1;
+        }
+
+        // 4. Cùng priority: so sánh thời gian check-in
+        return q1.getCheckInTime().compareTo(q2.getCheckInTime());
+    }
+
+    public List<QueuePatientResponse> getWaitingPatientsByRoom(UUID roomId) {
+        List<Queue> queues = queueRepository
+                .findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
+                        roomId, Queue.QueueStatus.Waiting
+                );
+
+        return queues.stream()
+                .sorted(this::compareQueuePriority)
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    // =================================================================
+    // BÁC SĨ GỌI BỆNH NHÂN TIẾP THEO - CẢI TIẾN
+    // =================================================================
+
+    @Transactional
+    public QueuePatientResponse callNextPatient(UUID roomId) {
+        ExaminationRoom room = examinationRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám"));
+
+        if (room.getCurrentQueueId() != null) {
+            completeCurrentPatient(room);
+        }
+
+        List<Queue> waiting = queueRepository
+                .findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
+                        roomId, Queue.QueueStatus.Waiting
+                );
+
+        if (waiting.isEmpty()) {
+            throw new RuntimeException("Không còn bệnh nhân chờ");
+        }
+
+        // Sắp xếp theo priority (ưu tiên người đặt lịch)
+        Queue next = waiting.stream()
+                .sorted(this::compareQueuePriority)
+                .findFirst()
+                .orElseThrow();
+
+        startExamination(next, room);
+        return mapToDto(next);
+    }
+
+    // =================================================================
+    // HELPER METHODS
+    // =================================================================
 
     private Patient createNewPatient(QueuePatientResponse dto) {
         Patient p = new Patient();
@@ -119,10 +363,6 @@ public class QueueService {
         }
     }
 
-    // =================================================================
-    // TỰ ĐỘNG TÌM PHÒNG TỐT NHẤT (ít bệnh nhân chờ nhất)
-    // =================================================================
-
     private ExaminationRoom findBestRoomForAssignment() {
         List<ExaminationRoom> activeRooms = examinationRoomRepository
                 .findByIsActiveTrueAndDoctorNotNullOrderByRoomNameAsc();
@@ -134,31 +374,6 @@ public class QueueService {
                         queueRepository.countByAssignedRoomAndStatus(room, Queue.QueueStatus.Waiting)
                 ))
                 .orElse(null);
-    }
-
-    // =================================================================
-    // BÁC SĨ GỌI BỆNH NHÂN TIẾP THEO
-    // =================================================================
-
-    @Transactional
-    public QueuePatientResponse callNextPatient(UUID roomId) {
-        ExaminationRoom room = examinationRoomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng khám"));
-
-        if (room.getCurrentQueueId() != null) {
-            completeCurrentPatient(room);
-        }
-
-        List<Queue> waiting = queueRepository.findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
-                roomId, Queue.QueueStatus.Waiting);
-
-        if (waiting.isEmpty()) {
-            throw new RuntimeException("Không còn bệnh nhân chờ");
-        }
-
-        Queue next = waiting.get(0);
-        startExamination(next, room);
-        return mapToDto(next);
     }
 
     private void startExamination(Queue queue, ExaminationRoom room) {
@@ -184,9 +399,70 @@ public class QueueService {
         examinationRoomRepository.save(room);
     }
 
+    private String generateNextQueueNumber() {
+        Queue last = queueRepository.findTopByOrderByCreatedAtDesc();
+        int next = (last != null && last.getQueueNumber() != null)
+                ? Integer.parseInt(last.getQueueNumber().substring(1)) + 1
+                : 1;
+        return "A" + String.format("%03d", next);
+    }
+
+    public QueuePatientResponse mapToDto(Queue queue) {
+        Patient p = queue.getPatient();
+        ExaminationRoom room = queue.getAssignedRoom();
+        Appointment appointment = queue.getAppointment();
+
+        var builder = QueuePatientResponse.builder()
+                .queueId(queue.getQueueId())
+                .queueNumber(queue.getQueueNumber())
+                .priority(queue.getPriority() != null ? queue.getPriority().getLabel() : "Normal")
+                .status(queue.getStatus() != null ? queue.getStatus().getLabel() : "Chờ khám")
+                .checkInTime(queue.getCheckInTime() != null ? queue.getCheckInTime().toString() : null)
+                .patientId(p.getPatientId())
+                .patientName(p.getFullName())
+                .phone(p.getPhone())
+                .email(p.getEmail())
+                .dob(p.getDob())
+                .gender(p.getGender() != null ? p.getGender().getLabel() : null)
+                .address(p.getAddress())
+                .idNumber(p.getIdNumber())
+                .insuranceNumber(p.getInsuranceNumber())
+                .notes(p.getNotes())
+                .hasAppointment(appointment != null);
+
+        if (room != null) {
+            builder.roomId(room.getRoomId())
+                    .roomName(room.getRoomName())
+                    .doctorName(room.getDoctor() != null ? room.getDoctor().getFullName() : null);
+        }
+
+        if (appointment != null) {
+            builder.appointmentCode(appointment.getAppointmentCode());
+        }
+
+        return builder.build();
+    }
+
     // =================================================================
-    // CẬP NHẬT TRẠNG THÁI / XÓA / TÌM KIẾM
+    // CÁC PHƯƠNG THỨC KHÁC (API CŨ)
     // =================================================================
+
+    public Optional<QueuePatientResponse> getQueueById(UUID queueId) {
+        return queueRepository.findById(queueId).map(this::mapToDto);
+    }
+
+    public List<QueuePatientResponse> getWaitingPatients() {
+        return getAllWaitingPatients();
+    }
+
+    public List<QueuePatientResponse> getUnassignedWaitingPatients() {
+        return List.of();
+    }
+
+    public List<QueuePatientResponse> getCompletedQueues() {
+        return queueRepository.findByStatusOrderByEndTimeDesc(Queue.QueueStatus.Completed)
+                .stream().map(this::mapToDto).toList();
+    }
 
     @Transactional
     public QueuePatientResponse updateQueueStatus(UUID queueId, String status) {
@@ -225,7 +501,7 @@ public class QueueService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hàng đợi"));
 
         if (dto.getPriority() != null) {
-            queue.setPriority(Queue.Priority.valueOf(dto.getPriority()));
+            queue.setPriority(determinePriority(dto.getPriority()));
         }
 
         Patient patient = queue.getPatient();
@@ -247,49 +523,8 @@ public class QueueService {
         return queueRepository.findAll().stream()
                 .filter(q -> phone == null || (q.getPatient() != null && q.getPatient().getPhone().contains(phone)))
                 .filter(q -> status == null || q.getStatus().name().equalsIgnoreCase(status))
+                .sorted(this::compareQueuePriority)
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
-    }
-
-    // =================================================================
-    // UTILS
-    // =================================================================
-
-    private String generateNextQueueNumber() {
-        Queue last = queueRepository.findTopByOrderByCreatedAtDesc();
-        int next = (last != null && last.getQueueNumber() != null)
-                ? Integer.parseInt(last.getQueueNumber().substring(1)) + 1
-                : 1;
-        return "A" + String.format("%03d", next);
-    }
-
-    public QueuePatientResponse mapToDto(Queue queue) {
-        Patient p = queue.getPatient();
-        ExaminationRoom room = queue.getAssignedRoom();
-
-        var builder = QueuePatientResponse.builder()
-                .queueId(queue.getQueueId())
-                .queueNumber(queue.getQueueNumber())
-                .priority(queue.getPriority() != null ? queue.getPriority().getLabel() : "Normal")
-                .status(queue.getStatus() != null ? queue.getStatus().getLabel() : "Chờ khám")
-                .checkInTime(queue.getCheckInTime() != null ? queue.getCheckInTime().toString() : null)
-                .patientId(p.getPatientId())
-                .patientName(p.getFullName())
-                .phone(p.getPhone())
-                .email(p.getEmail())
-                .dob(p.getDob())
-                .gender(p.getGender() != null ? p.getGender().getLabel() : null)
-                .address(p.getAddress())
-                .idNumber(p.getIdNumber())
-                .insuranceNumber(p.getInsuranceNumber())
-                .notes(p.getNotes());
-
-        if (room != null) {
-            builder.roomId(room.getRoomId())
-                    .roomName(room.getRoomName())
-                    .doctorName(room.getDoctor() != null ? room.getDoctor().getFullName() : null);
-        }
-
-        return builder.build();
     }
 }
