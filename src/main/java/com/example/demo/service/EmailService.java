@@ -220,7 +220,7 @@ public class EmailService {
 
     @Async
     public void sendAppointmentCancellationNotification(String toEmail, String patientName, String appointmentCode,
-            String magicLink) {
+            String magicLink, String cancelReason) {
         try {
             var template = emailTemplateService.getTemplateByType("APPOINTMENT_CANCELLATION");
 
@@ -229,6 +229,9 @@ public class EmailService {
             placeholders.put("appointmentCode", appointmentCode);
             placeholders.put("magicLink", magicLink);
             placeholders.put("logoUrl", getLogoUrl());
+            placeholders.put("cancelReason", cancelReason != null && !cancelReason.trim().isEmpty() 
+                ? cancelReason 
+                : "Không có lý do cụ thể được cung cấp");
 
             String subject = emailTemplateService.replacePlaceholders(template.getSubject(), placeholders);
             String content = emailTemplateService.replacePlaceholders(template.getContent(), placeholders);

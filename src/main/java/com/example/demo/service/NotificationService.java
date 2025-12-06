@@ -111,10 +111,11 @@ public class NotificationService {
     /**
      * Notify when appointment status changes: SMS immediately, Email after 30s.
      */
-    public void notifyStatusChange(Appointment appointment, String oldStatus, String newStatus) {
+    public void notifyStatusChange(Appointment appointment, String oldStatus, String newStatus, String cancelReason) {
         System.out.println("========== NOTIFY STATUS CHANGE CALLED ==========");
         System.out.println("Appointment Code: " + appointment.getAppointmentCode());
         System.out.println("Old Status: " + oldStatus + " -> New Status: " + newStatus);
+        System.out.println("Cancel Reason: " + cancelReason);
         System.out.println("Email: " + appointment.getEmail());
         System.out.println("Phone: " + appointment.getPhone());
         
@@ -138,7 +139,7 @@ public class NotificationService {
         // Email Delayed
         if (appointment.getEmail() != null && !appointment.getEmail().trim().isEmpty()) {
             System.out.println("Scheduling delayed email in 30 seconds...");
-            sendDelayedStatusEmail(appointment, newStatus, magicLink);
+            sendDelayedStatusEmail(appointment, newStatus, magicLink, cancelReason);
         } else {
             System.out.println("⚠ No email - skipping email");
         }
@@ -169,7 +170,7 @@ public class NotificationService {
     }
 
     @Async
-    public void sendDelayedStatusEmail(Appointment appointment, String newStatus, String magicLink) {
+    public void sendDelayedStatusEmail(Appointment appointment, String newStatus, String magicLink, String cancelReason) {
         try {
             Thread.sleep(30000); // Wait 30 seconds
             
@@ -178,7 +179,8 @@ public class NotificationService {
                     appointment.getEmail(),
                     appointment.getPatientName(),
                     appointment.getAppointmentCode(),
-                    magicLink
+                    magicLink,
+                    cancelReason
                 );
             } else if ("Confirmed".equalsIgnoreCase(newStatus)) {
                 emailService.sendAppointmentStatusChangeNotification(

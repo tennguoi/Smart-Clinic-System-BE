@@ -46,7 +46,7 @@ public class EmailTemplateInitializer implements CommandLineRunner {
                 new TemplateDefinition("APPOINTMENT_UPDATE", "Thay Đổi Lịch Khám",
                         Arrays.asList("patientName", "appointmentCode", "oldTime", "newTime", "magicLink", "logoUrl")),
                 new TemplateDefinition("APPOINTMENT_CANCELLATION", "Hủy Lịch Khám",
-                        Arrays.asList("patientName", "appointmentCode", "magicLink", "logoUrl")),
+                        Arrays.asList("patientName", "appointmentCode", "magicLink", "logoUrl", "cancelReason")),
                 new TemplateDefinition("APPOINTMENT_STATUS_CHANGE", "Cập Nhật Trạng Thái",
                         Arrays.asList("patientName", "appointmentCode", "newStatus", "magicLink", "logoUrl")));
 

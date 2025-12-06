@@ -64,8 +64,9 @@ public class AppointmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<AppointmentResponse> updateStatus(
             @PathVariable UUID id,
-            @RequestParam Status status
+            @RequestParam Status status,
+            @RequestParam(required = false) String cancelReason
     ) {
-        return ResponseEntity.ok(service.updateStatus(id, status));
+        return ResponseEntity.ok(service.updateStatus(id, status, cancelReason));
     }
 }

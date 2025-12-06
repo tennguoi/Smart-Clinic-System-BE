@@ -268,7 +268,7 @@ public class AppointmentService {
     // =========================================================
 
     @Transactional
-    public AppointmentResponse updateStatus(UUID id, Appointment.Status status) {
+    public AppointmentResponse updateStatus(UUID id, Appointment.Status status, String cancelReason) {
         Appointment appt = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 
@@ -294,6 +294,7 @@ public class AppointmentService {
         if (oldStatus != status) {
             System.out.println("========== STATUS CHANGE NOTIFICATION ==========");
             System.out.println("Old Status: " + oldStatus + " -> New Status: " + status);
+            System.out.println("Cancel Reason: " + cancelReason);
             System.out.println("Phone: " + appt.getPhone());
             System.out.println("Email: " + appt.getEmail());
             
@@ -321,7 +322,7 @@ public class AppointmentService {
             if (appt.getEmail() != null && !appt.getEmail().isEmpty()) {
                 try {
                     System.out.println(">>> Scheduling email notification (30s delay)");
-                    notificationService.notifyStatusChange(appt, oldStatus.toString(), status.toString());
+                    notificationService.notifyStatusChange(appt, oldStatus.toString(), status.toString(), cancelReason);
                     emailScheduled = true;
                     System.out.println("✓ Email notification scheduled successfully");
                 } catch (Exception e) {

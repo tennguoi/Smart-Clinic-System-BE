@@ -214,8 +214,11 @@ public class EmailTemplateDefaults {
                 "</div>" +
                 "<div class=\"content\">" +
                 "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Lịch khám của bạn với mã <strong>{{appointmentCode}}</strong> đã bị <strong style=\"color:#d9534f;\">HỦY</strong>.</p>"
-                +
+                "<p>Lịch khám của bạn với mã <strong>{{appointmentCode}}</strong> đã bị <strong style=\"color:#d9534f;\">HỦY</strong>.</p>" +
+                "<div class=\"info-box\" style=\"border-left-color:#d9534f;\">" +
+                "<p><strong>📝 Lý do hủy:</strong></p>" +
+                "<p>{{cancelReason}}</p>" +
+                "</div>" +
                 "<p>Nếu đây là sự nhầm lẫn hoặc bạn muốn đặt lại lịch, vui lòng liên hệ với chúng tôi hoặc:</p>" +
                 "<a href=\"{{magicLink}}\" class=\"button\" style=\"background:#d9534f;\">Đặt Lại Lịch</a>" +
                 "</div>" +
