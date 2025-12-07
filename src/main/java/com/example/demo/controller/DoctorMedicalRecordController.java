@@ -128,7 +128,7 @@ public class DoctorMedicalRecordController {
         }
     }
 
-    // Export PDF giữ nguyên 100%
+    // Export PDF phiếu khám bệnh
     @GetMapping("/{recordId}/export-pdf")
     public ResponseEntity<?> exportRecordAsPdf(@PathVariable UUID recordId) {
         try {
@@ -138,21 +138,6 @@ public class DoctorMedicalRecordController {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
                     .header("Content-Disposition", "attachment; filename=\"HoSoBenhAn_" + recordId + ".pdf\"")
-                    .body(pdf);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
-    }
-
-    @GetMapping("/{recordId}/export-prescription")
-    public ResponseEntity<?> exportPrescriptionAsPdf(@PathVariable UUID recordId) {
-        try {
-            MedicalRecord record = medicalRecordRepository.findById(recordId)
-                    .orElseThrow(() -> new RuntimeException("Hồ sơ không tồn tại"));
-            byte[] pdf = pdfExportService.generatePrescriptionPdfForRecord(record);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header("Content-Disposition", "attachment; filename=\"DonThuoc_" + recordId + ".pdf\"")
                     .body(pdf);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
