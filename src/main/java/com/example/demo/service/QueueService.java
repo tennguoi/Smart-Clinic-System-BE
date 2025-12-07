@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.QueuePatientResponse;
-import com.example.demo.dto.appointment.AppointmentCheckInDTO; // ✅ IMPORT ĐÚNG
+import com.example.demo.dto.appointment.AppointmentCheckInDTO;
 import com.example.demo.entity.*;
 import com.example.demo.entity.Queue;
 import com.example.demo.repository.*;
@@ -26,12 +26,6 @@ public class QueueService {
     // ✨ TÍNH NĂNG MỚI: TẠO HÀNG CHỜ TỪ LỊCH HẸN
     // =================================================================
 
-    /**
-     * Tạo hàng chờ từ lịch hẹn - Nhận thông tin bổ sung từ form
-     * @param appointmentId ID của lịch hẹn
-     * @param additionalInfo Thông tin bổ sung từ form (dob, gender, address...)
-     * @return Thông tin bệnh nhân trong hàng chờ
-     */
     @Transactional
     public QueuePatientResponse createQueueFromAppointment(UUID appointmentId, Map<String, Object> additionalInfo) {
         // 1. Lấy thông tin appointment
@@ -94,10 +88,6 @@ public class QueueService {
         return mapToDto(savedQueue);
     }
 
-
-    /**
-     * Tạo bệnh nhân mới từ thông tin appointment + additionalInfo
-     */
     private Patient createPatientFromAppointment(Appointment appointment, Map<String, Object> additionalInfo) {
         Patient patient = new Patient();
         patient.setFullName(appointment.getPatientName());
@@ -105,11 +95,9 @@ public class QueueService {
         patient.setEmail(appointment.getEmail());
         patient.setNotes(appointment.getNotes());
 
-        // Lấy thông tin bổ sung từ form
         if (additionalInfo != null) {
             updatePatientFromAdditionalInfo(patient, additionalInfo);
         } else {
-            // Giá trị mặc định nếu không có thông tin bổ sung
             patient.setGender(Patient.Gender.other);
             patient.setDob(java.time.LocalDate.now().minusYears(30));
         }
@@ -117,9 +105,6 @@ public class QueueService {
         return patientRepository.save(patient);
     }
 
-    /**
-     * Cập nhật thông tin bổ sung cho bệnh nhân
-     */
     private void updatePatientFromAdditionalInfo(Patient patient, Map<String, Object> additionalInfo) {
         if (additionalInfo.containsKey("dob")) {
             String dobStr = (String) additionalInfo.get("dob");
@@ -146,10 +131,6 @@ public class QueueService {
         patientRepository.save(patient);
     }
 
-    /**
-     * Lấy danh sách lịch hẹn đã xác nhận trong ngày hôm nay
-     * Dùng để hiển thị cho lễ tân danh sách người cần thêm vào hàng chờ
-     */
     public List<AppointmentCheckInDTO> getTodayConfirmedAppointments() {
         LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59);
@@ -163,7 +144,6 @@ public class QueueService {
 
         return appointments.stream()
                 .map(apt -> {
-                    // Kiểm tra xem đã tạo queue chưa
                     boolean hasQueue = queueRepository.findByAppointmentId(apt.getAppointmentId()).isPresent();
 
                     return AppointmentCheckInDTO.builder()
@@ -223,9 +203,6 @@ public class QueueService {
         return mapToDto(savedQueue);
     }
 
-    /**
-     * Xác định mức độ ưu tiên dựa trên input
-     */
     private Queue.Priority determinePriority(String priorityStr) {
         if (priorityStr == null || priorityStr.isBlank()) {
             return Queue.Priority.Normal;
@@ -242,16 +219,11 @@ public class QueueService {
     // LẤY DỮ LIỆU - CẢI TIẾN XẾP HÀNG
     // =================================================================
 
-    /**
-     * Danh sách chờ - ƯU TIÊN người đặt lịch trước
-     * Sắp xếp theo: Priority (Emergency > Urgent > Normal) → Thời gian check-in
-     */
     public List<QueuePatientResponse> getAllWaitingPatients() {
         List<Queue> queues = queueRepository.findByStatusInOrderByPriorityAscCheckInTimeAsc(
                 List.of(Queue.QueueStatus.Waiting, Queue.QueueStatus.InProgress)
         );
 
-        // Sắp xếp lại: Urgent (đặt lịch) lên trước Normal (walk-in) cùng thời điểm
         return queues.stream()
                 .sorted(this::compareQueuePriority)
                 .map(this::mapToDto)
@@ -259,36 +231,62 @@ public class QueueService {
     }
 
     /**
-     * Comparator ưu tiên người đặt lịch
-     * Emergency > Urgent (có appointment) > Urgent (không có appointment) > Normal
+     * Comparator ưu tiên TUYỆT ĐỐI cho người đặt lịch
+     *
+     * Quy tắc ưu tiên (từ cao xuống thấp):
+     * 1. Emergency có appointment → sắp xếp theo appointmentTime
+     * 2. Emergency không appointment → sắp xếp theo checkInTime
+     * 3. Urgent có appointment → sắp xếp theo appointmentTime
+     * 4. Urgent không appointment → sắp xếp theo checkInTime
+     * 5. Normal có appointment → sắp xếp theo appointmentTime
+     * 6. Normal không appointment → sắp xếp theo checkInTime
+     *
+     * → Người CÓ APPOINTMENT luôn lên trước người KHÔNG CÓ trong cùng priority
+     *
+     * Ví dụ:
+     * - 7:00 - A: Urgent walk-in, check-in 7:00
+     * - 8:00 - B: Urgent đặt lịch 10:00, check-in 8:00
+     * → Thứ tự: B (có appointment) → A (walk-in)
      */
     private int compareQueuePriority(Queue q1, Queue q2) {
-        // 1. So sánh Emergency trước
-        if (q1.getPriority() == Queue.Priority.Emergency && q2.getPriority() != Queue.Priority.Emergency) {
+        boolean q1HasAppointment = q1.getAppointment() != null;
+        boolean q2HasAppointment = q2.getAppointment() != null;
+
+        Queue.Priority p1 = q1.getPriority();
+        Queue.Priority p2 = q2.getPriority();
+
+        // So sánh Priority trước (Emergency > Urgent > Normal)
+        int priorityCompare = p1.compareTo(p2);
+
+        // Nếu khác Priority → return ngay
+        if (priorityCompare != 0) {
+            return priorityCompare;
+        }
+
+        // ===== CÙNG PRIORITY =====
+
+        // Trường hợp 1: Cả 2 đều có appointment
+        // → So sánh theo appointmentTime (ai đặt lịch sớm hơn)
+        if (q1HasAppointment && q2HasAppointment) {
+            LocalDateTime appt1Time = q1.getAppointment().getAppointmentTime();
+            LocalDateTime appt2Time = q2.getAppointment().getAppointmentTime();
+            return appt1Time.compareTo(appt2Time);
+        }
+
+        // Trường hợp 2: Chỉ q1 có appointment
+        // → q1 lên trước (bất kể thời gian check-in)
+        if (q1HasAppointment && !q2HasAppointment) {
             return -1;
         }
-        if (q2.getPriority() == Queue.Priority.Emergency && q1.getPriority() != Queue.Priority.Emergency) {
+
+        // Trường hợp 3: Chỉ q2 có appointment
+        // → q2 lên trước (bất kể thời gian check-in)
+        if (!q1HasAppointment && q2HasAppointment) {
             return 1;
         }
 
-        // 2. Cùng Urgent: có appointment lên trước
-        if (q1.getPriority() == Queue.Priority.Urgent && q2.getPriority() == Queue.Priority.Urgent) {
-            boolean q1HasAppointment = q1.getAppointment() != null;
-            boolean q2HasAppointment = q2.getAppointment() != null;
-
-            if (q1HasAppointment && !q2HasAppointment) return -1;
-            if (q2HasAppointment && !q1HasAppointment) return 1;
-        }
-
-        // 3. Urgent lên trước Normal
-        if (q1.getPriority() == Queue.Priority.Urgent && q2.getPriority() == Queue.Priority.Normal) {
-            return -1;
-        }
-        if (q2.getPriority() == Queue.Priority.Urgent && q1.getPriority() == Queue.Priority.Normal) {
-            return 1;
-        }
-
-        // 4. Cùng priority: so sánh thời gian check-in
+        // Trường hợp 4: Cả 2 đều KHÔNG có appointment
+        // → So sánh theo checkInTime (ai đến trước)
         return q1.getCheckInTime().compareTo(q2.getCheckInTime());
     }
 
