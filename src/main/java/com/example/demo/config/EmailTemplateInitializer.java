@@ -60,6 +60,7 @@ public class EmailTemplateInitializer implements CommandLineRunner {
                             .templateName(def.name)
                             .subject(defaults.get("subject"))
                             .content(defaults.get("content"))
+                            .bodyContent(defaults.get("bodyContent"))
                             .isHtml(true)
                             .availablePlaceholders(objectMapper.writeValueAsString(def.placeholders))
                             .build();

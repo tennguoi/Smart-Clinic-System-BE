@@ -19,6 +19,7 @@ public class EmailTemplateResponse {
     private String templateName;
     private String subject;
     private String content;
+    private String bodyContent; // Editable body content for React Quill
     private Boolean isHtml;
     private List<String> availablePlaceholders;
     private LocalDateTime createdAt;

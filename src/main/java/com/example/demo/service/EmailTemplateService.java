@@ -52,7 +52,7 @@ public class EmailTemplateService {
     }
 
     /**
-     * Update template
+     * Update template - prioritizes bodyContent and rebuilds full content
      */
     public EmailTemplateResponse updateTemplate(UUID id, UpdateEmailTemplateRequest request) {
         EmailTemplate template = emailTemplateRepository.findById(id)
@@ -61,9 +61,24 @@ public class EmailTemplateService {
         if (request.getSubject() != null) {
             template.setSubject(request.getSubject());
         }
-        if (request.getContent() != null) {
+
+        // If bodyContent is provided, save it and rebuild full content
+        if (request.getBodyContent() != null) {
+            template.setBodyContent(request.getBodyContent());
+            // Rebuild full content from bodyContent + header + footer
+            String title = EmailTemplateDefaults.getTitleForType(template.getTemplateType());
+            String fullContent;
+            if (EmailTemplateDefaults.usesRedHeader(template.getTemplateType())) {
+                fullContent = EmailTemplateDefaults.buildFullContentWithRedHeader(title, request.getBodyContent());
+            } else {
+                fullContent = EmailTemplateDefaults.buildFullContent(title, request.getBodyContent());
+            }
+            template.setContent(fullContent);
+        } else if (request.getContent() != null) {
+            // Legacy: if only content is provided, use it directly
             template.setContent(request.getContent());
         }
+
         if (request.getIsHtml() != null) {
             template.setIsHtml(request.getIsHtml());
         }
@@ -84,6 +99,7 @@ public class EmailTemplateService {
 
         template.setSubject(defaults.get("subject"));
         template.setContent(defaults.get("content"));
+        template.setBodyContent(defaults.get("bodyContent"));
         template.setIsHtml(true);
 
         EmailTemplate saved = emailTemplateRepository.save(template);
@@ -129,6 +145,7 @@ public class EmailTemplateService {
                 .templateName(template.getTemplateName())
                 .subject(template.getSubject())
                 .content(template.getContent())
+                .bodyContent(template.getBodyContent())
                 .isHtml(template.getIsHtml())
                 .availablePlaceholders(placeholders)
                 .createdAt(template.getCreatedAt())
