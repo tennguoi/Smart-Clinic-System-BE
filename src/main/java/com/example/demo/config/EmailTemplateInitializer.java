@@ -66,9 +66,9 @@ public class EmailTemplateInitializer implements CommandLineRunner {
                             .build();
 
                     emailTemplateRepository.save(template);
-                    System.out.println("✓ Initialized email template: " + def.name);
+                    System.out.println("Initialized email template: " + def.name);
                 } catch (Exception e) {
-                    System.err.println("✗ Failed to initialize template: " + def.name);
+                    System.err.println("Failed to initialize template: " + def.name);
                     e.printStackTrace();
                 }
             }
