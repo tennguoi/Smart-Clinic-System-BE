@@ -73,4 +73,7 @@ public interface MedicalRecordRepository
                         "WHERE p.insuranceNumber = :insuranceNumber " +
                         "ORDER BY mr.createdAt DESC")
         List<MedicalRecord> findByPatientInsuranceNumber(@Param("insuranceNumber") String insuranceNumber);
+
+        // ✅ NEW: Find by QueueID
+        Optional<MedicalRecord> findByQueueId(UUID queueId);
 }

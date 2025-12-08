@@ -361,25 +361,19 @@ public class MedicalRecordService {
     // ==============================
 
     private MedicalRecord getOrCreateRecordForCurrentPatient(Queue queue, User doctor) {
-        Patient patient = queue.getPatient(); // Đảm bảo queue có patient
-        String patientName = patient.getFullName();
-        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-
-        return medicalRecordRepository
-                .findByDoctor_UserIdAndPatient_PatientIdAndCreatedAtAfter(
-                        doctor.getUserId(),
-                        patient.getPatientId(),
-                        today)
-                .stream()
-                .findFirst()
+        // 1. Tìm hồ sơ bệnh án gắn với lượt khám này (QueueID)
+        return medicalRecordRepository.findByQueueId(queue.getQueueId())
                 .orElseGet(() -> {
+                    // 2. Nếu chưa có, tạo mới
+                    Patient patient = queue.getPatient();
                     MedicalRecord newRecord = MedicalRecord.builder()
                             .doctor(doctor)
-                            .patient(patient) // Gán patient entity
-                            .patientName(patientName) // Vẫn giữ tên để hiển thị nhanh
+                            .patient(patient)
+                            .patientName(patient.getFullName())
                             .diagnosis("")
                             .treatmentNotes("")
                             .createdAt(LocalDateTime.now())
+                            .queueId(queue.getQueueId()) // ✅ LIÊN KẾT VỚI QUEUE
                             .build();
                     return medicalRecordRepository.save(newRecord);
                 });
