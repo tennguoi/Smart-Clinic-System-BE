@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.*;
+import com.example.demo.dto.PatientHistorySearchResponse;
 import com.example.demo.dto.prescription.AddPrescriptionRequest;
 import com.example.demo.entity.MedicalRecord;
 import com.example.demo.repository.MedicalRecordRepository;
@@ -29,9 +30,9 @@ public class DoctorMedicalRecordController {
     private final JwtUtil jwtUtil;;
 
     public DoctorMedicalRecordController(MedicalRecordService medicalRecordService,
-                                         PdfExportService pdfExportService,
-                                         MedicalRecordRepository medicalRecordRepository,
-                                         JwtUtil jwtUtil) {
+            PdfExportService pdfExportService,
+            MedicalRecordRepository medicalRecordRepository,
+            JwtUtil jwtUtil) {
         this.medicalRecordService = medicalRecordService;
         this.pdfExportService = pdfExportService;
         this.medicalRecordRepository = medicalRecordRepository;
@@ -43,14 +44,13 @@ public class DoctorMedicalRecordController {
             @RequestHeader("Authorization") String authorization,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
-    ) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         // 1. Lấy token sạch (bỏ chữ Bearer)
         String token = extractToken(authorization);
 
         // 2. Lấy ID bác sĩ từ token
         UUID userId = jwtUtil.getUserIdFromToken(token);
-        
+
         // 3. Lấy roles từ token
         List<String> roles = jwtUtil.getRolesFromToken(token);
 
@@ -59,7 +59,7 @@ public class DoctorMedicalRecordController {
         criteria.setKeyword(keyword);
         criteria.setStartDate(startDate);
         criteria.setEndDate(endDate);
-        
+
         // Nếu là Admin, không filter theo doctorId (xem tất cả)
         // Nếu là Bác sĩ, chỉ xem hồ sơ của mình
         if (!roles.contains("ROLE_ADMIN")) {
@@ -69,6 +69,7 @@ public class DoctorMedicalRecordController {
         // 4. Gọi Service
         return ResponseEntity.ok(medicalRecordService.searchMyRecords(criteria));
     }
+
     @PostMapping
     public ResponseEntity<MedicalRecordResponse> create(
             @RequestHeader("Authorization") String authorization,
@@ -91,13 +92,24 @@ public class DoctorMedicalRecordController {
         return ResponseEntity.ok(medicalRecordService.listByPatient(patientId));
     }
 
+    /**
+     * Tra cứu lịch sử khám bệnh của bệnh nhân theo SĐT, CCCD hoặc số bảo hiểm y tế
+     */
+    @GetMapping("/patient-history")
+    public ResponseEntity<PatientHistorySearchResponse> searchPatientHistory(
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String idNumber,
+            @RequestParam(required = false) String insuranceNumber) {
+        return ResponseEntity.ok(medicalRecordService.searchPatientHistory(phone, idNumber, insuranceNumber));
+    }
+
     // GIỮ NGUYÊN TÊN CŨ
-     @GetMapping("/mine")
+    @GetMapping("/mine")
     public ResponseEntity<List<MedicalRecordResponse>> listMine(
             @RequestHeader("Authorization") String authorization) {
         return ResponseEntity.ok(medicalRecordService.listMyCreated(authorization));
     }
-    
+
     @GetMapping("/{recordId}")
     public ResponseEntity<MedicalRecordDetailResponse> getRecordDetail(@PathVariable UUID recordId) {
         try {
@@ -143,6 +155,7 @@ public class DoctorMedicalRecordController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
+
     private String extractToken(String bearerToken) {
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
