@@ -71,7 +71,7 @@ public class ChatbotController {
             log.info("🔄 Calling n8n webhook...");
 
             ResponseEntity<Map> res = restTemplate.postForEntity(
-                    "https://n8n.quanliduan-pms.site/webhook/chat-update",
+                    "https://n8n.quanliduan-pms.site/webhook/chat-update2",
                     body,
                     Map.class
             );
