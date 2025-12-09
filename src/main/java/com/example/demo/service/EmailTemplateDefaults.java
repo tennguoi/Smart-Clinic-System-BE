@@ -28,8 +28,7 @@ public class EmailTemplateDefaults {
             case "APPOINTMENT_PENDING":
                 template.put("subject", "Yêu cầu đặt lịch đã được tiếp nhận - Tai-Mũi-Họng 2CTW");
                 template.put("bodyContent", getAppointmentPendingBodyContent());
-                template.put("content",
-                        buildFullContent("Yêu Cầu Đặt Lịch Đã Nhận", getAppointmentPendingBodyContent()));
+                template.put("content", buildFullContent("Yêu Cầu Đặt Lịch Đã Nhận", getAppointmentPendingBodyContent()));
                 break;
             case "APPOINTMENT_REMINDER":
                 template.put("subject", "Nhắc nhở lịch khám ngày mai - Tai-Mũi-Họng 2CTW");
@@ -72,11 +71,13 @@ public class EmailTemplateDefaults {
      */
     public static String buildFullContent(String title, String bodyContent) {
         return getEmailHeader() +
-                "<div class=\"header\">" +
-                "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>" + title + "</h2>" +
+                "<div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1)\">"
+                +
+                "<div style=\"background:linear-gradient(135deg,#0066cc,#0052a3);color:#fff;padding:30px;text-align:center\">"
+                +
+                "<h1 style=\"margin:0;font-size:28px;font-weight:600\">" + title + "</h1>" +
                 "</div>" +
-                "<div class=\"content\">" +
+                "<div style=\"padding:30px\">" +
                 bodyContent +
                 "</div>" +
                 getEmailFooter();
@@ -87,37 +88,27 @@ public class EmailTemplateDefaults {
      */
     public static String buildFullContentWithRedHeader(String title, String bodyContent) {
         return getEmailHeader() +
-                "<div class=\"header\" style=\"background:#d9534f;\">" +
-                "<img src=\"{{logoUrl}}\" alt=\"Logo\" class=\"logo\">" +
-                "<h2>" + title + "</h2>" +
+                "<div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1)\">"
+                +
+                "<div style=\"background:linear-gradient(135deg,#dc3545,#c82333);color:#fff;padding:30px;text-align:center\">"
+                +
+                "<h1 style=\"margin:0;font-size:28px;font-weight:600\">" + title + "</h1>" +
                 "</div>" +
-                "<div class=\"content\">" +
+                "<div style=\"padding:30px\">" +
                 bodyContent +
                 "</div>" +
                 getEmailFooter();
     }
 
     private static String getEmailHeader() {
-        return "<!DOCTYPE html>" +
-                "<html>" +
-                "<head><meta charset=\"UTF-8\"><style>" +
-                "body{font-family:Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;}"
-                +
-                ".header{text-align:center;padding:20px;background:#0056b3;color:white;border-radius:8px 8px 0 0;}" +
-                ".logo{max-width:150px;height:auto;margin-bottom:10px;}" +
-                ".content{background:#f9f9f9;padding:30px;border-radius:0 0 8px 8px;}" +
-                ".info-box{background:white;padding:15px;margin:15px 0;border-left:4px solid #0056b3;border-radius:4px;}"
-                +
-                ".button{display:inline-block;padding:12px 30px;background:#0056b3;color:white;text-decoration:none;border-radius:5px;margin:15px 0;}"
-                +
-                ".footer{text-align:center;padding:20px;color:#666;font-size:12px;}" +
-                "</style></head><body>";
+        return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head><body style=\"margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f4f7fa;color:#333\">";
     }
 
     private static String getEmailFooter() {
-        return "<div class=\"footer\">" +
-                "<p>Trân trọng,<br><strong>Phòng khám Tai-Mũi-Họng 2CTW</strong></p>" +
-                "<p style=\"font-size:11px;color:#999;\">Email này được gửi tự động, vui lòng không trả lời.</p>" +
+        return "</div>" +
+                "<div style=\"background:#f8f9fa;padding:20px;text-align:center;color:#6c757d;font-size:14px\">" +
+                "<p style=\"margin:5px 0\">Trân trọng, <strong>Phòng khám Tai-Mũi-Họng 2CTW</strong></p>" +
+                "<p style=\"margin:5px 0\">Email này được gửi tự động, vui lòng không trả lời.</p>" +
                 "</div></body></html>";
     }
 
@@ -125,108 +116,139 @@ public class EmailTemplateDefaults {
     // ====================
 
     private static String getOtpBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<div class=\"info-box\">" +
-                "<h3 style=\"color:#0056b3;margin:0;\">Mã OTP của bạn: <span style=\"font-size:24px;letter-spacing:3px;\">{{otp}}</span></h3>"
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<div style=\"background:#f8f9fa;border-left:4px solid #0066cc;padding:20px;margin:20px 0;border-radius:8px\">"
+                +
+                "<p style=\"font-size:18px;margin:0;color:#0066cc\">Mã OTP của bạn: <strong style=\"font-size:32px;letter-spacing:4px\">{{otp}}</strong></p>"
                 +
                 "</div>" +
-                "<p>Vui lòng nhập mã này để tiếp tục. Mã OTP có hiệu lực trong vòng <strong>5 phút</strong>.</p>" +
-                "<p style=\"color:#d9534f;\"><strong>⚠️ Lưu ý:</strong> Không chia sẻ mã này với bất kỳ ai.</p>";
+                "<p style=\"font-size:14px;color:#666\">Vui lòng nhập mã này để tiếp tục. Mã OTP có hiệu lực trong vòng <strong>5 phút</strong>.</p>"
+                +
+                "<p style=\"font-size:14px;color:#dc3545\">⚠️ <strong>Lưu ý:</strong> Không chia sẻ mã này với bất kỳ ai.</p>";
     }
 
     private static String getAppointmentConfirmationBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Lịch khám của bạn đã được <strong style=\"color:#28a745;\">XÁC NHẬN</strong>!</p>" +
-                "<div class=\"info-box\">" +
-                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>Được xác nhận bởi:</strong> {{confirmedByName}}</p>" +
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">Lịch khám của bạn đã được <strong style=\"color:#28a745\">XÁC NHẬN</strong>!</p>"
+                +
+                "<div style=\"background:#f8f9fa;padding:20px;margin:20px 0;border-radius:8px;border:2px solid #28a745\">"
+                +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Được xác nhận bởi:</strong> {{confirmedByName}}</p>"
+                +
                 "</div>" +
-                "<p>Vui lòng đến <strong>đúng giờ</strong>. Nếu có thay đổi, vui lòng liên hệ phòng khám.</p>";
+                "<p style=\"font-size:14px;color:#666\">Vui lòng đến đúng giờ. Nếu có thay đổi, vui lòng liên hệ phòng khám.</p>";
     }
 
     private static String getAppointmentPendingBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Chúng tôi đã nhận được yêu cầu đặt lịch khám của bạn.</p>" +
-                "<div class=\"info-box\">" +
-                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>Thời gian dự kiến:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>Số điện thoại:</strong> {{phone}}</p>" +
-                "<p><strong>Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
-                "<p><strong>Triệu chứng/Ghi chú:</strong> {{notes}}</p>" +
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">Chúng tôi đã nhận được yêu cầu đặt lịch khám của bạn.</p>"
+                +
+                "<div style=\"background:#fff3cd;padding:20px;margin:20px 0;border-radius:8px;border-left:4px solid #ffc107\">"
+                +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Thời gian dự kiến:</strong> {{appointmentTime}}</p>"
+                +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Số điện thoại:</strong> {{phone}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Triệu chứng/Ghi chú:</strong> {{notes}}</p>" +
                 "</div>" +
-                "<p>Nhân viên phòng khám sẽ sớm liên hệ với bạn để xác nhận lịch.</p>";
+                "<p style=\"font-size:14px;color:#666\">Nhân viên phòng khám sẽ sớm liên hệ với bạn để xác nhận lịch.</p>";
     }
 
     private static String getAppointmentReminderBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Đây là email nhắc nhở lịch khám của bạn vào <strong>NGÀY MAI</strong>.</p>" +
-                "<div class=\"info-box\">" +
-                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>Thời gian còn lại:</strong> Khoảng {{hoursUntilAppointment}} giờ nữa</p>" +
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">Đây là email nhắc nhở lịch khám của bạn vào <strong style=\"color:#dc3545\">NGÀY MAI</strong>.</p>"
+                +
+                "<div style=\"background:#e7f3ff;padding:20px;margin:20px 0;border-radius:8px;border-left:4px solid #0066cc\">"
+                +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Thời gian còn lại:</strong> Khoảng <strong style=\"color:#dc3545\">{{hoursUntilAppointment}} giờ nữa</strong></p>"
+                +
                 "</div>" +
-                "<div class=\"info-box\" style=\"border-left-color:#ffc107;\">" +
-                "<p><strong>Lưu ý quan trọng:</strong></p>" +
-                "<ul>" +
-                "<li>Đến sớm 15 phút trước giờ hẹn</li>" +
-                "<li>Mang theo giấy tờ tùy thân (CMND/CCCD)</li>" +
-                "<li>Nếu không thể đến, vui lòng liên hệ sớm nhất</li>" +
+                "<div style=\"background:#fff;border:2px dashed #0066cc;padding:20px;margin:20px 0;border-radius:8px\">" +
+                "<p style=\"margin:0 0 10px 0;font-size:16px;font-weight:600;color:#0066cc\">📋 Lưu ý quan trọng:</p>"
+                +
+                "<ul style=\"margin:0;padding-left:20px;color:#333\">" +
+                "<li style=\"margin:8px 0\">Đến sớm <strong>15 phút</strong> trước giờ hẹn</li>" +
+                "<li style=\"margin:8px 0\">Mang theo giấy tờ tùy thân (CMND/CCCD)</li>" +
+                "<li style=\"margin:8px 0\">Nếu không thể đến, vui lòng liên hệ sớm nhất</li>" +
                 "</ul>" +
                 "</div>" +
-                "<p>Email: {{clinicEmail}}</p>";
+                "<p style=\"font-size:14px;color:#666;margin-top:20px\">📧 <strong>Email:</strong> {{clinicEmail}}</p>";
     }
 
     private static String getNewAppointmentBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Cảm ơn bạn đã đặt lịch khám tại phòng khám của chúng tôi.</p>" +
-                "<div class=\"info-box\">" +
-                "<p><strong>Mã lịch hẹn:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>Họ tên:</strong> {{patientName}}</p>" +
-                "<p><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
-                "<p><strong>Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
-                "<p><strong>Ghi chú:</strong> {{notes}}</p>" +
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">Cảm ơn bạn đã đặt lịch khám tại phòng khám của chúng tôi.</p>"
+                +
+                "<div style=\"background:#f8f9fa;padding:20px;margin:20px 0;border-radius:8px;border-left:4px solid #0066cc\">"
+                +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Mã lịch hẹn:</strong> {{appointmentCode}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Họ tên:</strong> {{patientName}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Thời gian:</strong> {{appointmentTime}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Dịch vụ đăng ký:</strong> {{serviceNames}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Ghi chú:</strong> {{notes}}</p>" +
                 "</div>" +
-                "<a href=\"{{magicLink}}\" class=\"button\">Theo Dõi Lịch Khám</a>" +
-                "<p>Vui lòng đến đúng giờ để được phục vụ tốt nhất.</p>";
+                "<div style=\"text-align:center;margin:30px 0\">" +
+                "<a href=\"{{trackingLink}}\" style=\"display:inline-block;background:#0066cc;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px\">Theo Dõi Lịch Khám</a>"
+                +
+                "</div>" +
+                "<p style=\"font-size:14px;color:#666\">Vui lòng đến đúng giờ để được phục vụ tốt nhất.</p>";
     }
 
     private static String getAppointmentUpdateBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Lịch khám của bạn đã được <strong style=\"color:#ffc107;\">THAY ĐỔI</strong>.</p>" +
-                "<div class=\"info-box\">" +
-                "<p><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
-                "<p><strong>Thời gian cũ:</strong> <del>{{oldTime}}</del></p>" +
-                "<p><strong style=\"color:#0056b3;\"> Thời gian MỚI:</strong> {{newTime}}</p>" +
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">Lịch khám của bạn đã được <strong style=\"color:#ffc107\">THAY ĐỔI</strong>.</p>"
+                +
+                "<div style=\"background:#fff3cd;padding:20px;margin:20px 0;border-radius:8px;border-left:4px solid #ffc107\">"
+                +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Mã lịch khám:</strong> {{appointmentCode}}</p>" +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Thời gian cũ:</strong> <span style=\"text-decoration:line-through;color:#999\">{{oldTime}}</span></p>"
+                +
+                "<p style=\"margin:8px 0;font-size:15px\"><strong>Thời gian MỚI:</strong> <span style=\"color:#dc3545;font-weight:600\">{{newTime}}</span></p>"
+                +
                 "</div>" +
-                "<a href=\"{{magicLink}}\" class=\"button\">Xem Chi Tiết</a>" +
-                "<p>Nếu bạn có thắc mắc về sự thay đổi này, vui lòng liên hệ với phòng khám.</p>";
+                "<div style=\"text-align:center;margin:30px 0\">" +
+                "<a href=\"{{detailLink}}\" style=\"display:inline-block;background:#ffc107;color:#000000;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px\">Xem Chi Tiết</a>"
+                +
+                "</div>" +
+                "<p style=\"font-size:14px;color:#666\">Nếu bạn có thắc mắc về sự thay đổi này, vui lòng liên hệ với phòng khám.</p>";
     }
 
     private static String getAppointmentCancellationBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Lịch khám của bạn với mã <strong>{{appointmentCode}}</strong> đã bị <strong style=\"color:#d9534f;\">HỦY</strong>.</p>"
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">Lịch khám của bạn với mã <strong>{{appointmentCode}}</strong> đã bị <strong style=\"color:#dc3545\">HỦY</strong>.</p>"
                 +
-                "<p>Nếu đây là sự nhầm lẫn hoặc bạn muốn đặt lại lịch, vui lòng liên hệ với chúng tôi hoặc:</p>" +
-                "<a href=\"{{magicLink}}\" class=\"button\" style=\"background:#d9534f;\">Đặt Lại Lịch</a>";
+                "<p style=\"font-size:14px;color:#666\">Nếu đây là sự nhầm lẫn hoặc bạn muốn đặt lại lịch, vui lòng liên hệ với chúng tôi hoặc:</p>"
+                +
+                "<div style=\"text-align:center;margin:30px 0\">" +
+                "<a href=\"{{rebookLink}}\" style=\"display:inline-block;background:#0066cc;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px\">Đặt Lại Lịch</a>"
+                +
+                "</div>";
     }
 
     private static String getAppointmentStatusChangeBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>Trạng thái lịch khám (Mã: <strong>{{appointmentCode}}</strong>) của bạn đã được cập nhật thành:</p>"
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">Trạng thái lịch khám (Mã: <strong>{{appointmentCode}}</strong>) của bạn đã được cập nhật thành:</p>"
                 +
-                "<div class=\"info-box\">" +
-                "<h3 style=\"color:#0056b3;margin:0;\">{{newStatus}}</h3>" +
+                "<div style=\"background:#e7f3ff;padding:20px;margin:20px 0;border-radius:8px;text-align:center\">" +
+                "<p style=\"font-size:24px;font-weight:600;color:#0066cc;margin:0\">{{newStatus}}</p>" +
                 "</div>" +
-                "<a href=\"{{magicLink}}\" class=\"button\">Theo Dõi Chi Tiết</a>";
+                "<div style=\"text-align:center;margin:30px 0\">" +
+                "<a href=\"{{detailLink}}\" style=\"display:inline-block;background:#0066cc;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px\">Theo Dõi Chi Tiết</a>"
+                +
+                "</div>";
     }
 
     private static String getDefaultBodyContent() {
-        return "<p>Kính gửi <strong>{{patientName}}</strong>,</p>" +
-                "<p>{{content}}</p>";
+        return "<p style=\"font-size:16px;line-height:1.6;color:#333\">Kính gửi <strong>{{patientName}}</strong>,</p>" +
+                "<p style=\"font-size:16px;line-height:1.6;color:#333\">{{content}}</p>";
     }
 
     /**

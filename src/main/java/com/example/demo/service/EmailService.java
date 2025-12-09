@@ -26,6 +26,9 @@ public class EmailService {
     @Autowired
     private EmailTemplateService emailTemplateService;
 
+    @Autowired
+    private ClinicService clinicService;
+
     @Value("${spring.mail.username}")
     private String fromEmail;
 
@@ -33,6 +36,16 @@ public class EmailService {
     private String baseUrl;
 
     private String getLogoUrl() {
+        try {
+            var clinic = clinicService.getClinicEntity();
+            if (clinic != null && clinic.getLogoUrl() != null && !clinic.getLogoUrl().isEmpty()) {
+                // Logo URL từ clinic đã ở dạng tương đối, cần thêm baseUrl
+                return baseUrl + clinic.getLogoUrl();
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Could not fetch clinic logo: " + e.getMessage());
+        }
+        // Fallback to default logo
         return baseUrl + "/images/logo.png";
     }
 
