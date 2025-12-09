@@ -1,6 +1,6 @@
-// src/main/java/com/example/demo/entity/Appointment.java
 package com.example.demo.entity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -39,11 +39,17 @@ public class Appointment {
     @Column(name = "phone", nullable = false)
     private String phone;
 
-    @Column(name = "appointment_time", nullable = false)
-    private LocalDateTime appointmentTime;
-
     @Column(name = "email")
     private String email;
+
+    @Column(name = "dob")
+    private LocalDate dob;
+
+    @Column(name = "id_number", length = 20)
+    private String idNumber;
+
+    @Column(name = "appointment_time", nullable = false)
+    private LocalDateTime appointmentTime;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
@@ -56,7 +62,7 @@ public class Appointment {
     private String notes;
 
     @Column(name = "service_ids", columnDefinition = "TEXT")
-    private String serviceIds; // comma-separated service IDs selected by patient
+    private String serviceIds;
 
     @Column(name = "quick_book")
     private Boolean quickBook;

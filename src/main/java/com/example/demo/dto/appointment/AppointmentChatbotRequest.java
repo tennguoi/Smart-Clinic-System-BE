@@ -1,7 +1,6 @@
 package com.example.demo.dto.appointment;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,8 +18,14 @@ public class AppointmentChatbotRequest {
     @NotBlank(message = "Số điện thoại không được để trống")
     private String phone;
 
-    @NotBlank(message = "Thời gian khám không được để trống")
-    private String appointmentTime; // Format: "YYYY-MM-DD HH:mm"
+    private String email;
 
-    private String notes; // Optional
+    private String dob;
+
+    private String idNumber;
+
+    @NotBlank(message = "Thời gian khám không được để trống")
+    private String appointmentTime;
+
+    private String notes;
 }

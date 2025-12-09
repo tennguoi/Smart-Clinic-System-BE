@@ -1,5 +1,6 @@
 package com.example.demo.controller.chatbot;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -15,21 +16,30 @@ import com.example.demo.service.ChatbotService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 public class ChatbotController {
 
     private final ChatbotService chatbotService;
+    private final RestTemplate restTemplate;
 
     @PostMapping("/webhook/chat")
     public ResponseEntity<ChatResponse> handleChat(@Valid @RequestBody ChatRequest request) {
         String sessionId = request.getSessionId();
         String userMessage = request.getMessage().getText();
+        boolean hasImage = Boolean.TRUE.equals(request.getMessage().getHasImage());
+
+        log.info("📨 Chat request - SessionID: {}, HasImage: {}", sessionId, hasImage);
 
         // Lưu tin người dùng
         ChatbotConversation conv = chatbotService.getOrCreateConversation(sessionId);
-        chatbotService.saveUserMessage(sessionId, userMessage);
+
+        // Nếu có ảnh, thêm emoji vào message
+        String messageToSave = hasImage ? "📷 " + userMessage : userMessage;
+        chatbotService.saveUserMessage(sessionId, messageToSave);
 
         // Gọi n8n AI Agent
         String botResponse = callN8nAgent(request);
@@ -37,24 +47,42 @@ public class ChatbotController {
         // Lưu tin bot
         chatbotService.saveBotMessage(sessionId, botResponse);
 
-        return ResponseEntity.ok(new ChatResponse(botResponse, conv.getConversationId().toString()));
+        return ResponseEntity.ok(
+                new ChatResponse(botResponse, conv.getConversationId().toString())
+        );
     }
 
     private String callN8nAgent(ChatRequest request) {
-        RestTemplate rest = new RestTemplate();
         try {
-            Map<String, Object> body = Map.of(
-                    "sessionId", request.getSessionId(),
-                    "message", Map.of("text", request.getMessage().getText())
-            );
+            // Tạo payload gửi đến n8n
+            Map<String, Object> body = new HashMap<>();
+            body.put("sessionId", request.getSessionId());
+            body.put("chatInput", request.getMessage().getText());
 
-            ResponseEntity<Map> res = rest.postForEntity(
+            // Nếu có ảnh, gửi kèm base64
+            if (Boolean.TRUE.equals(request.getMessage().getHasImage())) {
+                body.put("imageBase64", request.getMessage().getImageBase64());
+                body.put("contentType", request.getMessage().getContentType());
+                body.put("hasImage", true);
+                log.info("📷 Sending image to n8n - ContentType: {}",
+                        request.getMessage().getContentType());
+            }
+
+            log.info("🔄 Calling n8n webhook...");
+
+            ResponseEntity<Map> res = restTemplate.postForEntity(
                     "https://n8n.quanliduan-pms.site/webhook/chat-update",
                     body,
                     Map.class
             );
-            return (String) res.getBody().get("text");
+
+            String response = (String) res.getBody().get("text");
+            log.info("✅ n8n response received");
+
+            return response;
+
         } catch (Exception e) {
+            log.error("❌ Error calling n8n agent", e);
             return "Xin lỗi, em đang gặp sự cố. Vui lòng thử lại sau!";
         }
     }
