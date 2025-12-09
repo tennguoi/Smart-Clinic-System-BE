@@ -70,6 +70,29 @@ public class DoctorMedicalRecordController {
         return ResponseEntity.ok(medicalRecordService.searchMyRecords(criteria));
     }
 
+    @GetMapping("/history-summary")
+    public ResponseEntity<List<PatientHistorySummaryResponse>> getHistorySummary(
+            @RequestHeader("Authorization") String authorization,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        String token = extractToken(authorization);
+        UUID userId = jwtUtil.getUserIdFromToken(token);
+        List<String> roles = jwtUtil.getRolesFromToken(token);
+
+        MedicalRecordSearchCriteria criteria = new MedicalRecordSearchCriteria();
+        criteria.setKeyword(keyword);
+        criteria.setStartDate(startDate);
+        criteria.setEndDate(endDate);
+
+        if (!roles.contains("ROLE_ADMIN")) {
+            criteria.setDoctorId(userId);
+        }
+
+        return ResponseEntity.ok(medicalRecordService.getPatientHistorySummary(criteria));
+    }
+
     @PostMapping
     public ResponseEntity<MedicalRecordResponse> create(
             @RequestHeader("Authorization") String authorization,

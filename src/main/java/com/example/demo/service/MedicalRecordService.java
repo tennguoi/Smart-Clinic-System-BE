@@ -158,7 +158,66 @@ public class MedicalRecordService {
 
     @Transactional(readOnly = true)
     public List<MedicalRecordResponse> searchMyRecords(MedicalRecordSearchCriteria criteria) {
-        Specification<MedicalRecord> spec = (root, query, cb) -> {
+        Specification<MedicalRecord> spec = buildSearchSpec(criteria);
+        return medicalRecordRepository.findAll(spec)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientHistorySummaryResponse> getPatientHistorySummary(MedicalRecordSearchCriteria criteria) {
+        Specification<MedicalRecord> spec = buildSearchSpec(criteria);
+        // Lấy tất cả hồ sơ thỏa mãn điều kiện
+        List<MedicalRecord> records = medicalRecordRepository.findAll(spec);
+
+        // Group by PatientID
+        // Với bệnh nhân vãng lai (PatientID == null), ta group theo RecordID (mỗi bản
+        // ghi 1 dòng)
+        java.util.Map<Object, List<MedicalRecord>> grouped = new java.util.HashMap<>();
+
+        for (MedicalRecord r : records) {
+            if (r.getPatient() != null) {
+                grouped.computeIfAbsent(r.getPatient().getPatientId(), k -> new ArrayList<>()).add(r);
+            } else {
+                grouped.computeIfAbsent(r.getRecordId(), k -> new ArrayList<>()).add(r);
+            }
+        }
+
+        List<PatientHistorySummaryResponse> result = new ArrayList<>();
+
+        for (List<MedicalRecord> list : grouped.values()) {
+            if (list.isEmpty())
+                continue;
+
+            // Tìm lần khám gần nhất
+            MedicalRecord latest = list.stream()
+                    .max(java.util.Comparator.comparing(MedicalRecord::getCreatedAt))
+                    .orElse(list.get(0));
+
+            Patient p = latest.getPatient();
+
+            result.add(PatientHistorySummaryResponse.builder()
+                    .patientId(p != null ? p.getPatientId() : null)
+                    .patientName(latest.getPatientName()) // Ưu tiên tên trong record nếu patient null, hoặc hiển thị
+                                                          // tên tại thời điểm khám
+                    .phone(p != null ? p.getPhone() : null)
+                    .idNumber(p != null ? p.getIdNumber() : null)
+                    .insuranceNumber(p != null ? p.getInsuranceNumber() : null)
+                    .email(p != null ? p.getEmail() : null)
+                    .visitCount(list.size())
+                    .lastVisitDate(latest.getCreatedAt())
+                    .build());
+        }
+
+        // Sắp xếp theo ngày khám gần nhất giảm dần
+        result.sort((a, b) -> b.getLastVisitDate().compareTo(a.getLastVisitDate()));
+
+        return result;
+    }
+
+    private Specification<MedicalRecord> buildSearchSpec(MedicalRecordSearchCriteria criteria) {
+        return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             // 1. Chỉ lấy hồ sơ của Bác sĩ đang request
@@ -220,11 +279,6 @@ public class MedicalRecordService {
             query.orderBy(cb.desc(root.get("createdAt")));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-
-        return medicalRecordRepository.findAll(spec)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
     }
 
     @Transactional
