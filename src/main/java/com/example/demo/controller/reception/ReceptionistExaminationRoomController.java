@@ -33,9 +33,9 @@ public class ReceptionistExaminationRoomController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false, defaultValue = "false") Boolean activeOnly) {
-        
+
         List<ExaminationRoomResponse> rooms;
-        
+
         if (keyword != null && !keyword.isEmpty()) {
             rooms = roomService.searchRooms(keyword);
         } else if (status != null && !status.isEmpty()) {
@@ -45,7 +45,7 @@ public class ReceptionistExaminationRoomController {
         } else {
             rooms = roomService.getAllRooms();
         }
-        
+
         return ResponseEntity.ok(rooms);
     }
 
@@ -55,6 +55,7 @@ public class ReceptionistExaminationRoomController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ExaminationRoomResponse> createRoom(@Valid @RequestBody ExaminationRoomRequest request) {
         try {
             ExaminationRoomResponse response = roomService.createRoom(request);
@@ -65,6 +66,7 @@ public class ReceptionistExaminationRoomController {
     }
 
     @PutMapping("/{roomId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ExaminationRoomResponse> updateRoom(
             @PathVariable UUID roomId,
             @Valid @RequestBody ExaminationRoomRequest request) {
@@ -77,6 +79,7 @@ public class ReceptionistExaminationRoomController {
     }
 
     @DeleteMapping("/{roomId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRoom(@PathVariable UUID roomId) {
         try {
             roomService.deleteRoom(roomId);
@@ -136,18 +139,20 @@ public class ReceptionistExaminationRoomController {
         } catch (RuntimeException e) {
             // Trả về error message cụ thể để frontend hiển thị
             return ResponseEntity.badRequest()
-                    .body(new java.util.HashMap<String, String>() {{
-                        put("error", e.getMessage());
-                    }});
+                    .body(new java.util.HashMap<String, String>() {
+                        {
+                            put("error", e.getMessage());
+                        }
+                    });
         }
     }
+
     @GetMapping("/waiting")
     public ResponseEntity<?> getWaitingPatients(
-            @RequestParam(required = false) UUID roomId) {  // Thêm filter theo phòng nếu cần
+            @RequestParam(required = false) UUID roomId) { // Thêm filter theo phòng nếu cần
         List<QueuePatientResponse> list = roomId != null
                 ? queueService.getWaitingPatientsByRoom(roomId)
                 : queueService.getAllWaitingPatients(); // hoặc chỉ trả về của các phòng active
         return ResponseEntity.ok(list);
     }
 }
-

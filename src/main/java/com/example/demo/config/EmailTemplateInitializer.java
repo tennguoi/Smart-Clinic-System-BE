@@ -60,14 +60,15 @@ public class EmailTemplateInitializer implements CommandLineRunner {
                             .templateName(def.name)
                             .subject(defaults.get("subject"))
                             .content(defaults.get("content"))
+                            .bodyContent(defaults.get("bodyContent"))
                             .isHtml(true)
                             .availablePlaceholders(objectMapper.writeValueAsString(def.placeholders))
                             .build();
 
                     emailTemplateRepository.save(template);
-                    System.out.println("✓ Initialized email template: " + def.name);
+                    System.out.println("Initialized email template: " + def.name);
                 } catch (Exception e) {
-                    System.err.println("✗ Failed to initialize template: " + def.name);
+                    System.err.println("Failed to initialize template: " + def.name);
                     e.printStackTrace();
                 }
             }

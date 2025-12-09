@@ -36,6 +36,9 @@ public class EmailTemplate {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "body_content", columnDefinition = "TEXT")
+    private String bodyContent; // Editable body content (without header/footer)
+
     @Column(name = "is_html", nullable = false)
     @Builder.Default
     private Boolean isHtml = true;
