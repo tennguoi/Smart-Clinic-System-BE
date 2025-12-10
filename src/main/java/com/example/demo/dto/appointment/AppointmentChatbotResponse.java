@@ -21,6 +21,9 @@ public class AppointmentChatbotResponse {
     private String appointmentCode;
     private String patientName;
     private String phone;
+    private String email;
+    private String dob;
+    private String idNumber;
     private String appointmentTime;
     private String status;
     private String notes;

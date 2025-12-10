@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -22,38 +21,63 @@ public class AppointmentChatbotService {
 
     private final AppointmentChatbotRepository repository;
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Transactional
     public AppointmentChatbotResponse createAppointment(AppointmentChatbotRequest request) {
         try {
-            // 1. Parse thời gian
+            // 1. Parse thời gian khám
             LocalDateTime appointmentTime = parseAppointmentTime(request.getAppointmentTime());
 
-            // 2. Validate
+            // 2. Validate thời gian khám
             validateAppointmentTime(appointmentTime);
 
             // 3. Validate số điện thoại
             validatePhone(request.getPhone());
 
-            // 4. Tạo appointment code
+            // 4. Parse ngày sinh (nếu có)
+            LocalDate dob = null;
+            if (request.getDob() != null && !request.getDob().trim().isEmpty()) {
+                try {
+                    dob = LocalDate.parse(request.getDob().trim(), DATE_FORMATTER);
+                    validateDob(dob);
+                } catch (DateTimeParseException e) {
+                    throw new IllegalArgumentException("Định dạng ngày sinh không đúng. Vui lòng dùng: YYYY-MM-DD");
+                }
+            }
+
+            // 5. Validate email (nếu có)
+            if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+                validateEmail(request.getEmail().trim());
+            }
+
+            // 6. Validate CCCD (nếu có)
+            if (request.getIdNumber() != null && !request.getIdNumber().trim().isEmpty()) {
+                validateIdNumber(request.getIdNumber().trim());
+            }
+
+            // 7. Tạo appointment code
             String appointmentCode = generateAppointmentCode(appointmentTime);
 
-            // 5. Tạo appointment entity
+            // 8. Tạo appointment entity
             Appointment appointment = Appointment.builder()
                     .patientName(request.getPatientName().trim())
                     .phone(request.getPhone().trim())
+                    .email(request.getEmail() != null ? request.getEmail().trim() : null)
+                    .dob(dob)
+                    .idNumber(request.getIdNumber() != null ? request.getIdNumber().trim() : null)
                     .appointmentTime(appointmentTime)
                     .appointmentCode(appointmentCode)
                     .notes(request.getNotes() != null ? request.getNotes().trim() : null)
                     .build();
 
-            // 6. Lưu vào database
+            // 9. Lưu vào database
             Appointment saved = repository.save(appointment);
 
             log.info("✅ Đặt lịch thành công: {} - {}", saved.getAppointmentCode(), saved.getPatientName());
 
-            // 7. Trả response
+            // 10. Trả response
             return AppointmentChatbotResponse.builder()
                     .success(true)
                     .message("Đặt lịch thành công")
@@ -61,7 +85,10 @@ public class AppointmentChatbotService {
                     .appointmentCode(saved.getAppointmentCode())
                     .patientName(saved.getPatientName())
                     .phone(saved.getPhone())
-                    .appointmentTime(saved.getAppointmentTime().format(FORMATTER))
+                    .email(saved.getEmail())
+                    .dob(saved.getDob() != null ? saved.getDob().toString() : null)
+                    .idNumber(saved.getIdNumber())
+                    .appointmentTime(saved.getAppointmentTime().format(DATE_TIME_FORMATTER))
                     .status(saved.getStatus().name())
                     .notes(saved.getNotes())
                     .build();
@@ -75,10 +102,9 @@ public class AppointmentChatbotService {
         }
     }
 
-    // Parse thời gian từ string
     private LocalDateTime parseAppointmentTime(String timeStr) {
         try {
-            return LocalDateTime.parse(timeStr, FORMATTER);
+            return LocalDateTime.parse(timeStr, DATE_TIME_FORMATTER);
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException(
                     "Định dạng thời gian không đúng. Vui lòng dùng: YYYY-MM-DD HH:mm (ví dụ: 2025-11-20 09:30)"
@@ -86,16 +112,39 @@ public class AppointmentChatbotService {
         }
     }
 
-    // Validate số điện thoại - chỉ cần 10 chữ số
     private void validatePhone(String phone) {
-        String cleanPhone = phone.replaceAll("\\s+", ""); // Xóa khoảng trắng
-
+        String cleanPhone = phone.replaceAll("\\s+", "");
         if (!cleanPhone.matches("\\d{10}")) {
             throw new IllegalArgumentException("Số điện thoại phải có đúng 10 chữ số");
         }
     }
 
-    // Generate appointment code: APPT-YYYYMMDD-HHMM-XXX
+    private void validateEmail(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+        if (!email.matches(emailRegex)) {
+            throw new IllegalArgumentException("Email không hợp lệ");
+        }
+    }
+
+    private void validateIdNumber(String idNumber) {
+        String cleanId = idNumber.replaceAll("\\s+", "");
+        if (!cleanId.matches("\\d{9}") && !cleanId.matches("\\d{12}")) {
+            throw new IllegalArgumentException("Số CCCD phải có 9 hoặc 12 chữ số");
+        }
+    }
+
+    private void validateDob(LocalDate dob) {
+        LocalDate today = LocalDate.now();
+        if (dob.isAfter(today)) {
+            throw new IllegalArgumentException("Ngày sinh không được là ngày trong tương lai");
+        }
+
+        LocalDate minDate = today.minusYears(150);
+        if (dob.isBefore(minDate)) {
+            throw new IllegalArgumentException("Ngày sinh không hợp lệ");
+        }
+    }
+
     private String generateAppointmentCode(LocalDateTime appointmentTime) {
         String datePart = appointmentTime.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String timePart = appointmentTime.format(DateTimeFormatter.ofPattern("HHmm"));
@@ -103,17 +152,14 @@ public class AppointmentChatbotService {
         return "APPT-" + datePart + "-" + timePart + "-" + randomPart;
     }
 
-    // Validate logic nghiệp vụ
     private void validateAppointmentTime(LocalDateTime appointmentTime) {
         LocalDate today = LocalDate.now();
         LocalDate appointmentDate = appointmentTime.toLocalDate();
 
-        // 1. Kiểm tra ngày khám phải từ hôm nay trở đi (không được quá khứ)
         if (appointmentDate.isBefore(today)) {
             throw new IllegalArgumentException("Ngày khám không được là ngày trong quá khứ");
         }
 
-        // 2. Nếu là hôm nay, kiểm tra giờ phải trong tương lai
         if (appointmentDate.isEqual(today)) {
             LocalDateTime now = LocalDateTime.now();
             if (appointmentTime.isBefore(now)) {
@@ -121,18 +167,16 @@ public class AppointmentChatbotService {
             }
         }
 
-        // 3. Kiểm tra chỉ được đặt lịch trong vòng 7 ngày tính từ hôm nay
         LocalDate sevenDaysLater = today.plusDays(7);
         if (appointmentDate.isAfter(sevenDaysLater)) {
             throw new IllegalArgumentException("Chỉ có thể đặt lịch từ hôm nay đến 7 ngày tiếp theo");
         }
 
-        // 4. Kiểm tra giờ làm việc: 8:00-12:00 hoặc 14:00-18:00
-        LocalTime time = appointmentTime.toLocalTime();
-        LocalTime morningStart = LocalTime.of(8, 0);
-        LocalTime morningEnd = LocalTime.of(12, 0);
-        LocalTime afternoonStart = LocalTime.of(14, 0);
-        LocalTime afternoonEnd = LocalTime.of(18, 0);
+        java.time.LocalTime time = appointmentTime.toLocalTime();
+        java.time.LocalTime morningStart = java.time.LocalTime.of(8, 0);
+        java.time.LocalTime morningEnd = java.time.LocalTime.of(12, 0);
+        java.time.LocalTime afternoonStart = java.time.LocalTime.of(14, 0);
+        java.time.LocalTime afternoonEnd = java.time.LocalTime.of(18, 0);
 
         boolean isWorkingHours =
                 (time.compareTo(morningStart) >= 0 && time.isBefore(morningEnd)) ||
