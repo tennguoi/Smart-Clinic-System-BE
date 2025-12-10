@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,7 +22,8 @@ public class AppointmentCheckInDTO {
     private LocalDateTime appointmentTime;
     private String notes;
     private boolean hasCheckedIn;
-
+    private LocalDate dob;
+    private String idNumber;
     private List<ServiceInfo> services;
 
     @Data

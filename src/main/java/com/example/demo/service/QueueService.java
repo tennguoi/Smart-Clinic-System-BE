@@ -147,7 +147,7 @@ public class QueueService {
                 .map(apt -> {
                     boolean hasQueue = queueRepository.findByAppointmentId(apt.getAppointmentId()).isPresent();
 
-                    // XỬ LÝ DỊCH VỤ - GIỐNG HỆT AppointmentService.toResponse()
+                    // XỬ LÝ DỊCH VỤ
                     List<AppointmentCheckInDTO.ServiceInfo> serviceList = new ArrayList<>();
                     if (apt.getServiceIds() != null && !apt.getServiceIds().trim().isEmpty()) {
                         List<String> serviceIdStrList = Arrays.stream(apt.getServiceIds().split(","))
@@ -159,7 +159,7 @@ public class QueueService {
                             List<com.example.demo.entity.Service> services = serviceRepository.findAllById(serviceIdStrList);
                             serviceList = services.stream()
                                     .map(s -> AppointmentCheckInDTO.ServiceInfo.builder()
-                                            .serviceId(s.getServiceId().toString())  // String, không lỗi
+                                            .serviceId(s.getServiceId().toString())
                                             .name(s.getName())
                                             .build())
                                     .toList();
@@ -175,7 +175,9 @@ public class QueueService {
                             .appointmentTime(apt.getAppointmentTime())
                             .notes(apt.getNotes())
                             .hasCheckedIn(hasQueue)
-                            .services(serviceList)  // ĐÃ CÓ DỊCH VỤ - ĐẸP NHƯ TRANG QUẢN LÝ
+                            .services(serviceList)
+                            .dob(apt.getDob())              // 👈 THÊM TRƯỜNG NÀY
+                            .idNumber(apt.getIdNumber())    // 👈 THÊM TRƯỜNG NÀY
                             .build();
                 })
                 .sorted(Comparator.comparing(AppointmentCheckInDTO::getAppointmentTime))
