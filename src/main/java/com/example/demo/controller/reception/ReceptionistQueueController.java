@@ -37,8 +37,7 @@ public class ReceptionistQueueController {
     @GetMapping("/appointments/today")
     public ResponseEntity<?> getTodayAppointments() {
         try {
-            List<AppointmentCheckInDTO> appointments =
-                    queueService.getTodayConfirmedAppointments();
+            List<AppointmentCheckInDTO> appointments = queueService.getTodayConfirmedAppointments();
             return ResponseEntity.ok(appointments);
         } catch (Exception e) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
@@ -104,6 +103,30 @@ public class ReceptionistQueueController {
         }
     }
 
+    /**
+     * Thêm bệnh nhân với xác nhận dùng thông tin cũ hay cập nhật mới
+     * POST /api/reception/queue/add-with-existing
+     * 
+     * @param useExistingInfo true = dùng thông tin bệnh nhân cũ, false = cập nhật
+     *                        thông tin mới
+     */
+    @PostMapping("/add-with-existing")
+    public ResponseEntity<?> addQueueWithExisting(
+            @RequestBody QueuePatientResponse dto,
+            @RequestParam boolean useExistingInfo) {
+        try {
+            QueuePatientResponse result = queueService.addQueuePatientWithExisting(dto, useExistingInfo);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new GenericResponse(false, "Dữ liệu không hợp lệ: " + e.getMessage()));
+        } catch (Exception e) {
+            String errorMessage = "Lỗi khi thêm bệnh nhân vào hàng đợi: " + e.getMessage();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse(false, errorMessage));
+        }
+    }
+
     @DeleteMapping("/{queueId}")
     public ResponseEntity<?> deleteQueue(@PathVariable UUID queueId) {
         boolean success = queueService.deleteQueuePatient(queueId);
@@ -122,7 +145,7 @@ public class ReceptionistQueueController {
 
     @GetMapping("/search")
     public ResponseEntity<?> searchQueue(@RequestParam(required = false) String phone,
-                                         @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status) {
         return ResponseEntity.ok(queueService.searchQueue(phone, status));
     }
 
