@@ -1,15 +1,19 @@
 package com.example.demo.dto.appointment;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.List;
 
-@lombok.Data
-@lombok.Builder
-@lombok.NoArgsConstructor
-@lombok.AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AppointmentCheckInDTO {
-    private UUID appointmentId;
+    private java.util.UUID appointmentId;
     private String appointmentCode;
     private String patientName;
     private String phone;
@@ -17,4 +21,15 @@ public class AppointmentCheckInDTO {
     private LocalDateTime appointmentTime;
     private String notes;
     private boolean hasCheckedIn;
+
+    private List<ServiceInfo> services;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ServiceInfo {
+        private String serviceId;  // ĐÃ ĐÚNG – String, không lỗi
+        private String name;
+    }
 }

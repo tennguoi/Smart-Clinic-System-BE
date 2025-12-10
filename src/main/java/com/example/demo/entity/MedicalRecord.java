@@ -42,9 +42,15 @@ public class MedicalRecord {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    // ✅ LIÊN KẾT VỚI LƯỢT KHÁM (QUEUE)
+    @Column(name = "queue_id", columnDefinition = "CHAR(36)")
+    private UUID queueId;
+
     @PrePersist
     public void prePersist() {
-        if (recordId == null) recordId = UUID.randomUUID();
-        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (recordId == null)
+            recordId = UUID.randomUUID();
+        if (createdAt == null)
+            createdAt = LocalDateTime.now();
     }
 }

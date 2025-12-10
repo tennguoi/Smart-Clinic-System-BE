@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class QueueService {
 
+    private final ServiceRepository serviceRepository;
     private final QueueRepository queueRepository;
     private final PatientRepository patientRepository;
     private final ExaminationRoomRepository examinationRoomRepository;
@@ -146,6 +147,25 @@ public class QueueService {
                 .map(apt -> {
                     boolean hasQueue = queueRepository.findByAppointmentId(apt.getAppointmentId()).isPresent();
 
+                    // XỬ LÝ DỊCH VỤ - GIỐNG HỆT AppointmentService.toResponse()
+                    List<AppointmentCheckInDTO.ServiceInfo> serviceList = new ArrayList<>();
+                    if (apt.getServiceIds() != null && !apt.getServiceIds().trim().isEmpty()) {
+                        List<String> serviceIdStrList = Arrays.stream(apt.getServiceIds().split(","))
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty())
+                                .toList();
+
+                        if (!serviceIdStrList.isEmpty()) {
+                            List<com.example.demo.entity.Service> services = serviceRepository.findAllById(serviceIdStrList);
+                            serviceList = services.stream()
+                                    .map(s -> AppointmentCheckInDTO.ServiceInfo.builder()
+                                            .serviceId(s.getServiceId().toString())  // String, không lỗi
+                                            .name(s.getName())
+                                            .build())
+                                    .toList();
+                        }
+                    }
+
                     return AppointmentCheckInDTO.builder()
                             .appointmentId(apt.getAppointmentId())
                             .appointmentCode(apt.getAppointmentCode())
@@ -155,6 +175,7 @@ public class QueueService {
                             .appointmentTime(apt.getAppointmentTime())
                             .notes(apt.getNotes())
                             .hasCheckedIn(hasQueue)
+                            .services(serviceList)  // ĐÃ CÓ DỊCH VỤ - ĐẸP NHƯ TRANG QUẢN LÝ
                             .build();
                 })
                 .sorted(Comparator.comparing(AppointmentCheckInDTO::getAppointmentTime))
