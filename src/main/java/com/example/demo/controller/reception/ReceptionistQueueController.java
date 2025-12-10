@@ -106,7 +106,11 @@ public class ReceptionistQueueController {
     /**
      * Thêm bệnh nhân với xác nhận dùng thông tin cũ hay cập nhật mới
      * POST /api/reception/queue/add-with-existing
+<<<<<<< HEAD
      *
+=======
+     * 
+>>>>>>> 2cd2e5e18d455f41faeb4f437ab679887e4bd246
      * @param useExistingInfo true = dùng thông tin bệnh nhân cũ, false = cập nhật
      *                        thông tin mới
      */
@@ -145,7 +149,7 @@ public class ReceptionistQueueController {
 
     @GetMapping("/search")
     public ResponseEntity<?> searchQueue(@RequestParam(required = false) String phone,
-                                         @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status) {
         return ResponseEntity.ok(queueService.searchQueue(phone, status));
     }
 
