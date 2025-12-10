@@ -12,7 +12,7 @@ public class RestTemplateConfig {
     public RestTemplate restTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(10000); // 10 seconds
-        factory.setReadTimeout(30000);    // 30 seconds (cho upload ảnh)
+        factory.setReadTimeout(120000);   // 120 seconds (tăng lên để chờ upload/ảnh lớn)
 
         return new RestTemplate(factory);
     }

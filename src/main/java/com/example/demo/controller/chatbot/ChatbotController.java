@@ -57,7 +57,7 @@ public class ChatbotController {
             // Tạo payload gửi đến n8n
             Map<String, Object> body = new HashMap<>();
             body.put("sessionId", request.getSessionId());
-            body.put("chatInput", request.getMessage().getText());
+            body.put("message", Map.of("text", request.getMessage().getText()));
 
             // Nếu có ảnh, gửi kèm base64
             if (Boolean.TRUE.equals(request.getMessage().getHasImage())) {
@@ -71,7 +71,7 @@ public class ChatbotController {
             log.info("🔄 Calling n8n webhook...");
 
             ResponseEntity<Map> res = restTemplate.postForEntity(
-                    "https://n8n.quanliduan-pms.site/webhook/chat-update",
+                    "https://n8n.quanliduan-pms.site/webhook/chat-ocr",
                     body,
                     Map.class
             );
