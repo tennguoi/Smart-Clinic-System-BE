@@ -119,7 +119,6 @@ public class ExcelExportService {
         createDataRow(sheet, rowNum++, "Tỷ lệ hủy lịch (%)", String.format("%.2f", kpi.getCancelRate()), numberStyle);
         createDataRow(sheet, rowNum++, "Tăng trưởng tỷ lệ hủy (%)", String.format("%.2f", kpi.getCancelRateGrowth()), numberStyle);
         
-        createDataRow(sheet, rowNum++, "Tổng số bác sĩ", String.valueOf(stats.getTotalDoctors()), numberStyle);
         
         // Auto-size columns
         sheet.autoSizeColumn(0);
