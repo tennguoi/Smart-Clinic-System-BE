@@ -39,6 +39,7 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
+import com.itextpdf.layout.properties.VerticalAlignment;
 
 @Service
 public class PdfExportService {
@@ -95,12 +96,12 @@ public class PdfExportService {
                         logger.debug("Failed to load logo from URL {}: {}", logoPath, urlEx.getMessage());
                     }
                 }
-                
+
                 // 2. Thử load từ resource stream (static folder)
                 if (!loaded) {
                     String normalized = logoPath.startsWith("/") ? logoPath : "/" + logoPath;
                     java.io.InputStream is = getClass().getResourceAsStream(normalized);
-                    
+
                     if (is != null) {
                         try {
                             byte[] bytes = is.readAllBytes();
@@ -117,13 +118,13 @@ public class PdfExportService {
                         }
                     }
                 }
-                
+
                 // 3. Thử load từ file system (uploads folder)
                 if (!loaded) {
                     try {
                         // Xử lý path: bỏ "/" ở đầu nếu có
                         String filePath = logoPath.startsWith("/") ? logoPath.substring(1) : logoPath;
-                        
+
                         java.io.File logoFile = new java.io.File(filePath);
                         if (logoFile.exists() && logoFile.isFile()) {
                             Image logo = new Image(ImageDataFactory.create(logoFile.getAbsolutePath()));
@@ -132,8 +133,8 @@ public class PdfExportService {
                             loaded = true;
                             logger.info("✅ Logo loaded from file system: {}", logoFile.getAbsolutePath());
                         } else {
-                            logger.debug("❌ Logo file does not exist: {} (absolute: {})", 
-                                filePath, logoFile.getAbsolutePath());
+                            logger.debug("❌ Logo file does not exist: {} (absolute: {})",
+                                    filePath, logoFile.getAbsolutePath());
                         }
                     } catch (Exception fileEx) {
                         logger.debug("Failed to load logo from file system {}: {}", logoPath, fileEx.getMessage());
@@ -145,8 +146,8 @@ public class PdfExportService {
         }
 
         if (!loaded) {
-            logger.warn("⚠️ Logo not found. Using placeholder. Logo path: {}", 
-                clinic != null ? clinic.getLogoUrl() : "null");
+            logger.warn("⚠️ Logo not found. Using placeholder. Logo path: {}",
+                    clinic != null ? clinic.getLogoUrl() : "null");
             logoCell.add(new Paragraph("LOGO")
                     .setBold()
                     .setFontSize(10)
@@ -362,21 +363,35 @@ public class PdfExportService {
 
             document.add(serviceTable);
 
-            // ĐƠN THUỐC TÓM TẮT
+            // V. ĐƠN THUỐC
             document.add(new Paragraph("V. ĐƠN THUỐC")
                     .setBold()
                     .setMarginTop(15)
                     .setMarginBottom(8));
 
+            // Bảng 2 cột: Thuốc (50%), Hướng dẫn (50%)
+            // Bỏ cột STT như yêu cầu
             Table presTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
                     .setWidth(UnitValue.createPercentValue(100));
 
-            presTable.addCell(new Cell()
-                    .add(new Paragraph("Thuốc").setBold())
-                    .setBorder(new SolidBorder(0.5f)));
-            presTable.addCell(new Cell()
+            // Header - Màu nền xám nhạt
+            DeviceRgb headerBg = new DeviceRgb(240, 240, 240);
+
+            presTable.addHeaderCell(new Cell()
+                    .add(new Paragraph("Thuốc / Hàm lượng").setBold())
+                    .setBorder(new SolidBorder(0.5f))
+                    .setBackgroundColor(headerBg)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setVerticalAlignment(VerticalAlignment.MIDDLE)
+                    .setPadding(8));
+
+            presTable.addHeaderCell(new Cell()
                     .add(new Paragraph("Hướng dẫn sử dụng").setBold())
-                    .setBorder(new SolidBorder(0.5f)));
+                    .setBorder(new SolidBorder(0.5f))
+                    .setBackgroundColor(headerBg)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setVerticalAlignment(VerticalAlignment.MIDDLE)
+                    .setPadding(8));
 
             Optional<Prescription> prescriptionOpt = prescriptionRepository.findByRecordId(record.getRecordId());
             if (prescriptionOpt.isPresent()) {
@@ -384,19 +399,42 @@ public class PdfExportService {
                 String drugs = rx.getDrugs() != null ? rx.getDrugs() : "";
                 String instructions = rx.getInstructions() != null ? rx.getInstructions() : "";
 
-                presTable.addCell(new Cell()
-                        .add(new Paragraph(drugs))
-                        .setBorder(new SolidBorder(0.5f)));
-                presTable.addCell(new Cell()
-                        .add(new Paragraph(instructions))
-                        .setBorder(new SolidBorder(0.5f)));
+                // Tách dòng
+                String[] drugLines = drugs.replace("\r", "").split("\n");
+                String[] instructionLines = instructions.replace("\r", "").split("\n");
+
+                int maxLines = Math.max(drugLines.length, instructionLines.length);
+
+                if (maxLines == 0 || (maxLines == 1 && drugLines[0].isEmpty() && instructionLines[0].isEmpty())) {
+                    presTable.addCell(new Cell().add(new Paragraph("Không có thuốc")).setBorder(new SolidBorder(0.5f)).setPadding(8));
+                    presTable.addCell(new Cell().add(new Paragraph("-")).setBorder(new SolidBorder(0.5f)).setPadding(8));
+                } else {
+                    for (int i = 0; i < maxLines; i++) {
+                        String d = i < drugLines.length ? drugLines[i].trim() : "";
+                        String ins = i < instructionLines.length ? instructionLines[i].trim() : "";
+
+                        if (d.isEmpty() && ins.isEmpty()) continue;
+
+                        // Tên thuốc - Thêm gạch đầu dòng
+                        presTable.addCell(new Cell()
+                                .add(new Paragraph("- " + d)) // Thêm dấu gạch đầu dòng
+                                .setBorder(new SolidBorder(0.5f))
+                                .setTextAlignment(TextAlignment.LEFT)
+                                .setVerticalAlignment(VerticalAlignment.MIDDLE)
+                                .setPadding(10)); // Tăng khoảng cách padding lên 10
+
+                        // Hướng dẫn - Thêm gạch đầu dòng
+                        presTable.addCell(new Cell()
+                                .add(new Paragraph("- " + ins)) // Thêm dấu gạch đầu dòng
+                                .setBorder(new SolidBorder(0.5f))
+                                .setTextAlignment(TextAlignment.LEFT)
+                                .setVerticalAlignment(VerticalAlignment.MIDDLE)
+                                .setPadding(10)); // Tăng khoảng cách padding lên 10
+                    }
+                }
             } else {
-                presTable.addCell(new Cell()
-                        .add(new Paragraph(""))
-                        .setBorder(new SolidBorder(0.5f)));
-                presTable.addCell(new Cell()
-                        .add(new Paragraph(""))
-                        .setBorder(new SolidBorder(0.5f)));
+                presTable.addCell(new Cell().add(new Paragraph("Chưa có đơn thuốc")).setBorder(new SolidBorder(0.5f)).setPadding(8));
+                presTable.addCell(new Cell().add(new Paragraph("-")).setBorder(new SolidBorder(0.5f)).setPadding(8));
             }
 
             document.add(presTable);
