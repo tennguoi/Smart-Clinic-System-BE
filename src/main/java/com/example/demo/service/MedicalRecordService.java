@@ -368,6 +368,20 @@ public class MedicalRecordService {
                 .treatmentNotes(record.getTreatmentNotes())
                 .createdAt(record.getCreatedAt())
                 .prescription(prescriptionResponse)
+                .services(
+                        medicalRecordServiceRepository.findAllByMedicalRecord_RecordId(record.getRecordId())
+                                .stream()
+                                .map(ms -> new ExaminationSummaryResponse.ExaminationServiceItem(
+                                        ms.getService().getServiceId(),
+                                        ms.getService().getName(),
+                                        ms.getService().getCategory() != null
+                                                ? ms.getService().getCategory().getDisplayName()
+                                                : null,
+                                        ms.getQuantity(),
+                                        ms.getUnitPrice(),
+                                        ms.getUnitPrice().multiply(BigDecimal.valueOf(ms.getQuantity())),
+                                        ms.getNote()))
+                                .collect(Collectors.toList()))
                 .build();
     }
 
@@ -389,6 +403,20 @@ public class MedicalRecordService {
                 .diagnosis(r.getDiagnosis())
                 .treatmentNotes(r.getTreatmentNotes())
                 .createdAt(r.getCreatedAt())
+                .services(
+                        medicalRecordServiceRepository.findAllByMedicalRecord_RecordId(r.getRecordId())
+                                .stream()
+                                .map(ms -> new ExaminationSummaryResponse.ExaminationServiceItem(
+                                        ms.getService().getServiceId(),
+                                        ms.getService().getName(),
+                                        ms.getService().getCategory() != null
+                                                ? ms.getService().getCategory().getDisplayName()
+                                                : null,
+                                        ms.getQuantity(),
+                                        ms.getUnitPrice(),
+                                        ms.getUnitPrice().multiply(BigDecimal.valueOf(ms.getQuantity())),
+                                        ms.getNote()))
+                                .collect(Collectors.toList()))
                 .build();
     }
 

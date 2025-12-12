@@ -22,6 +22,8 @@ public class QueueService {
     private final PatientRepository patientRepository;
     private final ExaminationRoomRepository examinationRoomRepository;
     private final AppointmentRepository appointmentRepository;
+    private final MedicalRecordRepository medicalRecordRepository;
+    private final MedicalRecordServiceRepository medicalRecordServiceRepository;
 
     // =================================================================
     // ✨ TÍNH NĂNG MỚI: TẠO HÀNG CHỜ TỪ LỊCH HẸN
@@ -571,6 +573,23 @@ public class QueueService {
         if (appointment != null) {
             builder.appointmentCode(appointment.getAppointmentCode());
         }
+
+        // ✨ Populate services from MedicalRecord
+        medicalRecordRepository.findByQueueId(queue.getQueueId()).ifPresent(record -> {
+            var services = medicalRecordServiceRepository.findAllByMedicalRecord_RecordId(record.getRecordId())
+                    .stream()
+                    .map(ms -> new com.example.demo.dto.ExaminationSummaryResponse.ExaminationServiceItem(
+                            ms.getService().getServiceId(),
+                            ms.getService().getName(),
+                            ms.getService().getCategory() != null ? ms.getService().getCategory().getDisplayName()
+                                    : null,
+                            ms.getQuantity(),
+                            ms.getUnitPrice(),
+                            ms.getUnitPrice().multiply(java.math.BigDecimal.valueOf(ms.getQuantity())),
+                            ms.getNote()))
+                    .collect(java.util.stream.Collectors.toList());
+            builder.services(services);
+        });
 
         return builder.build();
     }

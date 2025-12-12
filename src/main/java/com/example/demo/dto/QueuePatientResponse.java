@@ -44,4 +44,7 @@ public class QueuePatientResponse {
     // ✨ Duplicate patient detection - MỚI
     private boolean existingPatientFound; // Báo hiệu có tìm thấy bệnh nhân đã tồn tại
     private String duplicateField; // Trường bị trùng: phone, idNumber, insuranceNumber
+
+    // ✨ Services - MỚI
+    private java.util.List<ExaminationSummaryResponse.ExaminationServiceItem> services;
 }

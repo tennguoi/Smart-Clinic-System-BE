@@ -23,5 +23,5 @@ public class MedicalRecordDetailResponse {
     private String treatmentNotes;
     private LocalDateTime createdAt;
     private PrescriptionResponse prescription; // Đơn thuốc (có thể null nếu chưa có)
+    private java.util.List<ExaminationSummaryResponse.ExaminationServiceItem> services;
 }
-

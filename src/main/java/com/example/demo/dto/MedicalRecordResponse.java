@@ -17,4 +17,5 @@ public class MedicalRecordResponse {
     private String diagnosis;
     private String treatmentNotes;
     private LocalDateTime createdAt;
+    private java.util.List<ExaminationSummaryResponse.ExaminationServiceItem> services;
 }
