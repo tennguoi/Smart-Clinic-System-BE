@@ -362,36 +362,24 @@ public class PdfExportService {
             }
 
             document.add(serviceTable);
-
-            // V. ĐƠN THUỐC
+// ĐƠN THUỐC CHI TIẾT
             document.add(new Paragraph("V. ĐƠN THUỐC")
                     .setBold()
                     .setMarginTop(15)
                     .setMarginBottom(8));
 
-            // Bảng 2 cột: Thuốc (50%), Hướng dẫn (50%)
-            // Bỏ cột STT như yêu cầu
             Table presTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
-                    .setWidth(UnitValue.createPercentValue(100));
+                    .setWidth(UnitValue.createPercentValue(100))
+                    .setMarginBottom(15)
+                    .setFixedLayout(); // Cố định layout bảng
 
-            // Header - Màu nền xám nhạt
-            DeviceRgb headerBg = new DeviceRgb(240, 240, 240);
-
-            presTable.addHeaderCell(new Cell()
-                    .add(new Paragraph("Thuốc / Hàm lượng").setBold())
-                    .setBorder(new SolidBorder(0.5f))
-                    .setBackgroundColor(headerBg)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setVerticalAlignment(VerticalAlignment.MIDDLE)
-                    .setPadding(8));
-
-            presTable.addHeaderCell(new Cell()
+// Headers
+            presTable.addCell(new Cell()
+                    .add(new Paragraph("Thuốc").setBold())
+                    .setBorder(new SolidBorder(0.5f)));
+            presTable.addCell(new Cell()
                     .add(new Paragraph("Hướng dẫn sử dụng").setBold())
-                    .setBorder(new SolidBorder(0.5f))
-                    .setBackgroundColor(headerBg)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setVerticalAlignment(VerticalAlignment.MIDDLE)
-                    .setPadding(8));
+                    .setBorder(new SolidBorder(0.5f)));
 
             Optional<Prescription> prescriptionOpt = prescriptionRepository.findByRecordId(record.getRecordId());
             if (prescriptionOpt.isPresent()) {
@@ -399,46 +387,52 @@ public class PdfExportService {
                 String drugs = rx.getDrugs() != null ? rx.getDrugs() : "";
                 String instructions = rx.getInstructions() != null ? rx.getInstructions() : "";
 
-                // Tách dòng
-                String[] drugLines = drugs.replace("\r", "").split("\n");
-                String[] instructionLines = instructions.replace("\r", "").split("\n");
+                // Parse dữ liệu từ chuỗi nhiều dòng
+                String[] drugLines = drugs.split("\n");
+                String[] instructionLines = instructions.split("\n");
 
-                int maxLines = Math.max(drugLines.length, instructionLines.length);
+                int maxRows = Math.max(drugLines.length, instructionLines.length);
 
-                if (maxLines == 0 || (maxLines == 1 && drugLines[0].isEmpty() && instructionLines[0].isEmpty())) {
-                    presTable.addCell(new Cell().add(new Paragraph("Không có thuốc")).setBorder(new SolidBorder(0.5f)).setPadding(8));
-                    presTable.addCell(new Cell().add(new Paragraph("-")).setBorder(new SolidBorder(0.5f)).setPadding(8));
-                } else {
-                    for (int i = 0; i < maxLines; i++) {
-                        String d = i < drugLines.length ? drugLines[i].trim() : "";
-                        String ins = i < instructionLines.length ? instructionLines[i].trim() : "";
+                if (maxRows > 0 && !drugs.trim().isEmpty()) {
+                    // Mỗi thuốc một hàng riêng
+                    for (int i = 0; i < maxRows; i++) {
+                        String drug = i < drugLines.length ? drugLines[i].trim() : "";
+                        String instruction = i < instructionLines.length ? instructionLines[i].trim() : "";
 
-                        if (d.isEmpty() && ins.isEmpty()) continue;
-
-                        // Tên thuốc - Thêm gạch đầu dòng
+                        // Tên thuốc - cho phép xuống dòng tự động
+                        Paragraph drugPara = new Paragraph(drug.isEmpty() ? "-" : drug);
                         presTable.addCell(new Cell()
-                                .add(new Paragraph("- " + d)) // Thêm dấu gạch đầu dòng
+                                .add(drugPara)
                                 .setBorder(new SolidBorder(0.5f))
-                                .setTextAlignment(TextAlignment.LEFT)
-                                .setVerticalAlignment(VerticalAlignment.MIDDLE)
-                                .setPadding(10)); // Tăng khoảng cách padding lên 10
+                                .setKeepTogether(false)); // Cho phép break nếu cần
 
-                        // Hướng dẫn - Thêm gạch đầu dòng
+                        // Hướng dẫn sử dụng - cho phép xuống dòng tự động
+                        Paragraph instrPara = new Paragraph(instruction.isEmpty() ? "-" : instruction);
                         presTable.addCell(new Cell()
-                                .add(new Paragraph("- " + ins)) // Thêm dấu gạch đầu dòng
+                                .add(instrPara)
                                 .setBorder(new SolidBorder(0.5f))
-                                .setTextAlignment(TextAlignment.LEFT)
-                                .setVerticalAlignment(VerticalAlignment.MIDDLE)
-                                .setPadding(10)); // Tăng khoảng cách padding lên 10
+                                .setKeepTogether(false)); // Cho phép break nếu cần
                     }
+                } else {
+                    // Không có thuốc
+                    presTable.addCell(new Cell()
+                            .add(new Paragraph(""))
+                            .setBorder(new SolidBorder(0.5f)));
+                    presTable.addCell(new Cell()
+                            .add(new Paragraph(""))
+                            .setBorder(new SolidBorder(0.5f)));
                 }
             } else {
-                presTable.addCell(new Cell().add(new Paragraph("Chưa có đơn thuốc")).setBorder(new SolidBorder(0.5f)).setPadding(8));
-                presTable.addCell(new Cell().add(new Paragraph("-")).setBorder(new SolidBorder(0.5f)).setPadding(8));
+                // Không tìm thấy đơn thuốc
+                presTable.addCell(new Cell()
+                        .add(new Paragraph(""))
+                        .setBorder(new SolidBorder(0.5f)));
+                presTable.addCell(new Cell()
+                        .add(new Paragraph(""))
+                        .setBorder(new SolidBorder(0.5f)));
             }
 
             document.add(presTable);
-
             // CHỮ KÝ BÁC SĨ
             document.add(new Paragraph("\n\n"));
             document.add(new Paragraph("Bác sĩ khám bệnh")
