@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 @Data
 public class UpdateUserRequest {
+    private String email;
     private String fullName;
     private String phone;
     private String dob;
