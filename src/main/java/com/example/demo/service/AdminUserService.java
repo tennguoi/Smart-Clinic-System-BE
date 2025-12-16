@@ -348,10 +348,11 @@ public class AdminUserService {
         if (req.getExperienceYears() != null) user.setExperienceYears(req.getExperienceYears());
         if (req.getBio() != null) user.setBio(req.getBio());
 
-        if (userRepository.existsByEmail(req.getEmail())) {
-            throw new RuntimeException("Email đã tồn tại");
+        if (!user.getEmail().equals(req.getEmail())) {
+            if (userRepository.existsByEmail(req.getEmail())) {
+                throw new RuntimeException("Email đã tồn tại");
+            }
         }
-
         user.setEmail(req.getEmail());
         if (req.getDob() != null && !req.getDob().trim().isEmpty()) {
             try {
