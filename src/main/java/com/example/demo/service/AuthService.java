@@ -173,9 +173,7 @@ public class AuthService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(),
-                            loginRequest.getPassword()
-                    )
-            );
+                            loginRequest.getPassword()));
             User user = userRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -213,6 +211,7 @@ public class AuthService {
                     .roles(roleNames)
                     .message("Login successful")
                     .requires2FA(false) // Không cần verify 2FA
+                    .twoFactorEnabled(user.getTwoFactorEnabled())
                     .build();
         } catch (BadCredentialsException e) {
             throw new RuntimeException("Invalid email or password", e);
@@ -288,7 +287,9 @@ public class AuthService {
             user.setFullName(request.getFullName());
             user.setPhone(request.getPhone());
             user.setDob(request.getDob() != null ? LocalDate.parse(request.getDob()) : null);
-            user.setGender(request.getGender() != null ? User.Gender.valueOf(request.getGender().toLowerCase(Locale.ROOT)) : null);
+            user.setGender(
+                    request.getGender() != null ? User.Gender.valueOf(request.getGender().toLowerCase(Locale.ROOT))
+                            : null);
             user.setAddress(request.getAddress());
             user.setExperienceYears(request.getExperienceYears());
             user.setPhotoUrl(request.getPhotoUrl());
@@ -325,6 +326,7 @@ public class AuthService {
                     .photoUrl(user.getPhotoUrl())
                     .bio(user.getBio())
                     .roles(roleNames)
+                    .twoFactorEnabled(user.getTwoFactorEnabled())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Không thể lấy thông tin người dùng: " + e.getMessage());

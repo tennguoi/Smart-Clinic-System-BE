@@ -230,8 +230,8 @@ public class AdminUserService {
      * - roleName: hỗ trợ tìm role không dấu
      */
     public Page<UserAdminResponse> searchUsers(String keyword, String roleName,
-                                               Boolean isVerified, String genderStr,
-                                               int page, int size) {
+            Boolean isVerified, String genderStr,
+            int page, int size) {
         List<User> users = userRepository.findAll();
 
         // Lọc theo keyword (tên, số điện thoại, hoặc email)
@@ -312,7 +312,7 @@ public class AdminUserService {
     public UserAdminResponse getUserById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
-        
+
         List<String> roleNames = new ArrayList<>();
         try {
             // Fetch user roles with eager loading
@@ -333,7 +333,7 @@ public class AdminUserService {
             System.err.println("Error fetching roles for user " + userId + ": " + e.getMessage());
             e.printStackTrace();
         }
-        
+
         return buildUserAdminResponse(user, roleNames);
     }
 
@@ -342,17 +342,23 @@ public class AdminUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
-        if (req.getFullName() != null) user.setFullName(req.getFullName());
-        if (req.getPhone() != null) user.setPhone(req.getPhone());
-        if (req.getAddress() != null) user.setAddress(req.getAddress());
-        if (req.getExperienceYears() != null) user.setExperienceYears(req.getExperienceYears());
-        if (req.getBio() != null) user.setBio(req.getBio());
+        if (req.getFullName() != null)
+            user.setFullName(req.getFullName());
+        if (req.getPhone() != null)
+            user.setPhone(req.getPhone());
+        if (req.getAddress() != null)
+            user.setAddress(req.getAddress());
+        if (req.getExperienceYears() != null)
+            user.setExperienceYears(req.getExperienceYears());
+        if (req.getBio() != null)
+            user.setBio(req.getBio());
 
-        if (userRepository.existsByEmail(req.getEmail())) {
-            throw new RuntimeException("Email đã tồn tại");
+        if (req.getEmail() != null && !req.getEmail().trim().isEmpty() && !user.getEmail().equals(req.getEmail())) {
+            if (userRepository.existsByEmail(req.getEmail())) {
+                throw new RuntimeException("Email đã tồn tại");
+            }
+            user.setEmail(req.getEmail());
         }
-
-        user.setEmail(req.getEmail());
         if (req.getDob() != null && !req.getDob().trim().isEmpty()) {
             try {
                 LocalDate parsed = req.getDob().contains("/")
@@ -380,8 +386,10 @@ public class AdminUserService {
 
         if (photo != null && !photo.isEmpty()) {
             if (user.getPhotoUrl() != null) {
-                try { fileStorageService.deletePhoto(user.getPhotoUrl()); }
-                catch (Exception ignored) {}
+                try {
+                    fileStorageService.deletePhoto(user.getPhotoUrl());
+                } catch (Exception ignored) {
+                }
             }
             user.setPhotoUrl(fileStorageService.savePhoto(photo));
         }
@@ -458,7 +466,8 @@ public class AdminUserService {
      * Parse gender safely (ignore case)
      */
     private User.Gender parseGender(String gender) {
-        if (gender == null) return null;
+        if (gender == null)
+            return null;
         String normalized = gender.trim();
         for (User.Gender g : User.Gender.values()) {
             if (g.name().equalsIgnoreCase(normalized)) {
@@ -472,7 +481,8 @@ public class AdminUserService {
      * Loại bỏ dấu tiếng Việt và chuẩn hoá thành chữ thường, trim
      */
     private String removeAccents(String input) {
-        if (input == null) return null;
+        if (input == null)
+            return null;
         String trimmed = input.trim();
         String normalized = Normalizer.normalize(trimmed, Normalizer.Form.NFD);
         // loại bỏ các combining diacritical marks
@@ -486,7 +496,8 @@ public class AdminUserService {
      * Chuẩn hoá tên role để tìm (loại bỏ dấu, chuyển thường, trim)
      */
     private String normalizeRoleName(String input) {
-        if (input == null) return null;
+        if (input == null)
+            return null;
         return removeAccents(input);
     }
 }
