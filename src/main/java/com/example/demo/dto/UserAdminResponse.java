@@ -23,4 +23,5 @@ public class UserAdminResponse {
     private String bio;
     private List<String> roles;
     private Boolean isVerified; // Thêm trường này để admin có thể chọn kích hoạt ngay
+    private Boolean twoFactorEnabled;
 }

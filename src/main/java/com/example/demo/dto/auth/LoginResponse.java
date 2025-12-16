@@ -20,4 +20,5 @@ public class LoginResponse {
     private List<String> roles;
     private String message;
     private Boolean requires2FA; // Thêm field này để báo cần xác thực 2FA
+    private Boolean twoFactorEnabled; // Trạng thái 2FA của user
 }
