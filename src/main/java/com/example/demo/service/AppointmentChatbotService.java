@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 
 @Slf4j
 @Service
@@ -20,6 +21,7 @@ import java.time.format.DateTimeParseException;
 public class AppointmentChatbotService {
 
     private final AppointmentChatbotRepository repository;
+    private final EmailService emailService;
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -47,9 +49,11 @@ public class AppointmentChatbotService {
                 }
             }
 
-            // 5. Validate email (nếu có)
+            // 5. Validate email (nếu có) - chỉ validate format, không bắt buộc
+            String validatedEmail = null;
             if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
                 validateEmail(request.getEmail().trim());
+                validatedEmail = request.getEmail().trim();
             }
 
             // 6. Validate CCCD (nếu có)
@@ -64,23 +68,40 @@ public class AppointmentChatbotService {
             Appointment appointment = Appointment.builder()
                     .patientName(request.getPatientName().trim())
                     .phone(request.getPhone().trim())
-                    .email(request.getEmail() != null ? request.getEmail().trim() : null)
+                    .email(validatedEmail)
                     .dob(dob)
                     .idNumber(request.getIdNumber() != null ? request.getIdNumber().trim() : null)
                     .appointmentTime(appointmentTime)
                     .appointmentCode(appointmentCode)
                     .notes(request.getNotes() != null ? request.getNotes().trim() : null)
+                    .quickBook(false) // Chatbot không phải quick book
                     .build();
 
             // 9. Lưu vào database
             Appointment saved = repository.save(appointment);
 
-            log.info("✅ Đặt lịch thành công: {} - {}", saved.getAppointmentCode(), saved.getPatientName());
+            log.info("✅ Đặt lịch qua chatbot thành công: {} - {}", saved.getAppointmentCode(), saved.getPatientName());
 
-            // 10. Trả response
+            // 10. Gửi email thông báo (chỉ khi có email hợp lệ)
+            boolean emailSent = false;
+            if (saved.getEmail() != null && !saved.getEmail().trim().isEmpty()) {
+                emailSent = sendEmailNotification(saved);
+            }
+
+            // 11. Tạo thông báo response
+            String successMessage = "Đặt lịch thành công!";
+            if (saved.getEmail() != null && !saved.getEmail().trim().isEmpty()) {
+                if (emailSent) {
+                    successMessage += " Email xác nhận đã được gửi đến " + saved.getEmail();
+                } else {
+                    successMessage += " (Không thể gửi email xác nhận, vui lòng kiểm tra lại địa chỉ email)";
+                }
+            }
+
+            // 12. Trả response
             return AppointmentChatbotResponse.builder()
                     .success(true)
-                    .message("Đặt lịch thành công")
+                    .message(successMessage)
                     .appointmentId(saved.getAppointmentId())
                     .appointmentCode(saved.getAppointmentCode())
                     .patientName(saved.getPatientName())
@@ -99,6 +120,44 @@ public class AppointmentChatbotService {
         } catch (Exception e) {
             log.error("❌ Lỗi tạo lịch hẹn", e);
             throw e;
+        }
+    }
+
+    /**
+     * Gửi email thông báo đặt lịch thành công
+     * @return true nếu gửi thành công, false nếu có lỗi
+     */
+    private boolean sendEmailNotification(Appointment appointment) {
+        try {
+            // Double check email có hợp lệ không
+            if (appointment.getEmail() == null || appointment.getEmail().trim().isEmpty()) {
+                log.debug("⏭️ Bỏ qua gửi email: không có địa chỉ email");
+                return false;
+            }
+
+            // Tạo magic link để tracking
+            String magicLink = "http://localhost:5173/appointments/tracking?code=" +
+                    appointment.getAppointmentCode();
+
+            // Gửi email với danh sách dịch vụ rỗng (chatbot không chọn dịch vụ)
+            emailService.sendNewAppointmentNotification(
+                    appointment.getEmail(),
+                    appointment.getPatientName(),
+                    appointment.getAppointmentCode(),
+                    appointment.getAppointmentTime(),
+                    appointment.getNotes(),
+                    new ArrayList<>(), // Danh sách dịch vụ rỗng
+                    magicLink
+            );
+
+            log.info("✅ Email xác nhận đặt lịch đã được gửi đến: {}", appointment.getEmail());
+            return true;
+
+        } catch (Exception e) {
+            // Log lỗi nhưng không throw exception để không làm fail toàn bộ process
+            log.error("⚠️ Không thể gửi email đến {}: {}", appointment.getEmail(), e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 

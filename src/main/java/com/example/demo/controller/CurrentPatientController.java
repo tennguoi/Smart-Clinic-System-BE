@@ -15,6 +15,9 @@ import com.example.demo.service.QueueService;
 import com.example.demo.service.RoomService;
 import com.example.demo.service.BillingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -50,34 +53,49 @@ public class CurrentPatientController {
      * GET /api/doctor/queue/waiting
      */
     @GetMapping("/queue/waiting")
-    public ResponseEntity<List<QueuePatientResponse>> getWaitingPatients() {
-        User doctor = getCurrentUser();
-        if (doctor == null) {
-            return ResponseEntity.ok(List.of());
-        }
-
-        ExaminationRoom room = examinationRoomRepository
-                .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
-                .orElse(null);
-
-        if (room == null) {
-            return ResponseEntity.ok(List.of());
-        }
-
-        // Lấy danh sách bệnh nhân chờ trong phòng này
-        List<Queue> waitingQueues = queueRepository
-                .findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
-                        room.getRoomId(),
-                        Queue.QueueStatus.Waiting
-                );
-
-        List<QueuePatientResponse> response = waitingQueues.stream()
-                .map(queueService::mapToDto)
-                .toList();
-
-        return ResponseEntity.ok(response);
+public ResponseEntity<List<QueuePatientResponse>> getWaitingPatients() {
+    User doctor = getCurrentUser();
+    if (doctor == null) {
+        return ResponseEntity.ok(List.of());
     }
 
+    ExaminationRoom room = examinationRoomRepository
+            .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
+            .orElse(null);
+
+    if (room == null) {
+        return ResponseEntity.ok(List.of());
+    }
+
+    // ✅ SỬA: Gọi phương thức mới có sắp xếp đúng
+    List<QueuePatientResponse> response = queueService.getWaitingPatientsByRoomSorted(room.getRoomId());
+
+    return ResponseEntity.ok(response);
+}
+@GetMapping("/queue/waiting/paged")
+public ResponseEntity<Page<QueuePatientResponse>> getWaitingPatientsPaged(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "5") int size) {
+    
+    User doctor = getCurrentUser();
+    if (doctor == null) {
+        return ResponseEntity.ok(Page.empty());
+    }
+
+    ExaminationRoom room = examinationRoomRepository
+            .findByDoctorIdAndIsActiveTrue(doctor.getUserId())
+            .orElse(null);
+
+    if (room == null) {
+        return ResponseEntity.ok(Page.empty());
+    }
+
+    Pageable pageable = PageRequest.of(page, size);
+    Page<QueuePatientResponse> response = queueService
+            .getWaitingPatientsByRoomSortedPaginated(room.getRoomId(), pageable);
+
+    return ResponseEntity.ok(response);
+}
     /**
      * Lấy tất cả bệnh nhân được phân vào phòng (cả Waiting và InProgress)
      * GET /api/doctor/queue/all

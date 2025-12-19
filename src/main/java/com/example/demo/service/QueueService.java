@@ -8,7 +8,9 @@ import com.example.demo.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -177,8 +179,8 @@ public class QueueService {
                             .notes(apt.getNotes())
                             .hasCheckedIn(hasQueue)
                             .services(serviceList)
-                            .dob(apt.getDob()) // 👈 THÊM TRƯỜNG NÀY
-                            .idNumber(apt.getIdNumber()) // 👈 THÊM TRƯỜNG NÀY
+                            .dob(apt.getDob())
+                            .idNumber(apt.getIdNumber())
                             .build();
                 })
                 .sorted(Comparator.comparing(AppointmentCheckInDTO::getAppointmentTime))
@@ -267,10 +269,6 @@ public class QueueService {
         return mapToDto(savedQueue);
     }
 
-    /**
-     * Thêm bệnh nhân với tùy chọn: dùng bệnh nhân đã tồn tại hoặc cập nhật thông
-     * tin
-     */
     @Transactional
     public QueuePatientResponse addQueuePatientWithExisting(QueuePatientResponse dto, boolean useExistingInfo) {
         // Tìm bệnh nhân đã tồn tại
@@ -289,18 +287,14 @@ public class QueueService {
         Patient patient;
         if (existingPatient != null) {
             if (useExistingInfo) {
-                // Dùng thông tin cũ
                 patient = existingPatient;
             } else {
-                // Cập nhật thông tin mới vào bệnh nhân đã tồn tại
                 patient = updateExistingPatient(existingPatient, dto);
             }
         } else {
-            // Tạo mới
             patient = createNewPatient(dto);
         }
 
-        // Tạo Queue
         Queue.Priority priority = determinePriority(dto.getPriority());
         Queue queue = Queue.builder()
                 .queueNumber(generateNextQueueNumber())
@@ -312,7 +306,6 @@ public class QueueService {
 
         Queue savedQueue = queueRepository.save(queue);
 
-        // Tự động phân phòng
         ExaminationRoom bestRoom = findBestRoomForAssignment();
         if (bestRoom != null) {
             savedQueue.setAssignedRoom(bestRoom);
@@ -345,7 +338,6 @@ public class QueueService {
         if (priorityStr == null || priorityStr.isBlank()) {
             return Queue.Priority.Normal;
         }
-
         try {
             return Queue.Priority.valueOf(priorityStr);
         } catch (Exception e) {
@@ -367,66 +359,40 @@ public class QueueService {
                 .toList();
     }
 
-    /**
-     * Comparator ưu tiên TUYỆT ĐỐI cho người đặt lịch
-     *
-     * Quy tắc ưu tiên (từ cao xuống thấp):
-     * 1. Emergency có appointment → sắp xếp theo appointmentTime
-     * 2. Emergency không appointment → sắp xếp theo checkInTime
-     * 3. Urgent có appointment → sắp xếp theo appointmentTime
-     * 4. Urgent không appointment → sắp xếp theo checkInTime
-     * 5. Normal có appointment → sắp xếp theo appointmentTime
-     * 6. Normal không appointment → sắp xếp theo checkInTime
-     *
-     * → Người CÓ APPOINTMENT luôn lên trước người KHÔNG CÓ trong cùng priority
-     *
-     * Ví dụ:
-     * - 7:00 - A: Urgent walk-in, check-in 7:00
-     * - 8:00 - B: Urgent đặt lịch 10:00, check-in 8:00
-     * → Thứ tự: B (có appointment) → A (walk-in)
-     */
-    private int compareQueuePriority(Queue q1, Queue q2) {
-        boolean q1HasAppointment = q1.getAppointment() != null;
-        boolean q2HasAppointment = q2.getAppointment() != null;
-
-        Queue.Priority p1 = q1.getPriority();
-        Queue.Priority p2 = q2.getPriority();
-
-        // So sánh Priority trước (Emergency > Urgent > Normal)
-        int priorityCompare = p1.compareTo(p2);
-
-        // Nếu khác Priority → return ngay
-        if (priorityCompare != 0) {
-            return priorityCompare;
-        }
-
-        // ===== CÙNG PRIORITY =====
-
-        // Trường hợp 1: Cả 2 đều có appointment
-        // → So sánh theo appointmentTime (ai đặt lịch sớm hơn)
-        if (q1HasAppointment && q2HasAppointment) {
-            LocalDateTime appt1Time = q1.getAppointment().getAppointmentTime();
-            LocalDateTime appt2Time = q2.getAppointment().getAppointmentTime();
-            return appt1Time.compareTo(appt2Time);
-        }
-
-        // Trường hợp 2: Chỉ q1 có appointment
-        // → q1 lên trước (bất kể thời gian check-in)
-        if (q1HasAppointment && !q2HasAppointment) {
-            return -1;
-        }
-
-        // Trường hợp 3: Chỉ q2 có appointment
-        // → q2 lên trước (bất kể thời gian check-in)
-        if (!q1HasAppointment && q2HasAppointment) {
-            return 1;
-        }
-
-        // Trường hợp 4: Cả 2 đều KHÔNG có appointment
-        // → So sánh theo checkInTime (ai đến trước)
-        return q1.getCheckInTime().compareTo(q2.getCheckInTime());
+   private int compareQueuePriority(Queue q1, Queue q2) {
+    int p1 = getPriorityValue(q1.getPriority());
+    int p2 = getPriorityValue(q2.getPriority());
+    
+    int priorityCompare = Integer.compare(p1, p2);
+    if (priorityCompare != 0) {
+        return priorityCompare; 
     }
+    
+    // Nếu cùng độ ưu tiên, sắp xếp theo thời gian check-in
+    return q1.getCheckInTime().compareTo(q2.getCheckInTime());
+}
 
+private int getPriorityValue(Queue.Priority priority) {
+    if (priority == null) return 3;
+    switch (priority) {
+        case Emergency: return 1;
+        case Urgent: return 2;
+        case Normal: return 3;
+        default: return 3;
+    }
+}
+
+public List<QueuePatientResponse> getWaitingPatientsByRoomSorted(UUID roomId) {
+    List<Queue> queues = queueRepository
+            .findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
+                    roomId, Queue.QueueStatus.Waiting);
+
+    // Sắp xếp lại theo đúng thứ tự: Emergency(1) -> Urgent(2) -> Normal(3)
+    return queues.stream()
+            .sorted(this::compareQueuePriority)
+            .map(this::mapToDto)
+            .toList();
+}
     public List<QueuePatientResponse> getWaitingPatientsByRoom(UUID roomId) {
         List<Queue> queues = queueRepository
                 .findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
@@ -439,7 +405,7 @@ public class QueueService {
     }
 
     // =================================================================
-    // BÁC SĨ GỌI BỆNH NHÂN TIẾP THEO - CẢI TIẾN
+    // BÁC SĨ GỌI BỆNH NHÂN TIẾP THEO
     // =================================================================
 
     @Transactional
@@ -459,7 +425,6 @@ public class QueueService {
             throw new RuntimeException("Không còn bệnh nhân chờ");
         }
 
-        // Sắp xếp theo priority (ưu tiên người đặt lịch)
         Queue next = waiting.stream()
                 .sorted(this::compareQueuePriority)
                 .findFirst()
@@ -574,15 +539,13 @@ public class QueueService {
             builder.appointmentCode(appointment.getAppointmentCode());
         }
 
-        // ✨ Populate services from MedicalRecord
         medicalRecordRepository.findByQueueId(queue.getQueueId()).ifPresent(record -> {
             var services = medicalRecordServiceRepository.findAllByMedicalRecord_RecordId(record.getRecordId())
                     .stream()
                     .map(ms -> new com.example.demo.dto.ExaminationSummaryResponse.ExaminationServiceItem(
                             ms.getService().getServiceId(),
                             ms.getService().getName(),
-                            ms.getService().getCategory() != null ? ms.getService().getCategory().getDisplayName()
-                                    : null,
+                            ms.getService().getCategory() != null ? ms.getService().getCategory().getDisplayName() : null,
                             ms.getQuantity(),
                             ms.getUnitPrice(),
                             ms.getUnitPrice().multiply(java.math.BigDecimal.valueOf(ms.getQuantity())),
@@ -678,4 +641,29 @@ public class QueueService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
+    public Page<QueuePatientResponse> getWaitingPatientsByRoomSortedPaginated(UUID roomId, Pageable pageable) {
+    // Lấy tất cả bệnh nhân chờ
+    List<Queue> allQueues = queueRepository
+            .findByAssignedRoom_RoomIdAndStatusOrderByPriorityAscCheckInTimeAsc(
+                    roomId, Queue.QueueStatus.Waiting);
+
+    // Sắp xếp theo đúng thứ tự ưu tiên
+    List<Queue> sortedQueues = allQueues.stream()
+            .sorted(this::compareQueuePriority)
+            .toList();
+
+    // Tính toán phân trang
+    int start = (int) pageable.getOffset();
+    int end = Math.min((start + pageable.getPageSize()), sortedQueues.size());
+    
+    List<QueuePatientResponse> pagedContent = sortedQueues
+            .subList(start, end)
+            .stream()
+            .map(this::mapToDto)
+            .toList();
+
+    // Trả về Page object
+    return new PageImpl<>(pagedContent, pageable, sortedQueues.size());
+}
+
 }
