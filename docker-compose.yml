@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+    container_name: smart_clinic_backend
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql_db:3306/hi?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - SPRING_DATA_REDIS_HOST=redis_db
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update 
+    volumes:
+      - ./uploads_data:/app/uploads
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+      redis_db:
+        condition: service_started
+    networks:
+      - clinic-network
+    restart: always
+
+  frontend:
+    build:
+      context: ./fe/project
+      dockerfile: Dockerfile
+    container_name: smart_clinic_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - clinic-network
+    restart: always
+
+  mysql_db:
+    image: mysql:8.0
+    container_name: smart_clinic_mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=hi
+    ports:
+      - "3307:3306" # Map to 3307 to avoid conflict with local MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - clinic-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis_db:
+    image: redis:alpine
+    container_name: smart_clinic_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - clinic-network
+    restart: always
+
+networks:
+  clinic-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:

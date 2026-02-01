@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>BỆNH ÁN TAI – MŨI – HỌNG</title>
+
+    <style>
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 12px;
+            margin: 25px 40px;
+            line-height: 1.4;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .title-main {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        table.form-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table.form-table td {
+            padding: 4px;
+            vertical-align: top;
+        }
+
+        .line {
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+            min-width: 150px;
+            display: inline-block;
+        }
+
+        .full-line {
+            border-bottom: 1px solid #000;
+            display: block;
+            width: 100%;
+            height: 22px;
+        }
+
+        .box-char {
+            width: 15px;
+            height: 15px;
+            border: 1px solid #000;
+            display: inline-block;
+            margin-right: 1px;
+            text-align: center;
+            line-height: 15px;
+        }
+
+        .textarea-box {
+            border: 1px solid #000;
+            width: 100%;
+            height: 90px;
+            padding: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2 class="title-main">BỆNH ÁN TAI – MŨI – HỌNG</h2>
+<h3 class="subtitle">(Ban hành kèm theo Quyết định của Bộ Y Tế)</h3>
+
+<!-- SECTION I -->
+<div class="section-title">I. HÀNH CHÍNH</div>
+<table class="form-table">
+    <tr>
+        <td>1. Họ tên người bệnh:</td>
+        <td colspan="3"><span class="line" th:text="${record.patientName}"></span></td>
+
+        <td>2. Giới:</td>
+        <td><span class="line" th:text="${record.patient.gender}"></span></td>
+
+        <td>3. Tuổi:</td>
+        <td><span class="line" th:text="${record.patient.age}"></span></td>
+    </tr>
+
+    <tr>
+        <td>4. Nghề nghiệp:</td>
+        <td colspan="3"><span class="line" th:text="${record.patient.job}"></span></td>
+
+        <td>5. Dân tộc:</td>
+        <td><span class="line" th:text="${record.patient.ethnicity}"></span></td>
+
+        <td>6. Quốc tịch:</td>
+        <td><span class="line" th:text="${record.patient.nationality}"></span></td>
+    </tr>
+
+    <!-- Thêm dòng CCCD -->
+    <tr>
+        <td>7. Số CCCD:</td>
+        <td colspan="3">
+            <span class="box-char" th:each="c : ${#strings.toArray(record.patient.idNumber)}" th:text="${c}"></span>
+        </td>
+
+        <td>8. Số thẻ BHYT:</td>
+        <td colspan="3">
+            <span class="box-char" th:each="c : ${#strings.toArray(record.patient.insuranceNumber)}" th:text="${c}"></span>
+        </td>
+    </tr>
+
+    <tr>
+        <td>9. Họ tên và địa chỉ người nhà khi cần báo tin:</td>
+        <td colspan="7"><span class="line" style="width:100%;" th:text="${record.patient.relativeInfo}"></span></td>
+    </tr>
+</table>
+
+<!-- SECTION II -->
+<div class="section-title">II. QUẢN LÝ NGƯỜI BỆNH</div>
+<table class="form-table">
+    <tr>
+        <td>1. Vào viện lúc:</td>
+        <td colspan="3"><span class="line" style="width:100%;" th:text="${record.admissionTime}"></span></td>
+
+        <td>Đến từ:</td>
+        <td><span class="line" th:text="${record.comingFrom}"></span></td>
+    </tr>
+
+    <tr>
+        <td>2. Chẩn đoán vào viện:</td>
+        <td colspan="5"><span class="line" style="width:100%;" th:text="${record.diagnosis}"></span></td>
+    </tr>
+
+    <tr>
+        <td>3. Chuyển khoa:</td>
+        <td colspan="5"><span class="line" style="width:100%;" th:text="${record.transferredDepartment}"></span></td>
+    </tr>
+</table>
+
+<!-- SECTION III -->
+<div class="section-title">III. CHẨN ĐOÁN</div>
+<div class="textarea-box" th:text="${record.diagnosis}"></div>
+
+<!-- SECTION IV -->
+<div class="section-title">IV. PHƯƠNG PHÁP ĐIỀU TRỊ</div>
+<div class="textarea-box" th:text="${record.treatmentNotes}"></div>
+
+<!-- SECTION V -->
+<div class="section-title">V. DIỄN BIẾN LÂM SÀNG</div>
+<div class="textarea-box" th:text="${record.clinicalProgress}"></div>
+
+<!-- SECTION VI -->
+<div class="section-title">VI. TÌNH TRẠNG RA VIỆN</div>
+<div class="textarea-box" th:text="${record.dischargeStatus}"></div>
+
+<!-- SECTION VII -->
+<div class="section-title">VII. HƯỚNG DẪN CHĂM SÓC & TÁI KHÁM</div>
+<div class="textarea-box" th:text="${record.followUpNotes}"></div>
+
+<br><br>
+
+<table class="form-table">
+    <tr>
+        <td style="text-align:center; width:50%;">
+            Ngày ... tháng ... năm ...
+        </td>
+        <td style="text-align:center;">
+            Bác sĩ điều trị
+            <br><br><br>
+            <span th:text="${record.doctor.fullName}"></span>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

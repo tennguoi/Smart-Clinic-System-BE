@@ -19,7 +19,7 @@ import java.util.UUID;
 public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "role_id")
+    @Column(name = "role_id", length = 36) // Đã thêm length = 36
     private UUID roleId;
 
     @Column(nullable = false, unique = true)
@@ -29,9 +29,10 @@ public class Role {
     private String description;
 
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<UserRole> userRoles = new ArrayList<>();
 
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<RolePermission> rolePermissions = new ArrayList<>();
 }
-

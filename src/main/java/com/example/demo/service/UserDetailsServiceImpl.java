@@ -1,6 +1,5 @@
 package com.example.demo.service;
 
-import com.example.demo.entity.Role;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRepository;
@@ -28,6 +27,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
+        // Xử lý isVerified: nếu null hoặc false thì disable, chỉ enable khi isVerified = true
+        boolean isVerified = user.getIsVerified() != null && user.getIsVerified();
+        
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPassword())
@@ -35,15 +37,24 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(!user.getIsVerified())
+                .disabled(!isVerified)
                 .build();
     }
 
     private Collection<? extends GrantedAuthority> getAuthorities(User user) {
         return user.getUserRoles().stream()
                 .map(UserRole::getRole)
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .map(role -> {
+                    String name = role.getName();
+                    String normalized = name == null ? "" : name.trim();
+                    // Avoid double prefixing; ensure Spring-style "ROLE_*"
+                    if (!normalized.toUpperCase().startsWith("ROLE_")) {
+                        normalized = "ROLE_" + normalized.toUpperCase();
+                    } else {
+                        normalized = normalized.toUpperCase();
+                    }
+                    return new SimpleGrantedAuthority(normalized);
+                })
                 .collect(Collectors.toList());
     }
 }
-
