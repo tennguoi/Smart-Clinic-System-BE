@@ -16,4 +16,3 @@ RUN mkdir -p uploads/photos
 
 EXPOSE 8082
 ENTRYPOINT ["java", "-jar", "app.jar"]
-docker-compose.yml

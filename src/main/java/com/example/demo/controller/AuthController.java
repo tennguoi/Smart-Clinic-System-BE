@@ -5,7 +5,7 @@ import com.example.demo.dto.auth.*;
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AuthService;
-import com.example.demo.util.JwtUtil;
+import com.example.demo.util.AuthHelper;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -30,7 +30,7 @@ public class AuthController {
     private UserRepository userRepository;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private AuthHelper authHelper;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -48,10 +48,9 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<LogoutResponse> logout(@RequestHeader(value = "Authorization", required = false) String token) {
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
+    public ResponseEntity<LogoutResponse> logout(
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        token = authHelper.extractToken(token);
         LogoutResponse response = authService.logout(token);
         return ResponseEntity.ok(response);
     }
@@ -75,10 +74,10 @@ public class AuthController {
     }
 
     @PostMapping("/disable-2fa")
-    public ResponseEntity<GenericResponse> disable2FA(@RequestHeader(value = "Authorization", required = false) String token) {
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        } else {
+    public ResponseEntity<GenericResponse> disable2FA(
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        token = authHelper.extractToken(token);
+        if (token == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new GenericResponse(false, "Token is required."));
         }
@@ -123,9 +122,8 @@ public class AuthController {
     public ResponseEntity<GenericResponse> changePassword(
             @RequestHeader(value = "Authorization", required = false) String token,
             @Valid @RequestBody ChangePasswordRequest request) {
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        } else {
+        token = authHelper.extractToken(token);
+        if (token == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new GenericResponse(false, "Yêu cầu token."));
         }
@@ -137,9 +135,8 @@ public class AuthController {
     public ResponseEntity<GenericResponse> updateProfile(
             @RequestHeader(value = "Authorization", required = false) String token,
             @Valid @RequestBody UpdateUserRequest request) {
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        } else {
+        token = authHelper.extractToken(token);
+        if (token == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new GenericResponse(false, "Yêu cầu token."));
         }
@@ -148,10 +145,10 @@ public class AuthController {
     }
 
     @GetMapping("/user")
-    public ResponseEntity<UserAdminResponse> getUser(@RequestHeader(value = "Authorization", required = false) String token) {
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        } else {
+    public ResponseEntity<UserAdminResponse> getUser(
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        token = authHelper.extractToken(token);
+        if (token == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(UserAdminResponse.builder().build());
         }
@@ -168,15 +165,14 @@ public class AuthController {
     public ResponseEntity<GenericResponse> uploadPhoto(
             @RequestHeader(value = "Authorization", required = false) String token,
             @RequestParam("photo") MultipartFile photo) {
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        } else {
+        token = authHelper.extractToken(token);
+        if (token == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new GenericResponse(false, "Yêu cầu token."));
         }
         try {
-            String email = jwtUtil.getEmailFromToken(token);
-            if (!jwtUtil.validateToken(token, email)) {
+            String email = authHelper.validateAndGetEmail(token);
+            if (email == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(new GenericResponse(false, "Token không hợp lệ hoặc đã hết hạn."));
             }

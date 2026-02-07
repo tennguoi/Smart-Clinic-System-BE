@@ -6,6 +6,7 @@ import com.example.demo.entity.User;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UserRoleRepository;
+import com.example.demo.util.AuthHelper;
 import com.example.demo.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -42,6 +43,9 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private AuthHelper authHelper;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -83,8 +87,8 @@ public class AuthService {
     // Tắt 2FA
     public GenericResponse disable2FA(String token) {
         try {
-            String email = jwtUtil.getEmailFromToken(token);
-            if (!jwtUtil.validateToken(token, email)) {
+            String email = authHelper.validateAndGetEmail(token);
+            if (email == null) {
                 return new GenericResponse(false, "Invalid or expired token.");
             }
             User user = userRepository.findByEmail(email)
@@ -255,8 +259,8 @@ public class AuthService {
     // Đổi mật khẩu
     public GenericResponse changePassword(String token, ChangePasswordRequest request) {
         try {
-            String email = jwtUtil.getEmailFromToken(token);
-            if (!jwtUtil.validateToken(token, email)) {
+            String email = authHelper.validateAndGetEmail(token);
+            if (email == null) {
                 return new GenericResponse(false, "Token không hợp lệ hoặc đã hết hạn.");
             }
             User user = userRepository.findByEmail(email)
@@ -278,8 +282,8 @@ public class AuthService {
     // Cập nhật hồ sơ
     public GenericResponse updateProfile(String token, UpdateUserRequest request) {
         try {
-            String email = jwtUtil.getEmailFromToken(token);
-            if (!jwtUtil.validateToken(token, email)) {
+            String email = authHelper.validateAndGetEmail(token);
+            if (email == null) {
                 return new GenericResponse(false, "Token không hợp lệ hoặc đã hết hạn.");
             }
             User user = userRepository.findByEmail(email)
@@ -304,8 +308,8 @@ public class AuthService {
     // Lấy thông tin người dùng
     public UserAdminResponse getUser(String token) {
         try {
-            String email = jwtUtil.getEmailFromToken(token);
-            if (!jwtUtil.validateToken(token, email)) {
+            String email = authHelper.validateAndGetEmail(token);
+            if (email == null) {
                 throw new RuntimeException("Token không hợp lệ hoặc đã hết hạn.");
             }
             User user = userRepository.findByEmail(email)
