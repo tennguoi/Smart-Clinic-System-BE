@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/reception/patients")
-@PreAuthorize("hasRole('ROLE_TIEP_TAN')")
+@PreAuthorize("hasAnyRole('TIEP_TAN', 'ADMIN')")
 public class ReceptionistPatientController {
 
     private final PatientService patientService;

@@ -7,6 +7,7 @@ import com.example.demo.dto.RoomResponse;
 import com.example.demo.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/reception/rooms")
 @RequiredArgsConstructor
-
+@PreAuthorize("hasAnyRole('TIEP_TAN', 'BAC_SI', 'ADMIN')")
 public class RoomController {
 
     private final RoomService roomService;

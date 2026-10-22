@@ -5,6 +5,7 @@ import com.example.demo.dto.UpdateEmailTemplateRequest;
 import com.example.demo.service.EmailTemplateService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/email-templates")
+@PreAuthorize("hasRole('ADMIN')")
 public class EmailTemplateController {
 
     @Autowired

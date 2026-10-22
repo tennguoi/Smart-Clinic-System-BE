@@ -142,8 +142,8 @@ public class BillingService {
 
     // ==================== THANH TOÁN ====================
     public BillingResponseDTO pay(UUID billId, BigDecimal paidAmount, PaymentMethod method) {
-        if (!hasRole("TIEP_TAN"))
-            throw new AccessDeniedException("Chỉ lễ tân được thu tiền");
+        if (!hasRole("TIEP_TAN") && !hasRole("ADMIN"))
+            throw new AccessDeniedException("Chỉ lễ tân hoặc admin được thu tiền");
 
         BillingRecord billing = billingRepo.findById(billId)
                 .orElseThrow(() -> new RuntimeException("Hóa đơn không tồn tại"));

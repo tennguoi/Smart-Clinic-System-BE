@@ -50,7 +50,7 @@ public class BillingController {
 
     // ✅ THANH TOÁN
     @PutMapping("/{id}/pay")
-    @PreAuthorize("hasRole('TIEP_TAN')")
+    @PreAuthorize("hasAnyRole('TIEP_TAN', 'ADMIN')")
     public ResponseEntity<BillingResponseDTO> pay(
             @PathVariable UUID id,
             @RequestBody Map<String, Object> body) {
@@ -82,7 +82,7 @@ public class BillingController {
 
     // ✅ CẬP NHẬT HÓA ĐƠN (CHỈ KHI CHƯA THANH TOÁN)
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('TIEP_TAN')")
+    @PreAuthorize("hasAnyRole('TIEP_TAN', 'ADMIN')")
     public ResponseEntity<BillingResponseDTO> updateInvoice(
             @PathVariable UUID id,
             @Valid @RequestBody BillingUpdateDTO dto) {

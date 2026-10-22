@@ -61,20 +61,41 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 1. Preflight CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/**").permitAll()
+
+                        // 2. Public APIs
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/chatbot/**").permitAll()
+                        .requestMatchers("/webhook/**").permitAll()
+
+                        // 3. User cá nhân (Profile, Settings)
                         .requestMatchers("/api/users/**").authenticated()
+                        .requestMatchers("/api/settings/**").authenticated()
+
+                        // 4. Role ADMIN
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/api/invoices/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_TIEP_TAN")
-                        .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
-                        .requestMatchers("/api/doctors/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
-                        .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
+
+                        // 5. Reception Rooms (Lễ tân + Bác sĩ + Admin cùng dùng)
+                        .requestMatchers("/api/reception/rooms/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_BAC_SI", "ROLE_ADMIN")
+
+                        // 6. Role TIEP_TAN & ADMIN
                         .requestMatchers("/api/reception/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
                         .requestMatchers("/api/receptionist/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
-                        .requestMatchers("/webhook/**").permitAll()
+                        .requestMatchers("/api/appointments/**").hasAnyAuthority("ROLE_TIEP_TAN", "ROLE_ADMIN")
+
+                        // 7. Role BAC_SI & ADMIN
+                        .requestMatchers("/api/doctor/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
+                        .requestMatchers("/api/doctors/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
+                        .requestMatchers("/api/v1/tmh-assistant/**").hasAnyAuthority("ROLE_BAC_SI", "ROLE_ADMIN")
+
+                        // 8. Shared medical & billing records (Chi tiết kiểm soát qua @PreAuthorize)
+                        .requestMatchers("/api/medical-records/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BAC_SI", "ROLE_TIEP_TAN")
+                        .requestMatchers("/api/invoices/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BAC_SI", "ROLE_TIEP_TAN")
+                        .requestMatchers("/api/billing/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BAC_SI", "ROLE_TIEP_TAN")
+
+                        // 9. Tất cả các request còn lại phải được xác thực
                         .anyRequest().authenticated()
                 );
 

@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +31,7 @@ import javax.imageio.ImageIO;
 
 @RestController
 @RequestMapping("/api/admin/clinic")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminClinicController {
     
     private static final Logger logger = LoggerFactory.getLogger(AdminClinicController.class);

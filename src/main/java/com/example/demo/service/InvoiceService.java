@@ -48,8 +48,8 @@ public class InvoiceService {
 
     // TẠO HÓA ĐƠN – TÍNH TIỀN CHÍNH XÁC 100%
     public InvoiceResponseDTO createInvoice(InvoiceCreateDTO dto) {
-        if (!hasRole("TIEP_TAN")) {
-            throw new AccessDeniedException("Chỉ lễ tân được phép tạo hóa đơn");
+        if (!hasRole("TIEP_TAN") && !hasRole("ADMIN")) {
+            throw new AccessDeniedException("Chỉ lễ tân hoặc admin được phép tạo hóa đơn");
         }
 
         User currentUser = userRepository.findByEmail(getCurrentUserEmail())
@@ -98,8 +98,8 @@ public class InvoiceService {
 
     // THANH TOÁN HÓA ĐƠN
     public InvoiceResponseDTO payInvoice(UUID invoiceId, BigDecimal paidAmount) {
-        if (!hasRole("TIEP_TAN")) {
-            throw new AccessDeniedException("Chỉ lễ tân được phép thu tiền");
+        if (!hasRole("TIEP_TAN") && !hasRole("ADMIN")) {
+            throw new AccessDeniedException("Chỉ lễ tân hoặc admin được phép thu tiền");
         }
 
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -125,7 +125,7 @@ public class InvoiceService {
 
     // DANH SÁCH HÓA ĐƠN
     public Page<InvoiceResponseDTO> getAll(Pageable pageable, String search) {
-        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN")) {
+        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN") && !hasRole("ADMIN")) {
             throw new AccessDeniedException("Không có quyền xem hóa đơn");
         }
 
@@ -138,7 +138,7 @@ public class InvoiceService {
 
     // CHI TIẾT HÓA ĐƠN
     public InvoiceResponseDTO getById(UUID id) {
-        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN")) {
+        if (!hasRole("BAC_SI") && !hasRole("TIEP_TAN") && !hasRole("ADMIN")) {
             throw new AccessDeniedException("Không có quyền xem hóa đơn");
         }
         Invoice invoice = invoiceRepository.findById(id)

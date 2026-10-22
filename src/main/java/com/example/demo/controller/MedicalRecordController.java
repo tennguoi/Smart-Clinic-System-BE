@@ -14,6 +14,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/medical-records")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN', 'BAC_SI', 'TIEP_TAN')")
 public class MedicalRecordController {
 
     private final MedicalRecordRepository medicalRecordRepository;

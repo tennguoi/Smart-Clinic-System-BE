@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import java.util.UUID;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,7 @@ import com.example.demo.service.MedicalRecordService;
 
 @Controller
 @RequestMapping("/api/doctor/medical-records")
+@PreAuthorize("hasAnyRole('BAC_SI', 'ADMIN')")
 public class MedicalRecordPrintController {
     private final MedicalRecordService medicalRecordService;
 
