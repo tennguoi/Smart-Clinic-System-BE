@@ -4,6 +4,7 @@ import com.example.demo.dto.appointment.AppointmentResponse;
 import com.example.demo.entity.Appointment;
 import com.example.demo.repository.AppointmentRepository;
 import com.example.demo.service.AppointmentService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +20,7 @@ public class PublicAppointmentController {
     }
 
     @PostMapping("/quick-book")
-    public ResponseEntity<?> quickBook(@RequestBody com.example.demo.dto.appointment.AppointmentRequest req) {
+    public ResponseEntity<?> quickBook(@Valid @RequestBody com.example.demo.dto.appointment.AppointmentRequest req) {
         try {
             System.out.println("==================== PUBLIC QUICK-BOOK REQUEST ====================");
             System.out.println("Patient Name: " + req.patientName());

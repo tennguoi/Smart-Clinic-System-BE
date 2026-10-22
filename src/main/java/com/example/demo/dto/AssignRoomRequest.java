@@ -1,17 +1,20 @@
 package com.example.demo.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
-// === REQUEST ===
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class AssignRoomRequest {
-    private UUID queueId;    // ID của bệnh nhân trong hàng đợi
-    private UUID roomId;     // ID của phòng khám
+
+    @NotNull(message = "ID hàng đợi (queueId) không được để trống")
+    private UUID queueId;
+
+    @NotNull(message = "ID phòng khám (roomId) không được để trống")
+    private UUID roomId;
 }

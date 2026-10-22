@@ -23,13 +23,23 @@ public class QueuePatientResponse {
 
     // Patient information
     private UUID patientId;
+
+    @jakarta.validation.constraints.Size(max = 100, message = "Tên bệnh nhân không vượt quá 100 ký tự")
     private String patientName;
+
+    @jakarta.validation.constraints.Pattern(regexp = "^(0|\\+84)?\\d{9,10}$|^$", message = "Số điện thoại không đúng định dạng")
     private String phone;
+
+    @jakarta.validation.constraints.Email(message = "Email không đúng định dạng")
     private String email;
+
     private LocalDate dob;
     private String gender; // "Nam", "Nữ", "Khác"
     private String address;
+
+    @jakarta.validation.constraints.Pattern(regexp = "^\\d{9}|\\d{12}$|^$", message = "Số CCCD/CMND phải gồm 9 hoặc 12 chữ số")
     private String idNumber; // CCCD/CMND
+
     private String insuranceNumber; // Số bảo hiểm y tế
     private String notes; // Ghi chú
 

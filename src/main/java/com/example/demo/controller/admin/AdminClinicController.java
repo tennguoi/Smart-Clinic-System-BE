@@ -94,7 +94,7 @@ public class AdminClinicController {
      */
     @PostMapping("/debug-update")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<?> debugUpdate(@RequestBody ClinicRequest request) {
+    public ResponseEntity<?> debugUpdate(@Valid @RequestBody ClinicRequest request) {
         Map<String, Object> debug = new HashMap<>();
         debug.put("receivedRequest", request);
         debug.put("currentClinicInfo", clinicService.getClinicInfo());

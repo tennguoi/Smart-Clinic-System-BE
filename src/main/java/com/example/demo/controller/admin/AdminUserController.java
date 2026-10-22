@@ -5,6 +5,7 @@ import com.example.demo.dto.UpdateUserRequest;
 import com.example.demo.dto.UpdateUserRolesRequest;
 import com.example.demo.dto.UserAdminResponse;
 import com.example.demo.service.AdminUserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -83,7 +84,7 @@ public class AdminUserController {
     @PutMapping("/{userId}/roles")
     public ResponseEntity<UserAdminResponse> updateUserRoles(
             @PathVariable UUID userId,
-            @RequestBody UpdateUserRolesRequest req) {
+            @Valid @RequestBody UpdateUserRolesRequest req) {
         UserAdminResponse response = adminUserService.updateUserRoles(userId, req);
         return ResponseEntity.ok(response);
     }

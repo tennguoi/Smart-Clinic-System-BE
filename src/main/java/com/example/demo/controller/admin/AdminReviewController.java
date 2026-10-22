@@ -3,6 +3,7 @@ package com.example.demo.controller.admin;
 import com.example.demo.dto.ReviewRequest;
 import com.example.demo.dto.ReviewResponse;
 import com.example.demo.service.ReviewService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -37,14 +38,14 @@ public class AdminReviewController {
     }
 
     @PostMapping
-    public ResponseEntity<ReviewResponse> createReview(@RequestBody ReviewRequest request) {
+    public ResponseEntity<ReviewResponse> createReview(@Valid @RequestBody ReviewRequest request) {
         ReviewResponse response = reviewService.createReview(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     @PutMapping("/{id}")
     public ResponseEntity<ReviewResponse> updateReview(
             @PathVariable Long id, 
-            @RequestBody ReviewRequest request) {
+            @Valid @RequestBody ReviewRequest request) {
         ReviewResponse response = reviewService.updateReview(id, request);
         return ResponseEntity.ok(response);
     }

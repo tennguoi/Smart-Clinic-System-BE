@@ -1,24 +1,24 @@
-package com.example.demo.dto.prescription; // (Đặt trong package DTO của bạn)
+package com.example.demo.dto.prescription;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AddPrescriptionRequest {
 
-    /**
-     * ID của hồ sơ bệnh án (BẮT BUỘC).
-     * Backend cần ID này để biết đơn thuốc này thuộc về hồ sơ nào.
-     */
+    @NotNull(message = "ID hồ sơ bệnh án không được để trống")
     private UUID recordId;
 
-    /**
-     * Tên thuốc (Nhiệm vụ của bạn)
-     */
+    @NotBlank(message = "Danh sách thuốc không được để trống")
     private String drugs;
 
-    /**
-     * Hướng dẫn (Nhiệm vụ của bạn)
-     */
+    @NotBlank(message = "Hướng dẫn sử dụng thuốc không được để trống")
     private String instructions;
 }

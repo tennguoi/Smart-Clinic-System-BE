@@ -8,6 +8,7 @@ import com.example.demo.repository.MedicalRecordRepository;
 import com.example.demo.service.MedicalRecordService;
 import com.example.demo.service.PdfExportService;
 import com.example.demo.util.JwtUtil;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -96,12 +97,12 @@ public class DoctorMedicalRecordController {
     @PostMapping
     public ResponseEntity<MedicalRecordResponse> create(
             @RequestHeader("Authorization") String authorization,
-            @RequestBody MedicalRecordRequest request) {
+            @Valid @RequestBody MedicalRecordRequest request) {
         return ResponseEntity.ok(medicalRecordService.create(authorization, request));
     }
 
     @PostMapping("/prescription")
-    public ResponseEntity<?> addPrescription(@RequestBody AddPrescriptionRequest request) {
+    public ResponseEntity<?> addPrescription(@Valid @RequestBody AddPrescriptionRequest request) {
         try {
             medicalRecordService.addPrescriptionToRecord(request);
             return new ResponseEntity<>(HttpStatus.CREATED);
@@ -145,7 +146,7 @@ public class DoctorMedicalRecordController {
     @PutMapping("/{recordId}")
     public ResponseEntity<MedicalRecordDetailResponse> updateRecord(
             @PathVariable UUID recordId,
-            @RequestBody UpdateMedicalRecordRequest request) {
+            @Valid @RequestBody UpdateMedicalRecordRequest request) {
         try {
             return ResponseEntity.ok(medicalRecordService.updateRecord(recordId, request));
         } catch (RuntimeException e) {

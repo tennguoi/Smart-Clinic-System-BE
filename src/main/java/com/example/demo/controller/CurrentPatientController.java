@@ -15,6 +15,7 @@ import com.example.demo.service.QueueService;
 import com.example.demo.service.RoomService;
 import com.example.demo.service.BillingService;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -189,7 +190,7 @@ public ResponseEntity<Page<QueuePatientResponse>> getWaitingPatientsPaged(
     // ================== API KHÁM BỆNH ==================
 
     @PostMapping("/services")
-    public ResponseEntity<?> addService(@RequestBody AddServiceToExaminationRequest request) {
+    public ResponseEntity<?> addService(@Valid @RequestBody AddServiceToExaminationRequest request) {
         User doctor = getCurrentUser();
         if (doctor == null) {
             return ResponseEntity.status(401).body("Unauthorized");
@@ -210,7 +211,7 @@ public ResponseEntity<Page<QueuePatientResponse>> getWaitingPatientsPaged(
     }
 
     @PostMapping("/prescription")
-    public ResponseEntity<?> addPrescription(@RequestBody AddPrescriptionToExaminationRequest request) {
+    public ResponseEntity<?> addPrescription(@Valid @RequestBody AddPrescriptionToExaminationRequest request) {
         User doctor = getCurrentUser();
         if (doctor == null) {
             return ResponseEntity.status(401).body("Unauthorized");

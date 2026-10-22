@@ -49,24 +49,4 @@ public class AppointmentChatbotController {
                             .build());
         }
     }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<AppointmentChatbotResponse> handleValidationExceptions(
-            MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-
-        String message = String.join("; ", errors.values());
-        log.error("⚠️ Validation errors: {}", message);
-
-        return ResponseEntity.badRequest()
-                .body(AppointmentChatbotResponse.builder()
-                        .success(false)
-                        .message(message)
-                        .build());
-    }
 }

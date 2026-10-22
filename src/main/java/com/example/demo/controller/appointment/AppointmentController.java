@@ -5,6 +5,7 @@ import com.example.demo.dto.appointment.AppointmentRequest;
 import com.example.demo.dto.appointment.AppointmentResponse;
 import com.example.demo.entity.Appointment.Status;
 import com.example.demo.service.AppointmentService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,7 +42,7 @@ public class AppointmentController {
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
-    public ResponseEntity<AppointmentResponse> create(@RequestBody AppointmentRequest req) {
+    public ResponseEntity<AppointmentResponse> create(@Valid @RequestBody AppointmentRequest req) {
         return ResponseEntity.ok(service.create(req));
     }
 
@@ -52,7 +53,7 @@ public class AppointmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TIEP_TAN')")
     public ResponseEntity<AppointmentResponse> update(
             @PathVariable UUID id,
-            @RequestBody AppointmentRequest req
+            @Valid @RequestBody AppointmentRequest req
     ) {
         return ResponseEntity.ok(service.updateInfo(id, req));
     }

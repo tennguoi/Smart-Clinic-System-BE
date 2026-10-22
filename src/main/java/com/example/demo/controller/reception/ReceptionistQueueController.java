@@ -4,6 +4,7 @@ import com.example.demo.dto.GenericResponse;
 import com.example.demo.dto.QueuePatientResponse;
 import com.example.demo.dto.appointment.AppointmentCheckInDTO;
 import com.example.demo.service.QueueService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,7 +17,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reception/queue")
-@PreAuthorize("hasRole('ROLE_TIEP_TAN')")
+@PreAuthorize("hasAnyRole('TIEP_TAN', 'ADMIN')")
 public class ReceptionistQueueController {
 
     private final QueueService queueService;
@@ -89,7 +90,7 @@ public class ReceptionistQueueController {
     }
 
     @PostMapping("/add")
-    public ResponseEntity<?> addQueue(@RequestBody QueuePatientResponse dto) {
+    public ResponseEntity<?> addQueue(@Valid @RequestBody QueuePatientResponse dto) {
         try {
             QueuePatientResponse result = queueService.addQueuePatient(dto);
             return ResponseEntity.ok(result);
@@ -106,17 +107,12 @@ public class ReceptionistQueueController {
     /**
      * Thêm bệnh nhân với xác nhận dùng thông tin cũ hay cập nhật mới
      * POST /api/reception/queue/add-with-existing
-<<<<<<< HEAD
-     *
-=======
-     * 
->>>>>>> 2cd2e5e18d455f41faeb4f437ab679887e4bd246
      * @param useExistingInfo true = dùng thông tin bệnh nhân cũ, false = cập nhật
      *                        thông tin mới
      */
     @PostMapping("/add-with-existing")
     public ResponseEntity<?> addQueueWithExisting(
-            @RequestBody QueuePatientResponse dto,
+            @Valid @RequestBody QueuePatientResponse dto,
             @RequestParam boolean useExistingInfo) {
         try {
             QueuePatientResponse result = queueService.addQueuePatientWithExisting(dto, useExistingInfo);
@@ -143,7 +139,7 @@ public class ReceptionistQueueController {
     }
 
     @PutMapping("/{queueId}")
-    public ResponseEntity<?> updateQueue(@PathVariable UUID queueId, @RequestBody QueuePatientResponse dto) {
+    public ResponseEntity<?> updateQueue(@PathVariable UUID queueId, @Valid @RequestBody QueuePatientResponse dto) {
         return ResponseEntity.ok(queueService.updateQueuePatient(queueId, dto));
     }
 

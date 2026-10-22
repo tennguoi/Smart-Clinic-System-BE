@@ -132,7 +132,7 @@ public class ReceptionistExaminationRoomController {
 
     @PostMapping("/assign")
     public ResponseEntity<?> assignPatientToRoom(
-            @RequestBody AssignRoomRequest request) {
+            @Valid @RequestBody AssignRoomRequest request) {
         try {
             ExaminationRoomResponse response = roomService.assignPatientToRoom(request);
             return ResponseEntity.ok(response);
